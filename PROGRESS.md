@@ -21,7 +21,10 @@
   三法异常检测 std 判据）；时序预处理器（插值/聚合/时区）为 4 工具共用
 - M4 可视化组（5 工具）— ✅ 全部完成（scatter/histogram/heatmap/forecast/box，216 测试全绿）
   **本周可展示**：5 张中文标签图 + 25 工具全家桶可用（三种统计语言出图 + 交叉验证一致）
-- auto_analysis（编排层，方案 A）— 进行中：方案设计文档交付确认中
+- auto_analysis（编排层，方案 A）— ✅ 方案设计文档交付并确认（docs/design/08_auto_analysis.md：
+  决策树 11 类问题映射 + 五章节报告模板 + 示例 agent 提示词 + 防幻觉铁律），
+  端到端演示报告 docs/example_report.md（"什么影响收入"链路，数字全部带来源标注）
+  **最终交付物**：本项目第一层 25 工具 + 编排层方案全部完成
 
 ## 已完成（工具名 | 提交号 | 日期 | 验收人）
 - describe_statistics | feat: describe_statistics (489e948) | 2026-08-26 | 周翔宇（三亲手豁免记录）
@@ -47,9 +50,7 @@
 - plot_scatter / plot_histogram / plot_heatmap / plot_forecast / plot_box | feat: 可视化组 | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
-- 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
-- tools/_common.py：✅ 已实现并测试全绿（21/21）+ MCPServer 链路预检 LINK-CHECK-OK（提交 feat: _common 待做）
-- 下一步：探查组设计文档批 1（describe/data_type_check/missing_report），等使用者确认 _common 后开始
+- ✅ 全部完成：25/25 工具 + _common 基础设施 + auto_analysis 方案（commit 见 git log，共 42 次提交）
 
 ## 重要实测结论（mcp 2.1.0）
 - `mcp.server.fastmcp.FastMCP` 已不存在；高层服务器 = `mcp.server.mcpserver.MCPServer`（FastMCP 1.x 重构继承者，add_tool/tool/call_tool 兼容）
@@ -58,13 +59,10 @@
 - 此结论影响里程碑 1 冒烟测试（npx inspector 走 stdio run() 不受影响）
 
 ## 待办（按组列）
-- 探查组：describe_statistics → correlation_matrix → missing_report → outlier_detect → data_type_check
-- 推断组：hypothesis_test → anova_test → chi_square_test → normality_test → confidence_interval → effect_size
-- 建模组：linear_regression → logistic_regression → cluster_analysis → pca_analysis → feature_importance
-- 时序组：time_series_forecast → seasonal_decompose → trend_analysis → anomaly_detect
-- 可视化组：plot_scatter → plot_histogram → plot_heatmap → plot_forecast → plot_box
-- 编排层：auto_analysis（方案 A，最后交付，交付前出方案设计文档）
-- 基础设施：tools/_common.py（七函数，先于工具 1）
+- ✅ 25 工具全部完成（探查 5 / 推断 6 / 建模 5 / 时序 4 / 可视化 5）
+- ✅ 基础设施 _common.py（含时序五项前置预处理器 _prepare_series）
+- ✅ auto_analysis（方案 A：决策树+模板+提示词）
+- 可选后续：①真实数据实战一轮（按 clients.md 接入实际客户端）②方案 B 规则工具（如需要 server 侧自动化，另出设计文档）③三亲手恢复（若使用者改主意）
 
 ## 验收状态（每工具三条件逐项勾选：①pytest 绿 ②两套数据实跑核对 ③commit+PROGRESS 验收人=使用者）
 - describe_statistics：①✅ 14/14+回归35/35 ②✅ data/销量.csv（使用者数据，AI 代跑）+ samples/dirty.csv 核对：销量 n=6/n_missing=2、库存全缺失 null 不中断、dirty extreme 均值被 1e9 拉高=极端值信号 ③✅ commit feat: describe_statistics，验收结论（使用者授权代写）：
@@ -113,18 +111,22 @@
   "missing_report 告诉你每列缺多少、整张表缺多少、哪些列总是一起缺。数据到手先看缺失率超不超 20%，再看成对缺失——两列一起丢通常是同源故障，比单列丢更值得查；全缺失列直接跳过别较劲。"
 
 ## 数据与样例（data/ samples/ 内容说明）
-- data/：空目录（不入库）。只放使用者亲手造的 8-12 行测试 CSV（三亲手用）
+- data/：不入库。含 data/销量.csv（8 行：周次/销量/库存/备注——使用者数据，空单元格+全缺失列+1,000 脏值）
 - samples/：入库。clean.csv（50x6）、dirty.csv（20x5 含空单元格/全缺失列/非法日期/极端值）、timeseries.csv（120 天 3 缺失）；生成脚本 make_sample_data.py（seed=42）
-- tests/fixtures/：入库。复用 samples 生成函数 + 特殊变体（重复列名/中文列名/常量列/单行/tiny_numeric/空文件/仅表头）
+- tests/fixtures/：入库。复用 samples 生成函数 + 特殊变体（重复列名/中文列名/常量列/单行/tiny_numeric/空文件/仅表头/binary_noisy/binary_separable）
 
 ## 环境与依赖（以实测为准，2026 安装记录）
 - Python 3.13.14 + venv + 清华源；pip check 零冲突；互操作冒烟 ALL-INTEROP-OK
 - numpy 2.5.2 / pandas 3.0.5 / scipy 1.18.1 / statsmodels 0.14.6 / sklearn 1.9.0 / matplotlib 3.11.1 / pmdarima 2.1.1 / openpyxl 3.1.5 / mcp 2.1.0 / pytest 9.1.1
 - 中文字体 Microsoft YaHei/SimHei 探测存在；requirements.txt 为依赖唯一权威
 - git：身份已配置 good-boy4069 / 369235902@qq.com（core.autocrlf=true）；LICENSE Copyright=周翔宇
+- 全量测试：216 passed（25 工具 + _common + 冒烟均绿）
 
 ## 下次会话起点（从哪继续、先跑什么命令）
-1. 完成初始化：写 docs/SPEC.md（附录 A-D 原文）→ git init/config/首次提交
-2. 运行 `& .\.venv\Scripts\python.exe samples\make_sample_data.py` 与 `tests\make_fixtures.py`（如未生成）
-3. 实现 tools/_common.py（七函数）+ tests/test_common.py
-4. 探查组设计文档（批 1：describe/data_type_check/missing_report；批 2：correlation/outlier_detect）
+1. 本项目 25 工具 + 编排层方案**已全部交付**；下次会话如继续：
+   先跑 `& .\.venv\Scripts\python.exe -m pytest tests\ -q`（应 216 passed）+ `python -m pip check`
+2. 真实数据实战：按 docs/clients.md 把 server 接入实际客户端（Claude Code/Cursor/DSH 等），
+   先用 samples/clean.csv 验证连通，再上真实数据（放项目目录外）
+3. 可选：auto_analysis 演示报告 docs/example_report.md 已入库（"什么影响收入"链路），
+   可作为外层 agent 提示词效果的对照基准
+4. 风险提示：所有统计数字以工具真实输出为准；改任何代码后必须重跑全量 pytest
