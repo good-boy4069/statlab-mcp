@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """互操作冒烟测试：验证依赖栈在 Python 3.13 + pandas 3.0.5 下真实运行兼容。
 
-来源：红队审查 B1 修复集（pandas 3.0 为大版本，依赖声明只保证装得上不保证跑得动）。
 运行：.venv\\Scripts\\python.exe smoke_interop.py
 任一环节抛异常即视为冒烟失败 → 降级 pandas==2.3.* 重装并复跑。
 """
