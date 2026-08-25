@@ -1,0 +1,15 @@
+# 依赖与缓存
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# 报告与图片输出
+reports/
+
+# 使用者亲手造的测试数据（不入库）
+data/
+
+# 系统文件
+Thumbs.db
+.DS_Store
