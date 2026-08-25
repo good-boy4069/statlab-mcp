@@ -20,9 +20,10 @@ from statlab_mcp.tools import data_exploration_correlation_matrix as _t4  # 工�
 from statlab_mcp.tools import data_exploration_outlier_detect as _t5  # 工具 5
 from statlab_mcp.tools import inference_hypothesis_test as _t6  # 工具 6
 from statlab_mcp.tools import inference_normality_test as _t9  # 工具 9
+from statlab_mcp.tools import inference_confidence_interval as _t10  # 工具 10
 
 # 工具模块注册表：随实现推进逐个加入（每工具一行）
-_TOOL_MODULES: list = [_t1, _t2, _t3, _t4, _t5, _t6, _t9]
+_TOOL_MODULES: list = [_t1, _t2, _t3, _t4, _t5, _t6, _t9, _t10]
 
 mcp = MCPServer("statlab-mcp")
 
