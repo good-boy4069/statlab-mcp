@@ -25,9 +25,10 @@ from statlab_mcp.tools import inference_anova_test as _t7  # 工具 7
 from statlab_mcp.tools import inference_chi_square_test as _t8  # 工具 8
 from statlab_mcp.tools import inference_effect_size as _t11  # 工具 11
 from statlab_mcp.tools import modeling_linear_regression as _t12  # 工具 12
+from statlab_mcp.tools import modeling_logistic_regression as _t13  # 工具 13
 
 # 工具模块注册表：随实现推进逐个加入（每工具一行）
-_TOOL_MODULES: list = [_t1, _t2, _t3, _t4, _t5, _t6, _t9, _t10, _t7, _t8, _t11, _t12]
+_TOOL_MODULES: list = [_t1, _t2, _t3, _t4, _t5, _t6, _t9, _t10, _t7, _t8, _t11, _t12, _t13]
 
 mcp = MCPServer("statlab-mcp")
 

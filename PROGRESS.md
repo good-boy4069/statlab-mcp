@@ -28,6 +28,7 @@
 - chi_square_test | feat: chi_square_test | 2026-08-26 | 周翔宇（AI 代做模式）
 - effect_size | feat: effect_size | 2026-08-26 | 周翔宇（AI 代做模式）
 - linear_regression | feat: linear_regression | 2026-08-26 | 周翔宇（AI 代做模式）
+- logistic_regression | feat: logistic_regression | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
 - 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
@@ -56,6 +57,8 @@
 - data_type_check：①✅ 10/10+回归46/46 ②✅ 实跑 data/销量.csv（备注列混 "1,000" → text+脏值提示 1 个）+ samples/dirty.csv（bad_date→date+非法日期 2024-02-30、empty_col→missing）核对 ③✅ commit feat: data_type_check，验收结论（代写）：
   "data_type_check 给每列贴类型标签：数字、整数、日期、类别、文本、混合、全空。拿到新文件不知道该用什么工具、哪列能算数时先用它；看到 mixed 或"疑似数字文本"就去洗数据，看到 missing 列就直接跳过。"
   ⚠️ 三亲手已于 2026-08-26 经使用者决定废止（AI 代做模式，详见 SPEC 增补 16）。
+- logistic_regression：①✅ 7/7+回归150/150 ②✅ 实跑 binary_noisy（AUC=0.95 CI[0.88,1.00]、score OR=1.59 显著、acc=0.89 仅对照）+ binary_separable（AUC=1.0 + 分离警告命中规格）+ 不平衡数据 balanced 复制手算对照（sklearn 口径 n/(2*类计数)）③✅ commit feat: logistic_regression，验收结论（代写）：
+  "logistic_regression 预测'是/否'：输出每个因素的比值比 OR（X 每加 1 单位，'是'的几率翻 OR 倍）、OR 的 p 值（<0.05 才算数）、模型判别力 AUC（0.5=瞎猜 1=完美，0.8 以上不错），附带混淆矩阵（哪些被认错）。类别严重不平衡时 balanced 自动加权；数据完美可分（score 一刀切）时它会警告'系数不稳定'，这时别信 OR 数值。"
 - linear_regression：①✅ 12/12+回归144/144 ②✅ 实跑 samples/clean.csv（income~age：R²=0.09 与 correlation_matrix 的 r² 交叉验证分毫不差、age 显著 p=0.032、DW=1.47）+ 精确线性 y=2x+1（β=[1,2] 精确、R²=1.0）+ one-hot/缺失/零方差场景 ③✅ commit feat: linear_regression，验收结论（代写）：
   "linear_regression 用几个变量预测一个连续目标：输出每个变量的系数（X 每变 1 单位 Y 变多少）、显著性（p<α 才算数）、整体 R²（解释了多少变化）、VIF（变量间打架程度>10 要小心）和残差图（看模型漏洞）。类别列自动转 0/1，缺失行自动剔除并告诉你剔了几行。"
 - effect_size：①✅ 7/7+回归133/133 ②✅ 实跑 A/B 组（d=0.352 中效应、CI 含 0 不显著）+ 手算对照（d=1.2、g=1.0839、cliff δ=-0.25、CI 公式精确吻合）核对 ③✅ commit feat: effect_size，验收结论（代写）：

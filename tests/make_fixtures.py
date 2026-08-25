@@ -38,6 +38,26 @@ def make_special() -> "dict[str, pd.DataFrame]":
     }
 
 
+def make_binary() -> "dict[str, pd.DataFrame]":
+    """二分类建模专用（seed 固定入库）：
+    - binary_noisy.csv：120 行，score 加噪决定标签（收敛、AUC 中等）
+    - binary_separable.csv：80 行，score 阈值完美分隔（触发分离警告）
+    """
+    rng = np.random.default_rng(SEED + 4)
+    n = 120
+    score = np.round(rng.normal(55, 12, n), 1)
+    noise = rng.normal(0, 6, n)
+    label = (score + noise > 56).astype(int)
+    noisy = pd.DataFrame({"score": score, "age": rng.integers(18, 65, n), "label": label})
+
+    rng2 = np.random.default_rng(SEED + 5)
+    n2 = 80
+    s2 = np.round(rng2.normal(50, 10, n2), 1)
+    l2 = (s2 > 50).astype(int)                  # 完美可分
+    separable = pd.DataFrame({"score": s2, "label": l2})
+    return {"binary_noisy.csv": noisy, "binary_separable.csv": separable}
+
+
 if __name__ == "__main__":
     FIX.mkdir(exist_ok=True)
     files = {
@@ -45,6 +65,7 @@ if __name__ == "__main__":
         "dirty.csv": make_dirty(),
         "timeseries.csv": make_timeseries(),
         **make_special(),
+        **make_binary(),
     }
     for fname, df in files.items():
         df.to_csv(FIX / fname, index=False, encoding="utf-8-sig")
