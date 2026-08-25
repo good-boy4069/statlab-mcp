@@ -18,6 +18,7 @@
 - missing_report | feat: missing_report | 2026-08-26 | 周翔宇（AI 代做模式）
 - correlation_matrix | feat: correlation_matrix | 2026-08-26 | 周翔宇（AI 代做模式）
 - outlier_detect | feat: outlier_detect | 2026-08-26 | 周翔宇（AI 代做模式）
+- hypothesis_test | feat: hypothesis_test | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
 - 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
@@ -46,6 +47,8 @@
 - data_type_check：①✅ 10/10+回归46/46 ②✅ 实跑 data/销量.csv（备注列混 "1,000" → text+脏值提示 1 个）+ samples/dirty.csv（bad_date→date+非法日期 2024-02-30、empty_col→missing）核对 ③✅ commit feat: data_type_check，验收结论（代写）：
   "data_type_check 给每列贴类型标签：数字、整数、日期、类别、文本、混合、全空。拿到新文件不知道该用什么工具、哪列能算数时先用它；看到 mixed 或"疑似数字文本"就去洗数据，看到 missing 列就直接跳过。"
   ⚠️ 三亲手已于 2026-08-26 经使用者决定废止（AI 代做模式，详见 SPEC 增补 16）。
+- hypothesis_test：①✅ 12/12+回归90/90 ②✅ 实跑 data/销量.csv（one_sample mu0=130：p=0.6522 不能拒绝、d=0.20）+ samples/clean.csv（score mu0=70：p=0.5586）+ 三组场景手算对照（t=-1.4142/df=4、Welch t=-1.8974/df=5.8824/d=1.2、paired t=-2.2361/d=1.0 全部吻合）③✅ commit feat: hypothesis_test，验收结论（代写）：
+  "hypothesis_test 回答'差异是不是真的'：单样本比个数（H0: 均值=某数）、两组比（Welch t 不假设方差相等）、配对比（同一批人测两次）。看 p 值：p<α(默认0.05) 就拒绝'没差异'宣布显著；再看均值差和 95% 区间（含 0 就不显著）、效应量 d（≥0.5 才实际有意义）；非正态它会提醒改用 Wilcoxon（尚未实现）。"
 - outlier_detect：①✅ 11/11+回归78/78 ②✅ 实跑 data/销量.csv（无异常、备注跳过、库存样本不足注记）+ samples/dirty.csv（1e9 在上界 137 之外检出、idx=5）+ clean.csv（income 13827.72 为真实正态尾部异常——非 bug）核对；__image__ 顶层绝对路径真实验证 ③✅ commit feat: outlier_detect，验收结论（代写）：
   "outlier_detect 用 IQR 规则找'离群太远'的值：先算 Q1/Q3，正常范围是 Q1−1.5×IQR 到 Q3+1.5×IQR，范围外的标红。数据到手后跑一遍，先看异常值是录入错误（1e9）还是真实大单——它只报告不删除，删不删你决定；样本不足 4 的列算不了，属正常。"
 - correlation_matrix：①✅ 12/12+回归66/66 ②✅ 实跑 data/销量.csv（周次–销量 r=0.66 中等、成对样本 6 个、库存/备注正确排除）+ samples/clean.csv（无强相关对、age–income r=0.30、fdr_bh 校正 6 对）核对 ③✅ commit feat: correlation_matrix，验收结论（代写）：
