@@ -21,6 +21,7 @@
 - hypothesis_test | feat: hypothesis_test | 2026-08-26 | 周翔宇（AI 代做模式）
 - normality_test | feat: normality_test | 2026-08-26 | 周翔宇（AI 代做模式）
 - confidence_interval | feat: confidence_interval | 2026-08-26 | 周翔宇（AI 代做模式）
+- anova_test | feat: anova_test | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
 - 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
@@ -49,6 +50,8 @@
 - data_type_check：①✅ 10/10+回归46/46 ②✅ 实跑 data/销量.csv（备注列混 "1,000" → text+脏值提示 1 个）+ samples/dirty.csv（bad_date→date+非法日期 2024-02-30、empty_col→missing）核对 ③✅ commit feat: data_type_check，验收结论（代写）：
   "data_type_check 给每列贴类型标签：数字、整数、日期、类别、文本、混合、全空。拿到新文件不知道该用什么工具、哪列能算数时先用它；看到 mixed 或"疑似数字文本"就去洗数据，看到 missing 列就直接跳过。"
   ⚠️ 三亲手已于 2026-08-26 经使用者决定废止（AI 代做模式，详见 SPEC 增补 16）。
+- anova_test：①✅ 11/11+回归118/118 ②✅ 实跑 data/销量.csv（备注分组：1,000 组 n=1 被正确拒绝）+ samples/clean.csv（F=6.04 p=0.0046 拒绝 H0，Tukey 显著 B-C/A-C）+ 手算 F=13 精确吻合 ③✅ commit feat: anova_test，验收结论（代写）：
+  "anova_test 回答'三组以上均值差是不是真的'：先查方差齐不齐（Levene），不齐自动换 Welch 校正；显著之后自动做两两比较（Tukey 或 Games-Howell，已按族校正），告诉你哪两组真的有差。多组比较别再一个个跑 t 检验——那会放大假阳性，ANOVA 一次搞定。"
 - confidence_interval：①✅ 8/8+回归111/111 ②✅ 实跑 data/销量.csv（mean_t [119.08,145.92] vs bootstrap_median [119.00,146.50] 两口径接近）+ 手算对照（[1..5] 95% CI=[1.036757,4.963243] 精确吻合、90% 区间更窄）核对 ③✅ commit feat: confidence_interval，验收结论（代写）：
   "confidence_interval 给均值（或中位数）一个区间而不是一个数：'均值大概在 [119, 146] 之间'比'均值是 132.5'诚实得多。95% 区间的含义是反复抽样的话 95% 的区间会罩住真值；区间越窄估计越准。数据偏态或怕极端值时用 bootstrap_median（中位数法，对离群值稳）。"
 - normality_test：①✅ 13/13+回归103/103 ②✅ 实跑 data/销量.csv（销量 n=6：p=0.7707 近似正态、skew 0.31 与 describe 同口径）+ samples/clean.csv（score 正态放行）+ 指数分布拒正（skew>1）核对 ③✅ commit feat: normality_test，验收结论（代写）：
