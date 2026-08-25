@@ -8,7 +8,10 @@
   = `-m statlab_mcp.server` + cwd 项目根，客户端配置见 docs/clients.md）
   **本周可展示的东西**：5 个可用的数据探查工具 + 一张带中文标签的箱线图（reports/plots/）+
   多客户端接入配置
-- M2 统计推断组（6 工具）— 待办（下一个：hypothesis_test 设计文档）
+- M2 统计推断组（6 工具）— ✅ 全部完成（hypothesis_test/normality_test/confidence_interval/
+  anova_test/chi_square_test/effect_size，133 测试全绿）
+  **本周可展示的东西**：6 个推断工具可用——从"均值是不是 70"到"三组差异+事后两两比较"、
+  "类别关联+Fisher 自动切换"到"效应量多大"
 - M3 建模组（5 工具）+ 时序组（4 工具）— 待办
 - M4 可视化组（5 工具）+ auto_analysis — 待办
 
@@ -23,6 +26,7 @@
 - confidence_interval | feat: confidence_interval | 2026-08-26 | 周翔宇（AI 代做模式）
 - anova_test | feat: anova_test | 2026-08-26 | 周翔宇（AI 代做模式）
 - chi_square_test | feat: chi_square_test | 2026-08-26 | 周翔宇（AI 代做模式）
+- effect_size | feat: effect_size | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
 - 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
@@ -51,6 +55,8 @@
 - data_type_check：①✅ 10/10+回归46/46 ②✅ 实跑 data/销量.csv（备注列混 "1,000" → text+脏值提示 1 个）+ samples/dirty.csv（bad_date→date+非法日期 2024-02-30、empty_col→missing）核对 ③✅ commit feat: data_type_check，验收结论（代写）：
   "data_type_check 给每列贴类型标签：数字、整数、日期、类别、文本、混合、全空。拿到新文件不知道该用什么工具、哪列能算数时先用它；看到 mixed 或"疑似数字文本"就去洗数据，看到 missing 列就直接跳过。"
   ⚠️ 三亲手已于 2026-08-26 经使用者决定废止（AI 代做模式，详见 SPEC 增补 16）。
+- effect_size：①✅ 7/7+回归133/133 ②✅ 实跑 A/B 组（d=0.352 中效应、CI 含 0 不显著）+ 手算对照（d=1.2、g=1.0839、cliff δ=-0.25、CI 公式精确吻合）核对 ③✅ commit feat: effect_size，验收结论（代写）：
+  "effect_size 回答'差异有多大'——p 值看'有没有'，效应量看'多大'：d≈0.2 小、0.5 中、0.8 大。样本大时一点点差异也能显著（p 小），这时看 d 才知道值不值得关心；CI 含 0 表示这个效应也不稳。cliff_delta 用于不服从正态的分布比较。"
 - chi_square_test：①✅ 8/8+回归126/126 ②✅ 实跑 data/销量.csv（备注×周次稀疏表 → 正确报错"请合并类别"；真实数据稀疏是常态）+ 均衡 2×2（χ²=0.00 p=1.0 V=0）核对；手算 [[10,15],[12,13]] χ²=0.3247 精确吻合（Yates 校正已关闭=Excel 口径）③✅ commit feat: chi_square_test，验收结论（代写）：
   "chi_square_test 回答'两个类别列有没有关系'：性别×是否购买这种。看 p 值（<0.05 有关联）和 Cramér's V（0~1，越大关系越强）；数值列会自动分箱；期望频数太低的稀疏表会提醒你合并类别或自动换 Fisher。关联≠因果，记住。"
 - anova_test：①✅ 11/11+回归118/118 ②✅ 实跑 data/销量.csv（备注分组：1,000 组 n=1 被正确拒绝）+ samples/clean.csv（F=6.04 p=0.0046 拒绝 H0，Tukey 显著 B-C/A-C）+ 手算 F=13 精确吻合 ③✅ commit feat: anova_test，验收结论（代写）：
