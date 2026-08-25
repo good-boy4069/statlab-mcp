@@ -22,9 +22,10 @@ from statlab_mcp.tools import inference_hypothesis_test as _t6  # 工具 6
 from statlab_mcp.tools import inference_normality_test as _t9  # 工具 9
 from statlab_mcp.tools import inference_confidence_interval as _t10  # 工具 10
 from statlab_mcp.tools import inference_anova_test as _t7  # 工具 7
+from statlab_mcp.tools import inference_chi_square_test as _t8  # 工具 8
 
 # 工具模块注册表：随实现推进逐个加入（每工具一行）
-_TOOL_MODULES: list = [_t1, _t2, _t3, _t4, _t5, _t6, _t9, _t10, _t7]
+_TOOL_MODULES: list = [_t1, _t2, _t3, _t4, _t5, _t6, _t9, _t10, _t7, _t8]
 
 mcp = MCPServer("statlab-mcp")
 
