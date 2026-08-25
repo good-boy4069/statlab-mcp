@@ -18,6 +18,7 @@ docstring = agent 使用说明书，与 docs/design/06_timeseries.md 同步维�
 示例:
     anomaly_detect("samples/timeseries.csv", date_col="date", value_col="value")
 """
+import math
 from typing import Any, Dict, List
 
 import numpy as np
@@ -33,6 +34,7 @@ from statlab_mcp.tools._common import (
 MIN_N = 15
 _METHODS = {"stl", "iqr", "rolling_zscore"}
 _WINDOW = 7
+MAX_ANOMALIES = 100        # 输出条数上限（红队 B B2：防超大 JSON）
 
 
 def _detect_stl(yv: pd.Series, threshold: float) -> List[Dict[str, Any]]:
@@ -103,8 +105,8 @@ def anomaly_detect(file_path: str, date_col: str, value_col: str,
         if method not in _METHODS:
             raise DataLabError("method 仅支持 stl/iqr/rolling_zscore")
         if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) \
-                or threshold <= 0:
-            raise DataLabError("threshold 必须 >0")
+                or threshold <= 0 or not math.isfinite(threshold):
+            raise DataLabError("threshold 必须 >0 的有限数")
         threshold = float(threshold)
         df = read_table(file_path)
         y, meta = _prepare_series(df, date_col, value_col)
@@ -122,6 +124,8 @@ def anomaly_detect(file_path: str, date_col: str, value_col: str,
         else:
             anomalies = _detect_rolling_zscore(yv, threshold)
         anomalies.sort(key=lambda a: a["index"])
+        truncated = len(anomalies) > MAX_ANOMALIES   # 输出截断（红队 B B2：防超大 JSON）
+        anomalies = anomalies[:MAX_ANOMALIES]
 
         # ---- 图：原值 + 异常红点 ----
         fig, ax = plt.subplots(figsize=(9, 4.0))
@@ -143,22 +147,30 @@ def anomaly_detect(file_path: str, date_col: str, value_col: str,
             note = "异常判据：|残差| > threshold×MAD 稳健标准差；仅报告不剔除"
         if len(anomalies) == 0:
             note = f"{note}；未发现异常"
+        if truncated:
+            note = f"{note}；异常数超过 {MAX_ANOMALIES}，仅显示前 {MAX_ANOMALIES} 条"
 
-        summary = (f"{method} 法检出 {len(anomalies)} 个异常点"
-                   + (f"（{ '，'.join(a['date'] for a in anomalies[:5])}"
-                      + (" 等" if len(anomalies) > 5 else "") + "）" if anomalies else "")
-                   + f"；threshold={threshold:g}；{'未发现异常' if not anomalies else ''}"
-                   + "；异常仅报告不剔除")
+        n_found = len(anomalies) + (truncated and sum(1 for _ in []) or 0)
+        summary = f"{method} 法检出{'异常点' + ('（仅显示前 ' + str(MAX_ANOMALIES) + ' 条）' if truncated else f'（{n_found} 个）')}"
+        if anomalies:
+            summary += f"：{'，'.join(a['date'] for a in anomalies[:5])}"
+            if len(anomalies) > 5:
+                summary += " 等"
+        else:
+            summary += "；未发现异常"
+        summary += f"；threshold={threshold:g}；异常仅报告不剔除"
         if meta["interpolated"]:
             summary += f"；已插值 {meta['interpolated']} 个缺失点"
 
         result = {
             "method": method, "threshold": threshold,
             "n": n, "n_anomalies": len(anomalies),
+            "truncated": truncated,
             "anomalies": anomalies,
             "note": note,
             "metadata": {k: v for k, v in meta.items() if k != "n_before_resample"},
-            "conclusion": (f"{method} 检出 {len(anomalies)} 个异常点；"
+            "conclusion": (f"{method} 检出 {len(anomalies)} 个异常点"
+                           + ("（已截断）" if truncated else "") + "；"
                            f"异常点仅报告不剔除"),
         }
         res = ok(result, summary)
@@ -167,9 +179,9 @@ def anomaly_detect(file_path: str, date_col: str, value_col: str,
     except DataLabError as e:
         return err(str(e))
     except Exception as e:
-        return err(f"计算失败: {e}")
+        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(anomaly_detect)
+    mcp.add_tool(anomaly_detect, description=anomaly_detect.__doc__)

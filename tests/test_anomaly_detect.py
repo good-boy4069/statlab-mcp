@@ -113,3 +113,26 @@ def test_json_safe_and_deterministic():
                         value_col="value")
     assert json.dumps(r1["result"], sort_keys=True, ensure_ascii=False) == json.dumps(
         r2["result"], sort_keys=True, ensure_ascii=False)
+
+
+def test_anomaly_output_truncated():
+    """红队 B B2：异常输出截断 100 条 + truncated 标记。"""
+    rng = np.random.default_rng(9)
+    n = 500
+    dates = pd.date_range("2025-01-01", periods=n).strftime("%Y-%m-%d")
+    # 剧烈振荡数据 + 低阈值 -> 大量异常
+    vals = np.sin(np.arange(n) / 2.0) * 5
+    import tempfile
+    from pathlib import Path as _P
+    _p = _P(tempfile.mkdtemp()) / "osc.csv"
+    pd.DataFrame({"date": dates, "value": vals}).to_csv(_p, index=False,
+                                                        encoding="utf-8-sig")
+    try:
+        r = _call(_p, date_col="date", value_col="value", method="rolling_zscore",
+                  threshold=0.5)
+        rs = r["result"]
+        assert rs["truncated"] is True
+        assert len(rs["anomalies"]) <= 100
+        assert "仅显示前 100" in r["summary"]
+    finally:
+        _p.unlink(missing_ok=True)

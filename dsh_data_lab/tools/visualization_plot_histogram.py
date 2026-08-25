@@ -50,8 +50,8 @@ def plot_histogram(file_path: str, column: str) -> dict:
     except DataLabError as e:
         return err(str(e))
     except Exception as e:
-        return err(f"计算失败: {e}")
+        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:
-    mcp.add_tool(plot_histogram)
+    mcp.add_tool(plot_histogram, description=plot_histogram.__doc__)

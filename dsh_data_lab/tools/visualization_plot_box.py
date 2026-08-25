@@ -74,8 +74,8 @@ def plot_box(file_path: str, column: str) -> dict:
     except DataLabError as e:
         return err(str(e))
     except Exception as e:
-        return err(f"计算失败: {e}")
+        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:
-    mcp.add_tool(plot_box)
+    mcp.add_tool(plot_box, description=plot_box.__doc__)

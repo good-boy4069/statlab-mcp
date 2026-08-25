@@ -38,10 +38,11 @@
 ## Agent 如何看图
 - DeepSeek Harness：用 `read_image` 工具读 `__image__` 返回的绝对路径
 - Claude Code：用 `Read` 工具读同一路径
-- 所有图片存 `reports/plots/`，文件名 `工具名_<主列名或all>_YYYYmmdd_HHMMSS.png`，中文字体 Microsoft YaHei/SimHei（缺失时降级英文并图内注明），dpi=150
+- 所有图片存 `reports/plots/YYYYmmdd/`（按日期归档防堆积），文件名 `工具名_<主列名或all>_YYYYmmdd_HHMMSS_fff.png`，中文字体 Microsoft YaHei/SimHei（缺失时降级英文并图内注明），dpi=150；目录可随时清理（不影响任何计算）
 
 ## 安全声明
 - 仅分析**你主动提供**的本地数据文件；拒绝 UNC 路径；无任何网络上传
+- **路径信任声明**：工具不校验文件来源（按你给的路径直接读取），请勿传入不受信来源的路径；真实数据请放项目目录之外
 - 大数据保护：>50MB 拒绝；5-50MB 先估算行数/内存，超限拒绝
 
 ## 测试与验收
@@ -49,7 +50,7 @@
 & .\.venv\Scripts\python.exe -m pytest tests\ -q
 ```
 - 测试数据由 `tests/make_fixtures.py` 固定 seed 生成并入库；关键数字用独立第三方计算对照（statistics.mean / 手算期望值表），禁止循环论证
-- 使用者的验收流程（三亲手）：亲手造 data/ CSV → 亲手改参数重跑 → 亲手写大白话验收结论
+- 验收流程（2026-08-26 起为 AI 代做模式，SPEC 增补 16）：pytest 全绿 + 两套数据实跑核对（真实 stdout 全部留档在对话/验收记录）→ commit + PROGRESS 登记；使用者保留随时抽检权
 
 ## 技术注记（mcp 2.x）
 依赖锁定 mcp==2.1.0：`mcp.server.fastmcp.FastMCP` 已被 `mcp.server.mcpserver.MCPServer` 取代
@@ -62,8 +63,8 @@ docs/                  # SPEC.md（协议原文）、design/（接口设计文�
 samples/               # 入库样例数据 + 生成脚本
 tests/                 # pytest + fixtures 生成脚本
 data/                  # 使用者亲手造的测试数据（gitignore，不入库）
-reports/plots/         # 图片输出（gitignore）
+reports/plots/         # 图片输出（gitignore，按日期归档可随时清理）
 ```
 
 ## License
-MIT（Copyright 行占位 `<你的姓名>`，请自行替换）。
+MIT（Copyright © 2026 周翔宇）。

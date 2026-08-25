@@ -36,6 +36,8 @@ from scipy import stats as sps
 
 from statlab_mcp.tools._common import DataLabError, err, ok, read_table
 
+MAX_NUMERIC_COLS = 200      # 防超大 JSON 输出（红队 B S3）
+
 
 def _describe_numeric_col(s: pd.Series, n_rows: int) -> Dict[str, Any]:
     """单列描述统计：缺失按有效值计算，边界口径见模块 docstring。"""
@@ -76,6 +78,8 @@ def describe_statistics(file_path: str) -> dict:
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         if not numeric_cols:
             raise DataLabError("未找到数值列，无法计算描述统计")
+        if len(numeric_cols) > MAX_NUMERIC_COLS:
+            raise DataLabError(f"数值列超过 {MAX_NUMERIC_COLS} 个，输出过大，请先挑选列")
 
         columns = {}
         fully_missing = []
@@ -121,9 +125,9 @@ def describe_statistics(file_path: str) -> dict:
     except DataLabError as e:
         return err(str(e))
     except Exception as e:  # 计算层兜底：中文报错
-        return err(f"计算失败: {e}")
+        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(describe_statistics)
+    mcp.add_tool(describe_statistics, description=describe_statistics.__doc__)

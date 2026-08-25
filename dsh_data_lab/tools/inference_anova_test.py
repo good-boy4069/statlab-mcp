@@ -200,9 +200,9 @@ def anova_test(file_path: str, group_col: str, value_col: str, alpha: float = 0.
     except DataLabError as e:
         return err(str(e))
     except Exception as e:
-        return err(f"计算失败: {e}")
+        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(anova_test)
+    mcp.add_tool(anova_test, description=anova_test.__doc__)

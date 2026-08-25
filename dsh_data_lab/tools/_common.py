@@ -16,6 +16,7 @@ import logging
 import math
 import os
 import re
+import sys
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Iterable, Optional
@@ -35,11 +36,17 @@ SAMPLE_BYTES = 1 * 1024 * 1024             # 预检采样字节
 
 ALLOWED_EXTS = {"csv", "tsv", "xlsx", "json"}
 UNC_PREFIXES = ("\\\\", "//", "\\\\?", "\\\\.\\")
+JSON_MAX_BYTES = 20 * 1024 * 1024          # json 解析放大防护（I2 红队裁决）
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]  # statlab_mcp/tools/_common.py -> 项目根
 PLOT_DIR = _PROJECT_ROOT / "reports" / "plots"
 
 logger = logging.getLogger("statlab_mcp")
+if not logger.handlers:                     # 日志 -> stderr（红队 I3：审计轨迹落地）
+    _h = logging.StreamHandler(sys.stderr)
+    _h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    logger.addHandler(_h)
+    logger.setLevel(logging.INFO)
 
 # ---- matplotlib：Agg 后端必须先行（附录 D 第 3 条），再探测中文字体 ----
 import matplotlib  # noqa: E402
@@ -61,9 +68,11 @@ class DataLabError(ValueError):
 
 
 def _norm_path(file_path: str) -> str:
-    """规范化为绝对本地路径，拒绝 UNC/网络路径（规范 5，红队裁决 6）。"""
+    """规范化为绝对本地路径，拒绝 UNC/网络路径/空串/NUL（规范 5，红队 B/S5）。"""
     if not isinstance(file_path, str) or not file_path.strip():
         raise DataLabError("文件路径不能为空")
+    if "\x00" in file_path:
+        raise DataLabError("文件路径含有非法字符（NUL）")
     p = os.path.normpath(file_path.strip().strip('"'))
     if p.startswith(UNC_PREFIXES):
         raise DataLabError("仅接受本地文件路径，不支持网络路径（UNC）")
@@ -83,9 +92,30 @@ def check_file(file_path: str) -> dict[str, Any]:
     size = os.path.getsize(path)
     if size > MAX_FILE_BYTES:
         raise DataLabError(f"文件过大（{size / 1024 / 1024:.1f}MB），超过 50MB 上限，请拆分后重试")
+    ext = os.path.splitext(path)[1].lower().lstrip(".")   # 红队 A B2：重构时丢失的定义
     rows_est = None
-    if size > WARN_FILE_BYTES:
-        ext = os.path.splitext(path)[1].lower().lstrip(".")
+    if ext == "xlsx":
+        # xlsx 独立分支（任意大小都预检：压缩包可声明远大于自身的内容，防 zip 炸弹，红队 I1）
+        try:
+            import zipfile
+            with zipfile.ZipFile(path) as zf:
+                total_uncompressed = sum(i.file_size for i in zf.infolist())
+            if total_uncompressed > MAX_MEM_BYTES:
+                raise DataLabError("Excel 解压后体积过大（疑似压缩炸弹），已拒绝")
+        except DataLabError:
+            raise
+        except Exception:
+            raise DataLabError("Excel 文件损坏或无法打开，请另存为 .xlsx 后重试")
+        try:
+            from openpyxl import load_workbook
+            wb = load_workbook(path, read_only=True)
+            rows_est = wb.active.max_row
+            wb.close()
+        except Exception:
+            raise DataLabError("Excel 文件损坏或无法打开，请另存为 .xlsx 后重试")
+        if rows_est is not None and rows_est > MAX_ROWS:
+            raise DataLabError(f"Excel 预估 {rows_est} 行，超过 200 万行上限，请抽样后重试")
+    elif size > WARN_FILE_BYTES:
         if ext in ("csv", "tsv"):
             with open(path, "rb") as f:
                 head = f.read(SAMPLE_BYTES)
@@ -95,16 +125,11 @@ def check_file(file_path: str) -> dict[str, Any]:
             rows_est = int(newlines * size / len(head))
             if rows_est > MAX_ROWS:
                 raise DataLabError(f"文件预估 {rows_est} 行，超过 200 万行上限，请抽样后重试")
-        elif ext == "xlsx":
-            try:
-                from openpyxl import load_workbook
-                wb = load_workbook(path, read_only=True)
-                rows_est = wb.active.max_row
-                wb.close()
-            except Exception:
-                raise DataLabError("Excel 文件损坏或无法打开，请另存为 .xlsx 后重试")
-            if rows_est is not None and rows_est > MAX_ROWS:
-                raise DataLabError(f"Excel 预估 {rows_est} 行，超过 200 万行上限，请抽样后重试")
+        elif ext == "json":
+            # json 解析放大防护（红队 I2）：展开阶段内存可能数倍于字节数
+            if size > JSON_MAX_BYTES:
+                raise DataLabError(f"JSON 文件超过 {JSON_MAX_BYTES // 1024 // 1024}MB，"
+                                   f"解析展开可能撑爆内存，请转存为 CSV 后重试")
     return {"path": path, "size_bytes": size, "rows_estimated": rows_est}
 
 
@@ -148,7 +173,8 @@ def read_table(file_path: str) -> pd.DataFrame:
     except UnicodeDecodeError:
         raise DataLabError("文件编码无法识别，请另存为 UTF-8 后重试")
     except Exception as e:
-        raise DataLabError(f"文件解析失败: {e}")
+        logger.exception("read_table 解析失败（内部详情仅留 stderr，红队 I3）")
+        raise DataLabError("文件解析失败，请检查文件内容与格式")
     if df.empty:
         raise DataLabError("文件为空或无可读数据")
     mem = int(df.memory_usage(deep=True).sum())
@@ -232,6 +258,16 @@ def _estimate_period(y: pd.Series) -> Optional[int]:
     return period if 2 <= period <= n // 2 else None
 
 
+def _check_span_seconds(idx_min, idx_max, freq_seconds: float, what: str) -> None:
+    """日期跨度防护（红队 B B1）：重采样/聚合前预估输出点数，超限拒绝（防内存爆炸）。"""
+    span = (idx_max - idx_min).total_seconds()
+    expected = int(span / max(float(freq_seconds), 1e-9)) + 1
+    if expected > MAX_ROWS:
+        raise DataLabError(
+            f"日期跨度过大（{what}将生成约 {expected} 个点，超过 {MAX_ROWS} 行上限），"
+            f"请拆分日期范围后重试")
+
+
 def _prepare_series(df: pd.DataFrame, date_col: str, value_col: str) -> tuple:
     """时序工具公共预处理器（时序组五项统一前置，设计文档 06）。
 
@@ -264,6 +300,7 @@ def _prepare_series(df: pd.DataFrame, date_col: str, value_col: str) -> tuple:
     # 重复时间戳 -> 按天求和聚合（规则固定为 sum）
     merged = 0
     if s.index.has_duplicates:
+        _check_span_seconds(s.index.min(), s.index.max(), 86400.0, "按天聚合")
         orig = int(s.size)
         s = s.resample("D").sum()
         merged = orig - int(s.size)
@@ -281,6 +318,7 @@ def _prepare_series(df: pd.DataFrame, date_col: str, value_col: str) -> tuple:
         freq_offset = pd.tseries.frequencies.to_offset(freq)
 
     n_before = int(s.size)
+    _check_span_seconds(s.index.min(), s.index.max(), freq_offset.nanos / 1e9, f"重采样({freq})")
     s = s.asfreq(freq_offset)
     interpolated = int(s.isna().sum())
     s = s.interpolate(method="linear")
@@ -308,16 +346,18 @@ def _safe_name(name: str) -> str:
 
 
 def save_plot(fig: Any, name: str) -> str:
-    """按附录 D 保存图片：文件名=清洗后name_YYYYmmdd_HHMMSS.png，绝对路径锚定项目根。
+    """按附录 D 保存图片，存 reports/plots/YYYYmmdd/ 子目录（红队 C B2：防堆积且不删旧图）。
 
-    参数 name 由调用方拼装为 "<工具名>_<主列名或all>"（如 describe_statistics_score）。
-    中文字体由本模块顶层统一配置（CJK_FONT_OK=False 时调用方须自行降级英文标签并图内注明）。
+    文件名 = 清洗后 name_YYYYmmdd_HHMMSS_fff.png（毫秒时间戳防同秒覆盖，红队 B S1）；
+    name 由调用方拼装为 "<工具名>_<主列名或all>"；中文字体由模块顶层统一配置。
     返回图片绝对路径字符串（__image__ 字段的值）。
     """
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    now = datetime.now()
+    ts = now.strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    day_dir = PLOT_DIR / now.strftime("%Y%m%d")
+    day_dir.mkdir(parents=True, exist_ok=True)
     fname = f"{_safe_name(name)}_{ts}.png"
-    PLOT_DIR.mkdir(parents=True, exist_ok=True)
-    out = PLOT_DIR / fname
+    out = day_dir / fname
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     return str(out)

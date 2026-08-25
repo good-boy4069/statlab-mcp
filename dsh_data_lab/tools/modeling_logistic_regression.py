@@ -204,9 +204,9 @@ def logistic_regression(file_path: str, target: str, features: List[str],
     except DataLabError as e:
         return err(str(e))
     except Exception as e:
-        return err(f"计算失败: {e}")
+        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(logistic_regression)
+    mcp.add_tool(logistic_regression, description=logistic_regression.__doc__)

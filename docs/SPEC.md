@@ -86,3 +86,13 @@ auto_analysis(file_path, question)：用户丢 CSV + 自然语言问题，自动
 14. **fixtures 单一 seed 源**：tests/make_fixtures.py 复用 samples/make_sample_data.py 生成函数（import 方式），防 seed 漂移；专用变体单独追加
 15. **依赖安装实测结论**（2026 本机）：Python 3.13.14 下 numpy 2.5.2 / pandas 3.0.5 / scipy 1.18.1 / statsmodels 0.14.6 / sklearn 1.9.0 / matplotlib 3.11.1 / pmdarima 2.1.1 / openpyxl 3.1.5 / mcp 2.1.0 / pytest 9.1.1 互操作冒烟通过（OLS/ARIMA/KMeans/read_excel 全真跑）；若 pandas 3.x 未来出现不兼容，降级路径 = pandas==2.3.*（numpy 不降），重跑冒烟并记录
 16. **三亲手变更记录**（使用者 2026-08-26 决定，替代原「学生每工具三亲手」）：废除使用者亲手验收，改为 AI 代做模式——①pytest 全绿（真实输出留档）②AI 实跑两套数据（data/ + samples/）核对关键数字并把真实 stdout 贴进对话 ③commit + PROGRESS 更新（验收人仍记使用者，附"代做"注与输出可回看说明）。使用者保有随时抽检权。原因：使用者时间有限，明确授权 AI 代做；项目防污点承诺改由"独立第三方对照测试 + 真实输出留档"保证。
+17. **第二轮红队修复记录**（2026-08-26 全视角审查后的增补，优先级等同附录）：
+    - 图片输出归档：reports/plots/YYYYmmdd/ 子目录（防堆积、不删旧图），文件名含毫秒时间戳
+    - MCP 工具描述：register 时传完整 docstring（description=fn.__doc__，agent 说明书传协议层）
+    - 资源防护：时序预处理器重采样/聚合前日期跨度校验（预估点数 >200 万即拒绝，防内存爆炸）；
+      xlsx 打开前 zip 解压体积预检（>500MB 拒绝，防压缩炸弹）；json 文件 >20MB 拒绝（解析放大防护）
+    - 输出条数上限：anomaly 异常点列表截断 100 条 + truncated 标记；describe 数值列 >200 拒绝
+    - 错误处理：对外统一中文文案（不泄内部异常/路径），完整堆栈走 logger（stderr）
+      —— read_table 层已接 logger.exception；工具层统一文案"计算失败，请检查数据内容与参数设置（详见服务端日志）"
+    - 输入校验：路径 NUL 字节拒绝；threshold 等浮点参数 isfinite 校验（拒 inf/nan）
+    - README 同步：三亲手→AI 代做模式；License 姓名；路径信任声明（不校验来源，勿传不受信路径）

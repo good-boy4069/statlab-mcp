@@ -192,3 +192,65 @@ def test_safe_name_sanitize_and_reserved():
     assert C._safe_name("NUL") == "_NUL"       # Windows 保留名，大小写不敏感
     assert C._safe_name("") == "all"
     assert len(C._safe_name("x" * 100)) <= 40
+
+
+# ---------------- 红队回归测试（2026 第二轮审查补丁） ----------------
+
+def test_nul_path_rejected():
+    """红队 B S5：NUL 字节路径显式拒绝。"""
+    with pytest.raises(C.DataLabError, match="NUL"):
+        C.check_file("data/\x00evil.csv")
+
+
+def test_xlsx_corrupted_cn(tmp_path):
+    """红队 A S1：损坏 xlsx 中文报错（zip 预检路径）。"""
+    p = tmp_path / "bad.xlsx"
+    p.write_bytes(b"not a zip at all")
+    with pytest.raises(C.DataLabError, match="损坏或无法打开"):
+        C.read_table(str(p))
+
+
+def test_xlsx_zip_bomb_rejected(monkeypatch, tmp_path):
+    """红队 A S1/I1：解压体积超限拒绝（monkeypatch 阈值到极小）。"""
+    import zipfile
+    p = tmp_path / "ok.xlsx"
+    pd.DataFrame({"a": [1, 2]}).to_excel(p, index=False)          # 正常小 xlsx
+    monkeypatch.setattr(C, "MAX_MEM_BYTES", 100)                  # 阈值压到 100 字节
+    with pytest.raises(C.DataLabError, match="压缩炸弹|体积过大"):
+        C.check_file(str(p))
+
+
+def test_json_size_limit(monkeypatch, tmp_path):
+    """红队 B I2：json 超上限拒绝（解析放大防护）。"""
+    p = tmp_path / "big.json"
+    p.write_text('[{"a": 1}]' + " " * (C.JSON_MAX_BYTES + 1), encoding="utf-8")
+    with pytest.raises(C.DataLabError, match="JSON 文件超过"):
+        C.check_file(str(p))
+
+
+def test_date_span_guard(tmp_path):
+    """红队 B B1：日期跨度过大在重采样前拒绝（防内存爆炸）。
+    触发路径 = 高频率 + 长跨度：分钟级序列横跨 pandas 最大范围（1677~2262，
+    约 3e8 分钟点 > 200 万上限）；34 万天级跨度在阈值内放行。"""
+    df_ok = pd.DataFrame({"date": ["1900-01-01", "2025-05-01", "2250-01-01"],
+                          "value": [1.0, 2.0, 3.0]})
+    C._prepare_series(df_ok, "date", "value")                      # 不抛（约 12.8 万天 < 200 万）
+    df_bad = pd.DataFrame({
+        "date": ["2025-01-01 00:00", "2025-01-01 00:01", "2025-01-01 00:02",
+                 "2250-01-01 00:00"],                                # 1 分钟频率 + ~225 年跨度（pandas/Timedelta 界内，约 1.2e8 点）
+        "value": [1.0, 2.0, 3.0, 4.0]})
+    with pytest.raises(C.DataLabError, match="日期跨度过大"):
+        C._prepare_series(df_bad, "date", "value")
+
+
+def test_save_plot_date_subdir(monkeypatch, tmp_path):
+    """红队 C B2：图存日期子目录（防堆积）。"""
+    from datetime import datetime as _dt
+    monkeypatch.setattr(C, "PLOT_DIR", tmp_path)
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    ax.plot([1], [2])
+    p = C.save_plot(fig, "redteam_check_all")
+    p_path = Path(p)
+    assert p_path.parent.name == _dt.now().strftime("%Y%m%d")
+    assert p_path.exists()
