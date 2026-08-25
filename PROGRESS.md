@@ -3,7 +3,7 @@
 > 本文件是会话续接的唯一进度依据，随每次 git 提交更新（附录 B 模板）。
 
 ## 里程碑（1-4 状态）
-- M1 数据探查组（5 工具）— 进行中：阶段二 项目初始化（安装已完成待验收）
+- M1 数据探查组（5 工具）— ✅ 5/5 完成（describe/data_type_check/missing_report/correlation_matrix/outlier_detect）；冒烟测试进行中
 - M2 统计推断组（6 工具）— 待办
 - M3 建模组（5 工具）+ 时序组（4 工具）— 待办
 - M4 可视化组（5 工具）+ auto_analysis — 待办
@@ -13,6 +13,7 @@
 - data_type_check | feat: data_type_check | 2026-08-26 | 周翔宇（2026-08-26 起三亲手废止，AI 代做模式，SPEC 增补 16）
 - missing_report | feat: missing_report | 2026-08-26 | 周翔宇（AI 代做模式）
 - correlation_matrix | feat: correlation_matrix | 2026-08-26 | 周翔宇（AI 代做模式）
+- outlier_detect | feat: outlier_detect | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
 - 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
@@ -41,6 +42,8 @@
 - data_type_check：①✅ 10/10+回归46/46 ②✅ 实跑 data/销量.csv（备注列混 "1,000" → text+脏值提示 1 个）+ samples/dirty.csv（bad_date→date+非法日期 2024-02-30、empty_col→missing）核对 ③✅ commit feat: data_type_check，验收结论（代写）：
   "data_type_check 给每列贴类型标签：数字、整数、日期、类别、文本、混合、全空。拿到新文件不知道该用什么工具、哪列能算数时先用它；看到 mixed 或"疑似数字文本"就去洗数据，看到 missing 列就直接跳过。"
   ⚠️ 三亲手已于 2026-08-26 经使用者决定废止（AI 代做模式，详见 SPEC 增补 16）。
+- outlier_detect：①✅ 11/11+回归78/78 ②✅ 实跑 data/销量.csv（无异常、备注跳过、库存样本不足注记）+ samples/dirty.csv（1e9 在上界 137 之外检出、idx=5）+ clean.csv（income 13827.72 为真实正态尾部异常——非 bug）核对；__image__ 顶层绝对路径真实验证 ③✅ commit feat: outlier_detect，验收结论（代写）：
+  "outlier_detect 用 IQR 规则找'离群太远'的值：先算 Q1/Q3，正常范围是 Q1−1.5×IQR 到 Q3+1.5×IQR，范围外的标红。数据到手后跑一遍，先看异常值是录入错误（1e9）还是真实大单——它只报告不删除，删不删你决定；样本不足 4 的列算不了，属正常。"
 - correlation_matrix：①✅ 12/12+回归66/66 ②✅ 实跑 data/销量.csv（周次–销量 r=0.66 中等、成对样本 6 个、库存/备注正确排除）+ samples/clean.csv（无强相关对、age–income r=0.30、fdr_bh 校正 6 对）核对 ③✅ commit feat: correlation_matrix，验收结论（代写）：
   "correlation_matrix 算出两两相关：r 在 -1~1 之间，越接近 ±1 关联越强，接近 0 没关系。想找'哪两列一起变'时用它；先看 |r|≥0.7 的强对，再看 p 值是否显著（已自动做 fdr_bh 校正），样本量小的对（n<10）别信；记住相关≠因果。"
 - missing_report：①✅ 8/8+回归54/54 ②✅ 实跑 data/销量.csv（总缺失 14、率 43.75%、库存全缺失、成对"库存&备注"4 行）+ samples/dirty.csv（总缺失 23/率 23%、完整行 0=全缺失列所致）核对 ③✅ commit feat: missing_report，验收结论（代写）：
