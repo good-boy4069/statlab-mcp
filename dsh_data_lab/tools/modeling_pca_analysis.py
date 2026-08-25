@@ -126,4 +126,5 @@ def pca_analysis(file_path: str, n_components: int) -> dict:
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(pca_analysis, description=pca_analysis.__doc__)
+    mcp.add_tool(pca_analysis, description=__import__("sys").modules[__name__].__doc__)
+

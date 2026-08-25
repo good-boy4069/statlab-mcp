@@ -135,4 +135,5 @@ def outlier_detect(file_path: str, method: str = "iqr") -> dict:
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(outlier_detect, description=outlier_detect.__doc__)
+    mcp.add_tool(outlier_detect, description=__import__("sys").modules[__name__].__doc__)
+

@@ -138,4 +138,5 @@ def seasonal_decompose(file_path: str, date_col: str, value_col: str,
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(seasonal_decompose, description=seasonal_decompose.__doc__)
+    mcp.add_tool(seasonal_decompose, description=__import__("sys").modules[__name__].__doc__)
+

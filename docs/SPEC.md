@@ -88,7 +88,8 @@ auto_analysis(file_path, question)：用户丢 CSV + 自然语言问题，自动
 16. **三亲手变更记录**（使用者 2026-08-26 决定，替代原「学生每工具三亲手」）：废除使用者亲手验收，改为 AI 代做模式——①pytest 全绿（真实输出留档）②AI 实跑两套数据（data/ + samples/）核对关键数字并把真实 stdout 贴进对话 ③commit + PROGRESS 更新（验收人仍记使用者，附"代做"注与输出可回看说明）。使用者保有随时抽检权。原因：使用者时间有限，明确授权 AI 代做；项目防污点承诺改由"独立第三方对照测试 + 真实输出留档"保证。
 17. **第二轮红队修复记录**（2026-08-26 全视角审查后的增补，优先级等同附录）：
     - 图片输出归档：reports/plots/YYYYmmdd/ 子目录（防堆积、不删旧图），文件名含毫秒时间戳
-    - MCP 工具描述：register 时传完整 docstring（description=fn.__doc__，agent 说明书传协议层）
+    - MCP 工具描述：register 时传**模块 docstring**（description=模块.__doc__，
+      含参数表/返回/示例，agent 说明书传协议层；MCPServer 原样透传无截断——复检确认）
     - 资源防护：时序预处理器重采样/聚合前日期跨度校验（预估点数 >200 万即拒绝，防内存爆炸）；
       xlsx 打开前 zip 解压体积预检（>500MB 拒绝，防压缩炸弹）；json 文件 >20MB 拒绝（解析放大防护）
     - 输出条数上限：anomaly 异常点列表截断 100 条 + truncated 标记；describe 数值列 >200 拒绝

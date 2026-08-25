@@ -96,4 +96,5 @@ def normality_test(file_path: str, column: str, method: str = "auto") -> dict:
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(normality_test, description=normality_test.__doc__)
+    mcp.add_tool(normality_test, description=__import__("sys").modules[__name__].__doc__)
+

@@ -133,4 +133,5 @@ def effect_size(file_path: str, group_col: str, value_col: str,
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(effect_size, description=effect_size.__doc__)
+    mcp.add_tool(effect_size, description=__import__("sys").modules[__name__].__doc__)
+

@@ -61,4 +61,5 @@ def plot_scatter(file_path: str, x_col: str, y_col: str) -> dict:
 
 
 def register(mcp) -> None:
-    mcp.add_tool(plot_scatter, description=plot_scatter.__doc__)
+    mcp.add_tool(plot_scatter, description=__import__("sys").modules[__name__].__doc__)
+

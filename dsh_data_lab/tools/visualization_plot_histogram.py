@@ -54,4 +54,5 @@ def plot_histogram(file_path: str, column: str) -> dict:
 
 
 def register(mcp) -> None:
-    mcp.add_tool(plot_histogram, description=plot_histogram.__doc__)
+    mcp.add_tool(plot_histogram, description=__import__("sys").modules[__name__].__doc__)
+

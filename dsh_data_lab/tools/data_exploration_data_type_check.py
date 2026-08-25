@@ -190,4 +190,5 @@ def data_type_check(file_path: str) -> dict:
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(data_type_check, description=data_type_check.__doc__)
+    mcp.add_tool(data_type_check, description=__import__("sys").modules[__name__].__doc__)
+

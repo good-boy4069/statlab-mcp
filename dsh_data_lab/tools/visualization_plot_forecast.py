@@ -61,5 +61,6 @@ def plot_forecast(file_path: str, date_col: str, value_col: str) -> dict:
 
 
 def register(mcp) -> None:
-    mcp.add_tool(plot_forecast, description=plot_forecast.__doc__)
+    mcp.add_tool(plot_forecast, description=__import__("sys").modules[__name__].__doc__)
+
 

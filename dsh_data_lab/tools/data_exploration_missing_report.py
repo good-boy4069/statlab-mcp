@@ -99,4 +99,5 @@ def missing_report(file_path: str) -> dict:
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(missing_report, description=missing_report.__doc__)
+    mcp.add_tool(missing_report, description=__import__("sys").modules[__name__].__doc__)
+

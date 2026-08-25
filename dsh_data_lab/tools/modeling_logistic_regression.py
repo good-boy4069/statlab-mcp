@@ -209,4 +209,5 @@ def logistic_regression(file_path: str, target: str, features: List[str],
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(logistic_regression, description=logistic_regression.__doc__)
+    mcp.add_tool(logistic_regression, description=__import__("sys").modules[__name__].__doc__)
+

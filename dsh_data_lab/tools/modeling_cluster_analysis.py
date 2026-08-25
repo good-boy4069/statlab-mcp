@@ -109,4 +109,5 @@ def cluster_analysis(file_path: str, k: int) -> dict:
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(cluster_analysis, description=cluster_analysis.__doc__)
+    mcp.add_tool(cluster_analysis, description=__import__("sys").modules[__name__].__doc__)
+

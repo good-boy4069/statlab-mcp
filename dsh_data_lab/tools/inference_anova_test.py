@@ -205,4 +205,5 @@ def anova_test(file_path: str, group_col: str, value_col: str, alpha: float = 0.
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(anova_test, description=anova_test.__doc__)
+    mcp.add_tool(anova_test, description=__import__("sys").modules[__name__].__doc__)
+

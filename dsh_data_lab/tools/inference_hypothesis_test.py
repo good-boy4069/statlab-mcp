@@ -212,5 +212,6 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(hypothesis_test, description=hypothesis_test.__doc__)
+    mcp.add_tool(hypothesis_test, description=__import__("sys").modules[__name__].__doc__)
+
 

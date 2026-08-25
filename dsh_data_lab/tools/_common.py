@@ -91,7 +91,7 @@ def check_file(file_path: str) -> dict[str, Any]:
         raise DataLabError(f"文件不存在或不可访问: {os.path.basename(path)}")
     size = os.path.getsize(path)
     if size > MAX_FILE_BYTES:
-        raise DataLabError(f"文件过大（{size / 1024 / 1024:.1f}MB），超过 50MB 上限，请拆分后重试")
+        raise DataLabError(f"文件过大（{size / 1024 / 1024:.1f}MB），超过 {MAX_FILE_BYTES // 1024 // 1024}MB 上限，请拆分后重试")
     ext = os.path.splitext(path)[1].lower().lstrip(".")   # 红队 A B2：重构时丢失的定义
     rows_est = None
     if ext == "xlsx":

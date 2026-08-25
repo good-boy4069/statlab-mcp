@@ -159,4 +159,5 @@ def correlation_matrix(file_path: str, method: str = "pearson", p_adjust: str = 
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(correlation_matrix, description=correlation_matrix.__doc__)
+    mcp.add_tool(correlation_matrix, description=__import__("sys").modules[__name__].__doc__)
+

@@ -72,4 +72,5 @@ def plot_heatmap(file_path: str) -> dict:
 
 
 def register(mcp) -> None:
-    mcp.add_tool(plot_heatmap, description=plot_heatmap.__doc__)
+    mcp.add_tool(plot_heatmap, description=__import__("sys").modules[__name__].__doc__)
+

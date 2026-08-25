@@ -140,4 +140,5 @@ def chi_square_test(file_path: str, col_a: str, col_b: str) -> dict:
 
 def register(mcp) -> None:
     """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
-    mcp.add_tool(chi_square_test, description=chi_square_test.__doc__)
+    mcp.add_tool(chi_square_test, description=__import__("sys").modules[__name__].__doc__)
+

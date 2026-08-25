@@ -78,4 +78,5 @@ def plot_box(file_path: str, column: str) -> dict:
 
 
 def register(mcp) -> None:
-    mcp.add_tool(plot_box, description=plot_box.__doc__)
+    mcp.add_tool(plot_box, description=__import__("sys").modules[__name__].__doc__)
+

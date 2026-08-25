@@ -101,7 +101,7 @@ def test_check_file_unc_rejected():
 
 def test_check_file_size_limit(monkeypatch):
     monkeypatch.setattr(C, "MAX_FILE_BYTES", 100)          # 阈值压到 100B
-    with pytest.raises(C.DataLabError, match="超过 50MB 上限"):
+    with pytest.raises(C.DataLabError, match="MB 上限"):   # 文案随阈值动态（复检建议）
         C.check_file(str(SAMPLES / "clean.csv"))
 
 
