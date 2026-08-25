@@ -37,6 +37,7 @@
 - feature_importance | feat: feature_importance | 2026-08-26 | 周翔宇（AI 代做模式）
 - time_series_forecast | feat: time_series_forecast | 2026-08-26 | 周翔宇（AI 代做模式）
 - seasonal_decompose | feat: seasonal_decompose | 2026-08-26 | 周翔宇（AI 代做模式）
+- trend_analysis | feat: trend_analysis | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
 - 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
@@ -65,6 +66,8 @@
 - data_type_check：①✅ 10/10+回归46/46 ②✅ 实跑 data/销量.csv（备注列混 "1,000" → text+脏值提示 1 个）+ samples/dirty.csv（bad_date→date+非法日期 2024-02-30、empty_col→missing）核对 ③✅ commit feat: data_type_check，验收结论（代写）：
   "data_type_check 给每列贴类型标签：数字、整数、日期、类别、文本、混合、全空。拿到新文件不知道该用什么工具、哪列能算数时先用它；看到 mixed 或"疑似数字文本"就去洗数据，看到 missing 列就直接跳过。"
   ⚠️ 三亲手已于 2026-08-26 经使用者决定废止（AI 代做模式，详见 SPEC 增补 16）。
+- trend_analysis：①✅ 6/6+回归191/191 ②✅ 实跑 samples/timeseries.csv（tau=0.633 p<0.001 显著上升、斜率 0.183/天（理论 25/119≈0.21 语义吻合）、季节警示）+ 手算 Theil-Sen（y=0.5t→0.5、y=2t+1→2.0 精确）+ 常数序列（scipy kendalltau 全等返回 NaN 已防护为 tau=0/p=1）核对 ③✅ commit feat: trend_analysis，验收结论（代写）：
+  "trend_analysis 回答'整体在涨还是跌、显著吗、多快'：tau 越接近 ±1 单调性越强，p<0.05 才敢说'显著趋势'，斜率（Theil-Sen，抗离群值）告诉你每单位时间涨多少。有季节波动的序列结论要谨慎（工具会提醒），别把周期当趋势。"
 - seasonal_decompose：①✅ 7/7+回归184/184 ②✅ 实跑 samples/timeseries.csv（additive：周期自动=30（FFT 精确）、趋势 22.5→末端 34.7、季节幅度 12.68、残差 σ=1.28——幅度>理论 10 的抽样噪声行为已查明并写入文档）+ auto 选型（全正→multiplicative、非正→additive 注明）+ 乘法负值报错 ③✅ commit feat: seasonal_decompose，验收结论（代写）：
   "seasonal_decompose 把序列拆三层：趋势（长期走向）、季节（周期性波动，输出幅度和每个相位的影响）、残差（说不清的部分，σ 大=模型外还有东西）。周期不知道时它会用 FFT 自动猜（timeseries 猜出 30 天猜对了）；乘法模型要求数据全正，有负数自动降级加法并告诉你。"
 - time_series_forecast：①✅ 9/9+回归179/179 ②✅ 实跑 samples/timeseries.csv（SARIMA(1,1,0)(2,0,0,30)——FFT 精确检出生成公式的周期 30；预测 35.07 落趋势末端；已插值 3 个缺失点）+ 五前置构造验证（重复按天聚合 3 行、时区统一 UTC、非法日期剔除 2 行、常数列退化预测）③✅ commit feat: time_series_forecast，验收结论（代写）：
