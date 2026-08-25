@@ -97,3 +97,11 @@ auto_analysis(file_path, question)：用户丢 CSV + 自然语言问题，自动
       —— read_table 层已接 logger.exception；工具层统一文案"计算失败，请检查数据内容与参数设置（详见服务端日志）"
     - 输入校验：路径 NUL 字节拒绝；threshold 等浮点参数 isfinite 校验（拒 inf/nan）
     - README 同步：三亲手→AI 代做模式；License 姓名；路径信任声明（不校验来源，勿传不受信路径）
+18. **项目更名记录**（2026-08-26，发布前）：
+    - 原项目名 dsh-data-lab（包 dsh_data_lab）更名为 **statlab-mcp**（包 statlab_mcp）——
+      原缩写与 DeepSeek Harness 官方简称冲突，易被误认为 DSH 官方插件；新名中立无厂商前缀；
+      PyPI 占用实证通过（statlab-mcp 未占用）
+    - 全量替换：代码 import / server 启动（-m statlab_mcp.server）/ 测试 / README/SPEC/design×8 /
+      clients.md / pyproject（name=statlab-mcp）/ PROGRESS；残留扫描为零
+    - git 历史已用 git-filter-repo 全历史重写（38 提交，零旧名残留，未推送故无外部影响）
+    - 本机项目文件夹名仍为 dsh-data-lab（仅存放位置，与发布无关；.venv 依赖相对位置不建议改名）
