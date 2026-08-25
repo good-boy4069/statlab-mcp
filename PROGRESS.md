@@ -30,6 +30,7 @@
 - linear_regression | feat: linear_regression | 2026-08-26 | 周翔宇（AI 代做模式）
 - logistic_regression | feat: logistic_regression | 2026-08-26 | 周翔宇（AI 代做模式）
 - cluster_analysis | feat: cluster_analysis | 2026-08-26 | 周翔宇（AI 代做模式）
+- pca_analysis | feat: pca_analysis | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
 - 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
@@ -58,6 +59,8 @@
 - data_type_check：①✅ 10/10+回归46/46 ②✅ 实跑 data/销量.csv（备注列混 "1,000" → text+脏值提示 1 个）+ samples/dirty.csv（bad_date→date+非法日期 2024-02-30、empty_col→missing）核对 ③✅ commit feat: data_type_check，验收结论（代写）：
   "data_type_check 给每列贴类型标签：数字、整数、日期、类别、文本、混合、全空。拿到新文件不知道该用什么工具、哪列能算数时先用它；看到 mixed 或"疑似数字文本"就去洗数据，看到 missing 列就直接跳过。"
   ⚠️ 三亲手已于 2026-08-26 经使用者决定废止（AI 代做模式，详见 SPEC 增补 16）。
+- pca_analysis：①✅ 7/7+回归163/163 ②✅ 实跑 samples/clean.csv（PC1 32.7%+PC2 29.8% 累计 62.5%、income 载荷最大 1461.67）+ 独立 eigh 对照（标准化口径一致 1e-6）+ u 主导构造（PC1 载荷同号、噪声列载荷小）核对 ③✅ commit feat: pca_analysis，验收结论（代写）：
+  "pca_analysis 找数据里'变化最大的方向'：PC1 是第一方向（解释最多差异），看每个主成分解释了百分之几、每个变量对它贡献多少（载荷）——用于降维（比如 20 个指标浓缩成 3 个）、画图（二维散点）和去冗余。注意：主成分是变量的线性组合，不等于业务因子，别给 PC1 乱起名。"
 - cluster_analysis：①✅ 7/7+回归157/157 ②✅ 实跑 samples/clean.csv（k=3 轮廓 0.24、k±1 对照 0.22/0.22、簇样本量 22/15/13）+ 人造两团（质心=团均值 ±1.5 内、真结构 k=2 轮廓最高）核对 ③✅ commit feat: cluster_analysis，验收结论（代写）：
   "cluster_analysis 把样本分成 k 堆'相似的人'：输出每堆的中心（还原成业务单位，如'这堆人平均年龄 45 收入 9200'）和每堆多少人；轮廓系数评估分得清不清楚（>0.5 结构好，<0.25 说明本来就没有清晰的堆）。k 选几？它帮你自动对比 k-1/k+1，但最终拍板靠业务。"
 - logistic_regression：①✅ 7/7+回归150/150 ②✅ 实跑 binary_noisy（AUC=0.95 CI[0.88,1.00]、score OR=1.59 显著、acc=0.89 仅对照）+ binary_separable（AUC=1.0 + 分离警告命中规格）+ 不平衡数据 balanced 复制手算对照（sklearn 口径 n/(2*类计数)）③✅ commit feat: logistic_regression，验收结论（代写）：
