@@ -50,7 +50,7 @@
 - plot_scatter / plot_histogram / plot_heatmap / plot_forecast / plot_box | feat: 可视化组 | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
-- ✅ 全部完成：25/25 工具 + _common 基础设施 + auto_analysis 方案（commit 见 git log，共 42 次提交）
+- ✅ 全部完成：25/25 工具 + _common 基础设施 + auto_analysis 方案（commit 见 git log，共 32 次提交）
 
 ## 重要实测结论（mcp 2.1.0）
 - `mcp.server.fastmcp.FastMCP` 已不存在；高层服务器 = `mcp.server.mcpserver.MCPServer`（FastMCP 1.x 重构继承者，add_tool/tool/call_tool 兼容）
