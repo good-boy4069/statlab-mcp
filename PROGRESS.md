@@ -11,6 +11,7 @@
 ## 已完成（工具名 | 提交号 | 日期 | 验收人）
 - describe_statistics | feat: describe_statistics (489e948) | 2026-08-26 | 周翔宇（三亲手豁免记录）
 - data_type_check | feat: data_type_check | 2026-08-26 | 周翔宇（2026-08-26 起三亲手废止，AI 代做模式，SPEC 增补 16）
+- missing_report | feat: missing_report | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
 - 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
@@ -39,6 +40,8 @@
 - data_type_check：①✅ 10/10+回归46/46 ②✅ 实跑 data/销量.csv（备注列混 "1,000" → text+脏值提示 1 个）+ samples/dirty.csv（bad_date→date+非法日期 2024-02-30、empty_col→missing）核对 ③✅ commit feat: data_type_check，验收结论（代写）：
   "data_type_check 给每列贴类型标签：数字、整数、日期、类别、文本、混合、全空。拿到新文件不知道该用什么工具、哪列能算数时先用它；看到 mixed 或"疑似数字文本"就去洗数据，看到 missing 列就直接跳过。"
   ⚠️ 三亲手已于 2026-08-26 经使用者决定废止（AI 代做模式，详见 SPEC 增补 16）。
+- missing_report：①✅ 8/8+回归54/54 ②✅ 实跑 data/销量.csv（总缺失 14、率 43.75%、库存全缺失、成对"库存&备注"4 行）+ samples/dirty.csv（总缺失 23/率 23%、完整行 0=全缺失列所致）核对 ③✅ commit feat: missing_report，验收结论（代写）：
+  "missing_report 告诉你每列缺多少、整张表缺多少、哪些列总是一起缺。数据到手先看缺失率超不超 20%，再看成对缺失——两列一起丢通常是同源故障，比单列丢更值得查；全缺失列直接跳过别较劲。"
 
 ## 数据与样例（data/ samples/ 内容说明）
 - data/：空目录（不入库）。只放使用者亲手造的 8-12 行测试 CSV（三亲手用）
