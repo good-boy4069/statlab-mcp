@@ -18,7 +18,7 @@ import os
 import re
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional
 
 import numpy as np
 import pandas as pd
@@ -208,6 +208,95 @@ def validate_columns(df: pd.DataFrame, required: Iterable[str]) -> None:
     missing = [c for c in required if c not in df.columns]
     if missing:
         raise DataLabError(f"缺少必需列: {', '.join(missing)}；实际列: {list(df.columns)}")
+
+
+def _estimate_period(y: pd.Series) -> Optional[int]:
+    """时序周期自动估计（FFT 主频法，设计文档 06 口径 2）。
+
+    去线性趋势 -> rfft 幅度 -> 排除 DC 与 Nyquist -> 最大幅度对应频率的周期；
+    返回 2..n/2 的整数周期，否则 None（无可估季节）。
+    """
+    n = int(y.size)
+    x = y.to_numpy(dtype=float)
+    t = np.arange(n, dtype=float)
+    x = x - np.polyval(np.polyfit(t, x, 1), t)          # 去线性趋势
+    spec = np.abs(np.fft.rfft(x))
+    freqs = np.fft.rfftfreq(n)
+    spec[0] = 0.0                                        # 去 DC
+    if n % 2 == 0:
+        spec[-1] = 0.0                                   # 去 Nyquist
+    i = int(np.argmax(spec))
+    if spec[i] <= 0 or freqs[i] <= 0:
+        return None
+    period = int(round(1.0 / freqs[i]))
+    return period if 2 <= period <= n // 2 else None
+
+
+def _prepare_series(df: pd.DataFrame, date_col: str, value_col: str) -> tuple:
+    """时序工具公共预处理器（时序组五项统一前置，设计文档 06）。
+
+    流程: to_datetime 容错（非法日期行剔除并计数）-> 重复时间戳按天求和聚合 ->
+    频率推断（infer_freq，失败取间隔中位数）-> asfreq 固定频率 + 线性插值
+    （报告插值数；两端缺失保留并注明）-> 混合时区统一 UTC。
+    返回 (y: Series 索引=DatetimeIndex, meta: dict)。
+    """
+    if date_col not in df.columns:
+        raise DataLabError(f"缺少必需列: {date_col}；实际列: {list(df.columns)}")
+    if value_col not in df.columns:
+        raise DataLabError(f"缺少必需列: {value_col}；实际列: {list(df.columns)}")
+    if not pd.api.types.is_numeric_dtype(df[value_col]):
+        raise DataLabError(f"列 {value_col} 不是数值列，无法做时序分析")
+
+    dates = pd.to_datetime(df[date_col], errors="coerce")
+    invalid = int(dates.isna().sum())
+    keep = dates.notna()
+    if int(keep.sum()) == 0:
+        raise DataLabError("日期列无法解析")
+    s = pd.Series(df.loc[keep, value_col].to_numpy(dtype=float),
+                  index=dates[keep])
+
+    # 时区统一（混合时区或 tz-aware 一律 UTC）
+    utc_note = None
+    if getattr(s.index, "tz", None) is not None:
+        s.index = s.index.tz_convert("UTC")
+        utc_note = "时区已统一为 UTC"
+
+    # 重复时间戳 -> 按天求和聚合（规则固定为 sum）
+    merged = 0
+    if s.index.has_duplicates:
+        orig = int(s.size)
+        s = s.resample("D").sum()
+        merged = orig - int(s.size)
+
+    # 频率推断
+    freq = pd.infer_freq(s.index)
+    if freq is None:
+        diffs = pd.Series(s.index).diff().dropna().dt.total_seconds()
+        if diffs.size == 0:
+            raise DataLabError("时间戳不足，无法推断频率")
+        med_s = float(np.median(diffs))                # 以秒计数，规避 ns/us 单位混淆
+        freq_offset = pd.tseries.frequencies.to_offset(pd.Timedelta(seconds=med_s))
+        freq = freq_offset.freqstr                     # 仅展示用
+    else:
+        freq_offset = pd.tseries.frequencies.to_offset(freq)
+
+    n_before = int(s.size)
+    s = s.asfreq(freq_offset)
+    interpolated = int(s.isna().sum())
+    s = s.interpolate(method="linear")
+    tail_nan = int(s.isna().sum())          # 两端缺失保留
+
+    meta = {
+        "n": int(s.size),
+        "dropped_invalid_dates": invalid,
+        "merged_duplicates": merged,
+        "interpolated": interpolated,
+        "tail_nan": tail_nan,
+        "freq": str(freq),
+        "utc_note": utc_note,
+        "n_before_resample": n_before,
+    }
+    return s, meta
 
 
 def _safe_name(name: str) -> str:
