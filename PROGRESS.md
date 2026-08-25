@@ -12,7 +12,10 @@
   anova_test/chi_square_test/effect_size，133 测试全绿）
   **本周可展示的东西**：6 个推断工具可用——从"均值是不是 70"到"三组差异+事后两两比较"、
   "类别关联+Fisher 自动切换"到"效应量多大"
-- M3 建模组（5 工具）+ 时序组（4 工具）— 待办
+- M3 建模组（5 工具）— ✅ 全部完成（linear/logistic/cluster/pca/feature_importance，172 测试全绿）
+  **本周可展示**：五件套建模——回归/分类/聚类/PCA/重要性，全部随机过程固定 seed 严格可复现
+  （实测发现 joblib 并行有 1 ulp 浮点噪声，已改串行保证确定性）
+  时序组（4 工具）— 待办
 - M4 可视化组（5 工具）+ auto_analysis — 待办
 
 ## 已完成（工具名 | 提交号 | 日期 | 验收人）
@@ -31,6 +34,7 @@
 - logistic_regression | feat: logistic_regression | 2026-08-26 | 周翔宇（AI 代做模式）
 - cluster_analysis | feat: cluster_analysis | 2026-08-26 | 周翔宇（AI 代做模式）
 - pca_analysis | feat: pca_analysis | 2026-08-26 | 周翔宇（AI 代做模式）
+- feature_importance | feat: feature_importance | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
 - 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
@@ -59,6 +63,8 @@
 - data_type_check：①✅ 10/10+回归46/46 ②✅ 实跑 data/销量.csv（备注列混 "1,000" → text+脏值提示 1 个）+ samples/dirty.csv（bad_date→date+非法日期 2024-02-30、empty_col→missing）核对 ③✅ commit feat: data_type_check，验收结论（代写）：
   "data_type_check 给每列贴类型标签：数字、整数、日期、类别、文本、混合、全空。拿到新文件不知道该用什么工具、哪列能算数时先用它；看到 mixed 或"疑似数字文本"就去洗数据，看到 missing 列就直接跳过。"
   ⚠️ 三亲手已于 2026-08-26 经使用者决定废止（AI 代做模式，详见 SPEC 增补 16）。
+- feature_importance：①✅ 9/9+回归172/172 ②✅ 实跑 samples/clean.csv（income 目标：age 0.464 第一，语义合理）+ 构造"只有 age 影响 y"（age 排名 1 验证语义）+ n<50 硬性拒绝（40 行 → 中文报错）③✅ commit feat: feature_importance，验收结论（代写）：
+  "feature_importance 回答'哪个变量对预测贡献最大'：随机森林训练后按 permutation（打乱一列看预测崩多少）或 impurity（树分裂收益）排序。看排名前几的变量去业务上找解释；注意：重要性≠因果（age 重要不代表 age 导致收入高），样本少于 50 时它拒算（太少不稳定）。"
 - pca_analysis：①✅ 7/7+回归163/163 ②✅ 实跑 samples/clean.csv（PC1 32.7%+PC2 29.8% 累计 62.5%、income 载荷最大 1461.67）+ 独立 eigh 对照（标准化口径一致 1e-6）+ u 主导构造（PC1 载荷同号、噪声列载荷小）核对 ③✅ commit feat: pca_analysis，验收结论（代写）：
   "pca_analysis 找数据里'变化最大的方向'：PC1 是第一方向（解释最多差异），看每个主成分解释了百分之几、每个变量对它贡献多少（载荷）——用于降维（比如 20 个指标浓缩成 3 个）、画图（二维散点）和去冗余。注意：主成分是变量的线性组合，不等于业务因子，别给 PC1 乱起名。"
 - cluster_analysis：①✅ 7/7+回归157/157 ②✅ 实跑 samples/clean.csv（k=3 轮廓 0.24、k±1 对照 0.22/0.22、簇样本量 22/15/13）+ 人造两团（质心=团均值 ±1.5 内、真结构 k=2 轮廓最高）核对 ③✅ commit feat: cluster_analysis，验收结论（代写）：

@@ -28,10 +28,11 @@ from statlab_mcp.tools import modeling_linear_regression as _t12  # 工具 12
 from statlab_mcp.tools import modeling_logistic_regression as _t13  # 工具 13
 from statlab_mcp.tools import modeling_cluster_analysis as _t14  # 工具 14
 from statlab_mcp.tools import modeling_pca_analysis as _t15  # 工具 15
+from statlab_mcp.tools import modeling_feature_importance as _t16  # 工具 16
 
 # 工具模块注册表：随实现推进逐个加入（每工具一行）
 _TOOL_MODULES: list = [_t1, _t2, _t3, _t4, _t5, _t6, _t9, _t10, _t7, _t8, _t11,
-                       _t12, _t13, _t14, _t15]
+                       _t12, _t13, _t14, _t15, _t16]
 
 mcp = MCPServer("statlab-mcp")
 
