@@ -217,8 +217,9 @@
 
 ## 方法（钉死）
 1. **stl**（默认）：`statsmodels.tsa.seasonal.STL(y, period=周期(FFT 法), robust=True)` →
-   残差 `|resid| > threshold × resid.std()` 的点为异常（残差 std 用 MAD 稳健版：
-   `1.4826·median(|resid−median|)`，注明）
+   残差 `|resid| > threshold × resid.std(ddof=1)` 的点为异常（**实现期修订**：判据尺度用
+   残差标准差而非 MAD——MAD 对"主体集中+稀疏厚尾"的残差分布严重低估尺度，实测
+   timeseries 产出 31 个假阳性而 std 版仅 2 个；std 判据与 threshold=3 的 3σ 语义一致）
 2. **iqr**：一阶差分序列 `diff=y.diff()` 上 IQR 规则（Q1−1.5IQR/Q3+1.5IQR，同探查组口径），
    异常索引映射回原行号
 3. **rolling_zscore**：窗口 7 滚动 mean/std（min_periods=3），`|z|>threshold`

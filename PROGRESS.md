@@ -16,6 +16,9 @@
   **本周可展示**：五件套建模——回归/分类/聚类/PCA/重要性，全部随机过程固定 seed 严格可复现
   （实测发现 joblib 并行有 1 ulp 浮点噪声，已改串行保证确定性）
   时序组（4 工具）— 待办
+- M3b 时序组（4 工具）— ✅ 全部完成（forecast/decompose/trend/anomaly，197 测试全绿）
+  **本周可展示**：五项统一前置全落地（SARIMA 周期 30 精确检出/分解三层/显著趋势+Theil-Sen 斜率/
+  三法异常检测 std 判据）；时序预处理器（插值/聚合/时区）为 4 工具共用
 - M4 可视化组（5 工具）+ auto_analysis — 待办
 
 ## 已完成（工具名 | 提交号 | 日期 | 验收人）
@@ -38,6 +41,7 @@
 - time_series_forecast | feat: time_series_forecast | 2026-08-26 | 周翔宇（AI 代做模式）
 - seasonal_decompose | feat: seasonal_decompose | 2026-08-26 | 周翔宇（AI 代做模式）
 - trend_analysis | feat: trend_analysis | 2026-08-26 | 周翔宇（AI 代做模式）
+- anomaly_detect | feat: anomaly_detect | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
 - 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
@@ -66,6 +70,8 @@
 - data_type_check：①✅ 10/10+回归46/46 ②✅ 实跑 data/销量.csv（备注列混 "1,000" → text+脏值提示 1 个）+ samples/dirty.csv（bad_date→date+非法日期 2024-02-30、empty_col→missing）核对 ③✅ commit feat: data_type_check，验收结论（代写）：
   "data_type_check 给每列贴类型标签：数字、整数、日期、类别、文本、混合、全空。拿到新文件不知道该用什么工具、哪列能算数时先用它；看到 mixed 或"疑似数字文本"就去洗数据，看到 missing 列就直接跳过。"
   ⚠️ 三亲手已于 2026-08-26 经使用者决定废止（AI 代做模式，详见 SPEC 增补 16）。
+- anomaly_detect：①✅ 7/7+回归197/197 ②✅ 实跑 samples/timeseries.csv（std 判据 3σ 检出 2 个；**实现期修订**：MAD 判据在该残差分布下假阳性 31 个，已改为 std 判据并写文档）+ 注入 +12 尖峰三法均检出第 60 天 + 常数序列尺度 0 防护 ③✅ commit feat: anomaly_detect，验收结论（代写）：
+  "anomaly_detect 找时序里'突然跳变'的瞬间：STL 先把趋势季节剥掉再看残差（默认）、或看一阶差分（iqr）、或滚动窗口 z 值（rolling_zscore）。th 是敏感度旋钮（3 常规）。它只报告不删除——值是不是错的你来判断。注意 rolling_zscore 对孤立大尖峰可能'自己原谅自己'（窗口被污染），可调低阈值。"
 - trend_analysis：①✅ 6/6+回归191/191 ②✅ 实跑 samples/timeseries.csv（tau=0.633 p<0.001 显著上升、斜率 0.183/天（理论 25/119≈0.21 语义吻合）、季节警示）+ 手算 Theil-Sen（y=0.5t→0.5、y=2t+1→2.0 精确）+ 常数序列（scipy kendalltau 全等返回 NaN 已防护为 tau=0/p=1）核对 ③✅ commit feat: trend_analysis，验收结论（代写）：
   "trend_analysis 回答'整体在涨还是跌、显著吗、多快'：tau 越接近 ±1 单调性越强，p<0.05 才敢说'显著趋势'，斜率（Theil-Sen，抗离群值）告诉你每单位时间涨多少。有季节波动的序列结论要谨慎（工具会提醒），别把周期当趋势。"
 - seasonal_decompose：①✅ 7/7+回归184/184 ②✅ 实跑 samples/timeseries.csv（additive：周期自动=30（FFT 精确）、趋势 22.5→末端 34.7、季节幅度 12.68、残差 σ=1.28——幅度>理论 10 的抽样噪声行为已查明并写入文档）+ auto 选型（全正→multiplicative、非正→additive 注明）+ 乘法负值报错 ③✅ commit feat: seasonal_decompose，验收结论（代写）：
