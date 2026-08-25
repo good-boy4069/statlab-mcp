@@ -51,6 +51,10 @@
 - 测试数据由 `tests/make_fixtures.py` 固定 seed 生成并入库；关键数字用独立第三方计算对照（statistics.mean / 手算期望值表），禁止循环论证
 - 使用者的验收流程（三亲手）：亲手造 data/ CSV → 亲手改参数重跑 → 亲手写大白话验收结论
 
+## 技术注记（mcp 2.x）
+依赖锁定 mcp==2.1.0：`mcp.server.fastmcp.FastMCP` 已被 `mcp.server.mcpserver.MCPServer` 取代
+（API 兼容 add_tool/`tool` 装饰器，`list_tools`/`call_tool`/`run_stdio_async` 为 async）。
+
 ## 目录结构
 ```
 statlab_mcp/          # server.py（只注册工具+to_jsonable）+ tools/<组>_<工具>.py

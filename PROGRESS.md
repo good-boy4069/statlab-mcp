@@ -12,7 +12,15 @@
 （尚无工具验收；初始化完成后逐工具登记）
 
 ## 进行中（当前工具、当前步骤）
-- 阶段二：项目初始化（LICENSE/README/.gitignore/PROGRESS/SPEC/samples 生成 → git init + 首次提交）
+- 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
+- tools/_common.py：✅ 已实现并测试全绿（21/21）+ MCPServer 链路预检 LINK-CHECK-OK（提交 feat: _common 待做）
+- 下一步：探查组设计文档批 1（describe/data_type_check/missing_report），等使用者确认 _common 后开始
+
+## 重要实测结论（mcp 2.1.0）
+- `mcp.server.fastmcp.FastMCP` 已不存在；高层服务器 = `mcp.server.mcpserver.MCPServer`（FastMCP 1.x 重构继承者，add_tool/tool/call_tool 兼容）
+- list_tools/call_tool/run_stdio_async 均为 async API（await 调用）
+- 工具注册名默认 = 函数名（add_tool 可传 name 覆盖）；call_tool 返回 CallToolResult，content[0].text 为 JSON 字符串
+- 此结论影响里程碑 1 冒烟测试（npx inspector 走 stdio run() 不受影响）
 
 ## 待办（按组列）
 - 探查组：describe_statistics → correlation_matrix → missing_report → outlier_detect → data_type_check
@@ -35,7 +43,7 @@
 - Python 3.13.14 + venv + 清华源；pip check 零冲突；互操作冒烟 ALL-INTEROP-OK
 - numpy 2.5.2 / pandas 3.0.5 / scipy 1.18.1 / statsmodels 0.14.6 / sklearn 1.9.0 / matplotlib 3.11.1 / pmdarima 2.1.1 / openpyxl 3.1.5 / mcp 2.1.0 / pytest 9.1.1
 - 中文字体 Microsoft YaHei/SimHei 探测存在；requirements.txt 为依赖唯一权威
-- git：首次提交用占位身份 your-github-username / your-email@example.com（core.autocrlf=true），**待使用者提供真实 GitHub 用户名与邮箱后执行 `git config user.name/user.email` 修正**
+- git：身份已配置 good-boy4069 / 369235902@qq.com（core.autocrlf=true）；LICENSE Copyright=周翔宇
 
 ## 下次会话起点（从哪继续、先跑什么命令）
 1. 完成初始化：写 docs/SPEC.md（附录 A-D 原文）→ git init/config/首次提交
