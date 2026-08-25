@@ -124,7 +124,8 @@ def anomaly_detect(file_path: str, date_col: str, value_col: str,
         else:
             anomalies = _detect_rolling_zscore(yv, threshold)
         anomalies.sort(key=lambda a: a["index"])
-        truncated = len(anomalies) > MAX_ANOMALIES   # 输出截断（红队 B B2：防超大 JSON）
+        total_found = len(anomalies)                  # 截断前真实总数
+        truncated = total_found > MAX_ANOMALIES       # 输出截断（红队 B B2：防超大 JSON）
         anomalies = anomalies[:MAX_ANOMALIES]
 
         # ---- 图：原值 + 异常红点 ----
@@ -144,20 +145,23 @@ def anomaly_detect(file_path: str, date_col: str, value_col: str,
 
         note = "异常判据见各点 note；仅报告不剔除"
         if method == "stl":
-            note = "异常判据：|残差| > threshold×MAD 稳健标准差；仅报告不剔除"
+            note = "异常判据：|残差| > threshold×残差标准差（std 判据）；仅报告不剔除"
         if len(anomalies) == 0:
             note = f"{note}；未发现异常"
         if truncated:
             note = f"{note}；异常数超过 {MAX_ANOMALIES}，仅显示前 {MAX_ANOMALIES} 条"
 
-        n_found = len(anomalies) + (truncated and sum(1 for _ in []) or 0)
-        summary = f"{method} 法检出{'异常点' + ('（仅显示前 ' + str(MAX_ANOMALIES) + ' 条）' if truncated else f'（{n_found} 个）')}"
+        if truncated:
+            head = f"{method} 法检出 {total_found} 个异常点（仅显示前 {MAX_ANOMALIES} 条）"
+        elif total_found > 0:
+            head = f"{method} 法检出 {total_found} 个异常点"
+        else:
+            head = f"{method} 法未发现异常"
+        summary = head
         if anomalies:
             summary += f"：{'，'.join(a['date'] for a in anomalies[:5])}"
             if len(anomalies) > 5:
                 summary += " 等"
-        else:
-            summary += "；未发现异常"
         summary += f"；threshold={threshold:g}；异常仅报告不剔除"
         if meta["interpolated"]:
             summary += f"；已插值 {meta['interpolated']} 个缺失点"
@@ -165,6 +169,7 @@ def anomaly_detect(file_path: str, date_col: str, value_col: str,
         result = {
             "method": method, "threshold": threshold,
             "n": n, "n_anomalies": len(anomalies),
+            "total_anomalies": total_found,
             "truncated": truncated,
             "anomalies": anomalies,
             "note": note,
