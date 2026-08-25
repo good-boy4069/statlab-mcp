@@ -3,8 +3,12 @@
 > 本文件是会话续接的唯一进度依据，随每次 git 提交更新（附录 B 模板）。
 
 ## 里程碑（1-4 状态）
-- M1 数据探查组（5 工具）— ✅ 5/5 完成（describe/data_type_check/missing_report/correlation_matrix/outlier_detect）；冒烟测试进行中
-- M2 统计推断组（6 工具）— 待办
+- M1 数据探查组（5 工具）— ✅ 全部完成 + 冒烟 ALL-STDIO-OK（tests/smoke_stdio.py：
+  握手/list_tools/5 工具真实 stdio 调用全绿，__image__ 协议往返正常；启动方式实测结论
+  = `-m statlab_mcp.server` + cwd 项目根，客户端配置见 docs/clients.md）
+  **本周可展示的东西**：5 个可用的数据探查工具 + 一张带中文标签的箱线图（reports/plots/）+
+  多客户端接入配置
+- M2 统计推断组（6 工具）— 待办（下一个：hypothesis_test 设计文档）
 - M3 建模组（5 工具）+ 时序组（4 工具）— 待办
 - M4 可视化组（5 工具）+ auto_analysis — 待办
 

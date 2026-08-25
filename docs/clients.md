@@ -1,0 +1,71 @@
+# 客户端接入配置备忘（statlab-mcp）
+
+> 冒烟测试已验证的**唯一正确启动方式**（tests/smoke_stdio.py 实测结论，2026-08-26）：
+> 必须以 `-m statlab_mcp.server` 且工作目录 = 项目根启动，否则 `import statlab_mcp` 失败。
+
+## 通用启动参数（所有客户端共用）
+- command：`C:\dsh工作文件夹\statlab-mcp\.venv\Scripts\python.exe`（venv 解释器绝对路径）
+- args：`["-m", "statlab_mcp.server"]`
+- cwd（工作目录）：`C:\dsh工作文件夹\statlab-mcp`
+- env（环境变量）：`PYTHONUTF8=1`（server 入口另有 sys.stdout.reconfigure 兜底）
+
+## Claude Code（格式可直接用）
+项目根放 `.mcp.json`：
+```json
+{
+  "mcpServers": {
+    "statlab-mcp": {
+      "command": "C:\\dsh工作文件夹\\statlab-mcp\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "statlab_mcp.server"],
+      "env": {"PYTHONUTF8": "1"}
+    }
+  }
+}
+```
+Claude Code 工作目录即项目根，不需要 cwd 字段（如不在项目根启动，按官方文档补 cwd）。
+
+## Cursor（格式可直接用）
+全局或项目 `.cursor/mcp.json`（同 Claude 格式，cursor 支持 cwd 字段）：
+```json
+{
+  "mcpServers": {
+    "statlab-mcp": {
+      "command": "C:\\dsh工作文件夹\\statlab-mcp\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "statlab_mcp.server"],
+      "cwd": "C:\\dsh工作文件夹\\statlab-mcp",
+      "env": {"PYTHONUTF8": "1"}
+    }
+  }
+}
+```
+
+## VSCode（原生 MCP 支持；字段以官方文档为准）
+项目 `.vscode/mcp.json`：
+```json
+{
+  "servers": {
+    "statlab-mcp": {
+      "type": "stdio",
+      "command": "C:\\dsh工作文件夹\\statlab-mcp\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "statlab_mcp.server"],
+      "env": {"PYTHONUTF8": "1"}
+    }
+  }
+}
+```
+> ⚠️ VSCode 的 MCP 配置字段（servers/type/cwd 位置）随版本演进，若面板不识别请查阅
+> VSCode 官方 MCP 文档，不要照抄本文件盲试。
+
+## Codex / Hermes
+- 配置格式**未核实**：请查阅各自官方文档（MCP server 支持与配置文件字段），
+  启动参数一律用上面的「通用启动参数」，不要凭记忆编造格式。
+- Codex 参考方向：config.toml 中 mcp 相关配置；Hermes：查阅其 MCP 文档。
+
+## DeepSeek Harness（DSH）
+- 本项目使用者即 DSH 插件开发者，**配置由使用者本人提供**（本项目 README 已声明与 DSH 无关，
+  server 本身是标准 MCP stdio server，任何客户端按同一协议接入）。
+
+## Agent 看图方式（README 约定）
+- DeepSeek Harness：`read_image` 工具读 `__image__` 返回的绝对路径
+- Claude Code：`Read` 工具读同一路径
+- 其余客户端：用各自的文件读取/图片查看能力读 `__image__` 路径
