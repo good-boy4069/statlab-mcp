@@ -50,7 +50,7 @@
 & .\.venv\Scripts\python.exe -m pytest tests\ -q
 ```
 - 测试数据由 `tests/make_fixtures.py` 固定 seed 生成并入库；关键数字用独立第三方计算对照（statistics.mean / 手算期望值表），禁止循环论证
-- 验收流程（2026-08-26 起为 AI 代做模式，SPEC 增补 16）：pytest 全绿 + 两套数据实跑核对（真实 stdout 全部留档在对话/验收记录）→ commit + PROGRESS 登记；使用者保留随时抽检权
+- 验收流程（2026-08-26 起为 AI 代做模式）：pytest 全绿 + 两套数据实跑核对（真实 stdout 全部留档在验收记录）→ commit + PROGRESS 登记；使用者保留随时抽检权
 
 ## 技术注记（mcp 2.x）
 依赖锁定 mcp==2.1.0：`mcp.server.fastmcp.FastMCP` 已被 `mcp.server.mcpserver.MCPServer` 取代
@@ -59,7 +59,7 @@
 ## 目录结构
 ```
 statlab_mcp/          # server.py（只注册工具+to_jsonable）+ tools/<组>_<工具>.py
-docs/                  # SPEC.md（协议原文）、design/（接口设计文档）
+docs/                  # SPEC.md（协议与统计口径）、design/（各工具接口设计文档）、clients.md（接入配置）
 samples/               # 入库样例数据 + 生成脚本
 tests/                 # pytest + fixtures 生成脚本
 data/                  # 使用者亲手造的测试数据（gitignore，不入库）
