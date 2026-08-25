@@ -16,3 +16,5 @@ Thumbs.db
 # 覆盖率/分析产物
 .coverage
 htmlcov/
+
+PROGRESS.md   # 内部进度/验收台账，本地维护不入库
