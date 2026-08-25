@@ -19,7 +19,9 @@
 - M3b 时序组（4 工具）— ✅ 全部完成（forecast/decompose/trend/anomaly，197 测试全绿）
   **本周可展示**：五项统一前置全落地（SARIMA 周期 30 精确检出/分解三层/显著趋势+Theil-Sen 斜率/
   三法异常检测 std 判据）；时序预处理器（插值/聚合/时区）为 4 工具共用
-- M4 可视化组（5 工具）+ auto_analysis — 待办
+- M4 可视化组（5 工具）— ✅ 全部完成（scatter/histogram/heatmap/forecast/box，216 测试全绿）
+  **本周可展示**：5 张中文标签图 + 25 工具全家桶可用（三种统计语言出图 + 交叉验证一致）
+- auto_analysis（编排层，方案 A）— 进行中：方案设计文档交付确认中
 
 ## 已完成（工具名 | 提交号 | 日期 | 验收人）
 - describe_statistics | feat: describe_statistics (489e948) | 2026-08-26 | 周翔宇（三亲手豁免记录）
@@ -42,6 +44,7 @@
 - seasonal_decompose | feat: seasonal_decompose | 2026-08-26 | 周翔宇（AI 代做模式）
 - trend_analysis | feat: trend_analysis | 2026-08-26 | 周翔宇（AI 代做模式）
 - anomaly_detect | feat: anomaly_detect | 2026-08-26 | 周翔宇（AI 代做模式）
+- plot_scatter / plot_histogram / plot_heatmap / plot_forecast / plot_box | feat: 可视化组 | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
 - 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
@@ -70,6 +73,8 @@
 - data_type_check：①✅ 10/10+回归46/46 ②✅ 实跑 data/销量.csv（备注列混 "1,000" → text+脏值提示 1 个）+ samples/dirty.csv（bad_date→date+非法日期 2024-02-30、empty_col→missing）核对 ③✅ commit feat: data_type_check，验收结论（代写）：
   "data_type_check 给每列贴类型标签：数字、整数、日期、类别、文本、混合、全空。拿到新文件不知道该用什么工具、哪列能算数时先用它；看到 mixed 或"疑似数字文本"就去洗数据，看到 missing 列就直接跳过。"
   ⚠️ 三亲手已于 2026-08-26 经使用者决定废止（AI 代做模式，详见 SPEC 增补 16）。
+- 可视化组 5 工具：①✅ 19/19+回归216/216 ②✅ 交叉核对：scatter r 与 correlation_matrix 一致、histogram mean/std 与 describe 一致、heatmap 矩阵与 correlation 一致、box 异常数与 outlier_detect 一致、forecast 插值 3 与工具 17 共用前置 ③✅ commit（详见 git log），验收结论（代写）：
+  "可视化组 5 个图：散点（带 r）、直方图（带均值标准差）、相关热力图、时序折线+7 日均线、箱线图（带五数+异常数）——图上的数字都能在探查/推断工具里交叉验证，看图说话不猜数。"
 - anomaly_detect：①✅ 7/7+回归197/197 ②✅ 实跑 samples/timeseries.csv（std 判据 3σ 检出 2 个；**实现期修订**：MAD 判据在该残差分布下假阳性 31 个，已改为 std 判据并写文档）+ 注入 +12 尖峰三法均检出第 60 天 + 常数序列尺度 0 防护 ③✅ commit feat: anomaly_detect，验收结论（代写）：
   "anomaly_detect 找时序里'突然跳变'的瞬间：STL 先把趋势季节剥掉再看残差（默认）、或看一阶差分（iqr）、或滚动窗口 z 值（rolling_zscore）。th 是敏感度旋钮（3 常规）。它只报告不删除——值是不是错的你来判断。注意 rolling_zscore 对孤立大尖峰可能'自己原谅自己'（窗口被污染），可调低阈值。"
 - trend_analysis：①✅ 6/6+回归191/191 ②✅ 实跑 samples/timeseries.csv（tau=0.633 p<0.001 显著上升、斜率 0.183/天（理论 25/119≈0.21 语义吻合）、季节警示）+ 手算 Theil-Sen（y=0.5t→0.5、y=2t+1→2.0 精确）+ 常数序列（scipy kendalltau 全等返回 NaN 已防护为 tau=0/p=1）核对 ③✅ commit feat: trend_analysis，验收结论（代写）：

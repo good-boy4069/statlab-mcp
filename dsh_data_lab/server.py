@@ -33,10 +33,16 @@ from statlab_mcp.tools import timeseries_time_series_forecast as _t17  # 工具 
 from statlab_mcp.tools import timeseries_seasonal_decompose as _t18  # 工具 18
 from statlab_mcp.tools import timeseries_trend_analysis as _t19  # 工具 19
 from statlab_mcp.tools import timeseries_anomaly_detect as _t20  # 工具 20
+from statlab_mcp.tools import visualization_plot_scatter as _t21  # 工具 21
+from statlab_mcp.tools import visualization_plot_histogram as _t22  # 工具 22
+from statlab_mcp.tools import visualization_plot_heatmap as _t23  # 工具 23
+from statlab_mcp.tools import visualization_plot_forecast as _t24  # 工具 24
+from statlab_mcp.tools import visualization_plot_box as _t25  # 工具 25
 
 # 工具模块注册表：随实现推进逐个加入（每工具一行）
 _TOOL_MODULES: list = [_t1, _t2, _t3, _t4, _t5, _t6, _t9, _t10, _t7, _t8, _t11,
-                       _t12, _t13, _t14, _t15, _t16, _t17, _t18, _t19, _t20]
+                       _t12, _t13, _t14, _t15, _t16, _t17, _t18, _t19, _t20,
+                       _t21, _t22, _t23, _t24, _t25]
 
 mcp = MCPServer("statlab-mcp")
 
