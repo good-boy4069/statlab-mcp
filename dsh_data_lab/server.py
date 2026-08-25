@@ -16,9 +16,10 @@ from statlab_mcp.tools import _common  # noqa: F401  导入即执行 seed(42)/Ag
 from statlab_mcp.tools import data_exploration_describe_statistics as _t1  # 工具 1
 from statlab_mcp.tools import data_exploration_data_type_check as _t2  # 工具 2
 from statlab_mcp.tools import data_exploration_missing_report as _t3  # 工具 3
+from statlab_mcp.tools import data_exploration_correlation_matrix as _t4  # 工具 4
 
 # 工具模块注册表：随实现推进逐个加入（每工具一行）
-_TOOL_MODULES: list = [_t1, _t2, _t3]
+_TOOL_MODULES: list = [_t1, _t2, _t3, _t4]
 
 mcp = MCPServer("statlab-mcp")
 
