@@ -29,6 +29,7 @@
 - effect_size | feat: effect_size | 2026-08-26 | 周翔宇（AI 代做模式）
 - linear_regression | feat: linear_regression | 2026-08-26 | 周翔宇（AI 代做模式）
 - logistic_regression | feat: logistic_regression | 2026-08-26 | 周翔宇（AI 代做模式）
+- cluster_analysis | feat: cluster_analysis | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
 - 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
@@ -57,6 +58,8 @@
 - data_type_check：①✅ 10/10+回归46/46 ②✅ 实跑 data/销量.csv（备注列混 "1,000" → text+脏值提示 1 个）+ samples/dirty.csv（bad_date→date+非法日期 2024-02-30、empty_col→missing）核对 ③✅ commit feat: data_type_check，验收结论（代写）：
   "data_type_check 给每列贴类型标签：数字、整数、日期、类别、文本、混合、全空。拿到新文件不知道该用什么工具、哪列能算数时先用它；看到 mixed 或"疑似数字文本"就去洗数据，看到 missing 列就直接跳过。"
   ⚠️ 三亲手已于 2026-08-26 经使用者决定废止（AI 代做模式，详见 SPEC 增补 16）。
+- cluster_analysis：①✅ 7/7+回归157/157 ②✅ 实跑 samples/clean.csv（k=3 轮廓 0.24、k±1 对照 0.22/0.22、簇样本量 22/15/13）+ 人造两团（质心=团均值 ±1.5 内、真结构 k=2 轮廓最高）核对 ③✅ commit feat: cluster_analysis，验收结论（代写）：
+  "cluster_analysis 把样本分成 k 堆'相似的人'：输出每堆的中心（还原成业务单位，如'这堆人平均年龄 45 收入 9200'）和每堆多少人；轮廓系数评估分得清不清楚（>0.5 结构好，<0.25 说明本来就没有清晰的堆）。k 选几？它帮你自动对比 k-1/k+1，但最终拍板靠业务。"
 - logistic_regression：①✅ 7/7+回归150/150 ②✅ 实跑 binary_noisy（AUC=0.95 CI[0.88,1.00]、score OR=1.59 显著、acc=0.89 仅对照）+ binary_separable（AUC=1.0 + 分离警告命中规格）+ 不平衡数据 balanced 复制手算对照（sklearn 口径 n/(2*类计数)）③✅ commit feat: logistic_regression，验收结论（代写）：
   "logistic_regression 预测'是/否'：输出每个因素的比值比 OR（X 每加 1 单位，'是'的几率翻 OR 倍）、OR 的 p 值（<0.05 才算数）、模型判别力 AUC（0.5=瞎猜 1=完美，0.8 以上不错），附带混淆矩阵（哪些被认错）。类别严重不平衡时 balanced 自动加权；数据完美可分（score 一刀切）时它会警告'系数不稳定'，这时别信 OR 数值。"
 - linear_regression：①✅ 12/12+回归144/144 ②✅ 实跑 samples/clean.csv（income~age：R²=0.09 与 correlation_matrix 的 r² 交叉验证分毫不差、age 显著 p=0.032、DW=1.47）+ 精确线性 y=2x+1（β=[1,2] 精确、R²=1.0）+ one-hot/缺失/零方差场景 ③✅ commit feat: linear_regression，验收结论（代写）：
