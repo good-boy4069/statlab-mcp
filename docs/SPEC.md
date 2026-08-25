@@ -85,3 +85,4 @@ auto_analysis(file_path, question)：用户丢 CSV + 自然语言问题，自动
 13. **测试独立性三级策略**：小样例手算期望值硬编码（附推导注释）为主 + statistics.mean（标准库独立）为辅 + 设计文档附 Excel 复算表供三亲手复核；numpy.corrcoef 与 scipy.pearsonr 同源不作互证
 14. **fixtures 单一 seed 源**：tests/make_fixtures.py 复用 samples/make_sample_data.py 生成函数（import 方式），防 seed 漂移；专用变体单独追加
 15. **依赖安装实测结论**（2026 本机）：Python 3.13.14 下 numpy 2.5.2 / pandas 3.0.5 / scipy 1.18.1 / statsmodels 0.14.6 / sklearn 1.9.0 / matplotlib 3.11.1 / pmdarima 2.1.1 / openpyxl 3.1.5 / mcp 2.1.0 / pytest 9.1.1 互操作冒烟通过（OLS/ARIMA/KMeans/read_excel 全真跑）；若 pandas 3.x 未来出现不兼容，降级路径 = pandas==2.3.*（numpy 不降），重跑冒烟并记录
+16. **三亲手变更记录**（使用者 2026-08-26 决定，替代原「学生每工具三亲手」）：废除使用者亲手验收，改为 AI 代做模式——①pytest 全绿（真实输出留档）②AI 实跑两套数据（data/ + samples/）核对关键数字并把真实 stdout 贴进对话 ③commit + PROGRESS 更新（验收人仍记使用者，附"代做"注与输出可回看说明）。使用者保有随时抽检权。原因：使用者时间有限，明确授权 AI 代做；项目防污点承诺改由"独立第三方对照测试 + 真实输出留档"保证。
