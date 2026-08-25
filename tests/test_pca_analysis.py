@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_pca_analysis.py —— 工具 15 测试（规范 10）。
 
 独立性：方差解释率用测试内独立实现核对——协方差矩阵 numpy.linalg.eigh
@@ -53,7 +52,7 @@ def test_explained_ratio_matches_eigh(tmp_path):
     assert sum(rs["explained_variance_ratio"]) == pytest.approx(1.0)   # 数学恒等
     assert rs["cumulative_ratio"][-1] == pytest.approx(1.0)
     # PC1 载荷 v2>v1（v2 变异更大）且同号——u 主导
-    pc1 = {l["feature"]: l["loading"] for l in rs["loadings"] if l["component"] == 1}
+    pc1 = {ld["feature"]: ld["loading"] for ld in rs["loadings"] if ld["component"] == 1}
     assert pc1["v1"] > 1.0 and pc1["v2"] > 2.0 and abs(pc1["v3"]) < abs(pc1["v1"])
 
 

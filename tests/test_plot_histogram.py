@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_plot_histogram.py —— 工具 22 测试。
 独立性：mean/std 与 describe_statistics 交叉核对；分箱数公式断言。
 """
@@ -22,7 +21,9 @@ def test_clean_histogram_cross_check():
     assert r["status"] == "ok", r.get("message")
     rs = r["result"]
     assert rs["n"] == 50 and rs["bins"] == min(40, max(8, math.ceil(math.sqrt(50))))
-    from statlab_mcp.tools.data_exploration_describe_statistics import describe_statistics
+    from statlab_mcp.tools.data_exploration_describe_statistics import (
+        describe_statistics,
+    )
     d = describe_statistics(str(SAMPLES / "clean.csv"))["result"]["columns"]["score"]
     assert rs["mean"] == pytest.approx(d["mean"])
     assert rs["std"] == pytest.approx(d["std"])

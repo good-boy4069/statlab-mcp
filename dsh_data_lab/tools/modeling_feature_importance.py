@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """feature_importance —— 建模组 · 特征重要性（工具 16，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/05_modeling.md 同步维护。
@@ -21,7 +20,6 @@ docstring = agent 使用说明书，与 docs/design/05_modeling.md 同步维护�
 示例:
     feature_importance("samples/clean.csv", target="income")
 """
-from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -58,7 +56,7 @@ def feature_importance(file_path: str, target: str, method: str = "permutation",
             raise DataLabError(f"样本量 n={n} 小于 50，特征重要性不稳定，请积累数据或抽样")
 
         # ---- 特征矩阵：数值直用 + 类别 one-hot ----
-        dummy_mapping: Dict[str, str] = {}
+        dummy_mapping: dict[str, str] = {}
         parts = []
         for c in df.columns:
             if c == target:
@@ -77,7 +75,7 @@ def feature_importance(file_path: str, target: str, method: str = "permutation",
         m = X_all.copy()
         m[target] = df[target]
         m = m.dropna()
-        dropped = n - int(len(m))
+        dropped = n - len(m)
         X = m[feature_names].to_numpy(dtype=float)
         y = m[target]
 
@@ -121,15 +119,15 @@ def feature_importance(file_path: str, target: str, method: str = "permutation",
                       f"{top['feature']}（importance={top['importance']:.3f}）；"
                       f"重要性≠因果")
         note = ("；分类模型" if is_classification else "；回归模型")
-        summary = (f"{method} 重要性（n={int(len(m))}" 
+        summary = (f"{method} 重要性（n={len(m)}"
                    + (f"，已剔除缺失 {dropped} 行" if dropped else "")
-                   + f"）：" + " > ".join(f"{v['feature']} {v['importance']:.3f}"
+                   + "）：" + " > ".join(f"{v['feature']} {v['importance']:.3f}"
                                          for v in importances[:5])
                    + f"{note}；重要性≠因果")
 
         result = {
             "method": method, "model_type": model_type,
-            "n": int(len(m)), "dropped_rows": dropped,
+            "n": len(m), "dropped_rows": dropped,
             "importances": importances,
             "n_estimators": int(n_estimators), "n_repeats": int(n_repeats),
             "dummy_mapping": dummy_mapping or None,
@@ -138,7 +136,7 @@ def feature_importance(file_path: str, target: str, method: str = "permutation",
         return ok(result, summary)
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

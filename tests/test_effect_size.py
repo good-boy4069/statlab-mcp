@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_effect_size.py —— 工具 11 测试（规范 10）。
 
 独立性：d/CI 手算硬编码（pooled 公式、正态近似 se 公式，Excel 可复核）；

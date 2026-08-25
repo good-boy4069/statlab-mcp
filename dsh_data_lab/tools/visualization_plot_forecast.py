@@ -1,17 +1,19 @@
-# -*- coding: utf-8 -*-
 """plot_forecast —— 可视化组 · 时序折线图（工具 24，核心实现）。
 
 原值折线 + 7 日移动平均线；**仅作图不预测**（预测见工具 17）。
 五项统一前置由 _common._prepare_series 承载（插值/聚合/时区均报告）。
 """
-from typing import Any, Dict
 
-import pandas as pd
 from matplotlib import pyplot as plt
 
 from statlab_mcp.tools._common import (
-    CJK_FONT_OK, DataLabError, _prepare_series,
-    err, ok, read_table, save_plot,
+    CJK_FONT_OK,
+    DataLabError,
+    _prepare_series,
+    err,
+    ok,
+    read_table,
+    save_plot,
 )
 
 MIN_N = 5
@@ -56,7 +58,7 @@ def plot_forecast(file_path: str, date_col: str, value_col: str) -> dict:
         return res
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

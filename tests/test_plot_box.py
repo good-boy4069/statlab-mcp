@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_plot_box.py —— 工具 25 测试。
 独立性：五数概括与 describe 交叉核对；异常数与 outlier_detect 的 income 一致。
 """
@@ -22,7 +21,9 @@ def test_clean_box_cross_check():
     assert r["status"] == "ok", r.get("message")
     rs = r["result"]
     assert rs["n"] == 50
-    from statlab_mcp.tools.data_exploration_describe_statistics import describe_statistics
+    from statlab_mcp.tools.data_exploration_describe_statistics import (
+        describe_statistics,
+    )
     d = describe_statistics(str(SAMPLES / "clean.csv"))["result"]["columns"]["score"]
     assert rs["q1"] == pytest.approx(d["q1"])
     assert rs["median"] == pytest.approx(d["median"])

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """anomaly_detect —— 时序组 · 时序异常检测（工具 20，简化实现）。
 
 docstring = agent 使用说明书，与 docs/design/06_timeseries.md 同步维护。
@@ -19,16 +18,22 @@ docstring = agent 使用说明书，与 docs/design/06_timeseries.md 同步维�
     anomaly_detect("samples/timeseries.csv", date_col="date", value_col="value")
 """
 import math
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
-from statsmodels.tsa.seasonal import STL
 from matplotlib import pyplot as plt
+from statsmodels.tsa.seasonal import STL
 
 from statlab_mcp.tools._common import (
-    CJK_FONT_OK, DataLabError, _estimate_period, _prepare_series,
-    err, ok, read_table, save_plot,
+    CJK_FONT_OK,
+    DataLabError,
+    _estimate_period,
+    _prepare_series,
+    err,
+    ok,
+    read_table,
+    save_plot,
 )
 
 MIN_N = 15
@@ -37,7 +42,7 @@ _WINDOW = 7
 MAX_ANOMALIES = 100        # 输出条数上限（红队 B B2：防超大 JSON）
 
 
-def _detect_stl(yv: pd.Series, threshold: float) -> List[Dict[str, Any]]:
+def _detect_stl(yv: pd.Series, threshold: float) -> list[dict[str, Any]]:
     period = _estimate_period(yv)
     if period is None:
         # 无周期：一阶差分残差近似（注明退级）
@@ -67,7 +72,7 @@ def _detect_stl(yv: pd.Series, threshold: float) -> List[Dict[str, Any]]:
     return out
 
 
-def _detect_iqr(yv: pd.Series, threshold: float) -> List[Dict[str, Any]]:
+def _detect_iqr(yv: pd.Series, threshold: float) -> list[dict[str, Any]]:
     diff = yv.diff().dropna()
     q1, q3 = float(diff.quantile(0.25)), float(diff.quantile(0.75))
     iqr = q3 - q1
@@ -84,7 +89,7 @@ def _detect_iqr(yv: pd.Series, threshold: float) -> List[Dict[str, Any]]:
     return out
 
 
-def _detect_rolling_zscore(yv: pd.Series, threshold: float) -> List[Dict[str, Any]]:
+def _detect_rolling_zscore(yv: pd.Series, threshold: float) -> list[dict[str, Any]]:
     mu = yv.rolling(_WINDOW, min_periods=3).mean()
     sd = yv.rolling(_WINDOW, min_periods=3).std(ddof=1)
     z = (yv - mu) / sd.replace(0, np.nan)
@@ -176,14 +181,14 @@ def anomaly_detect(file_path: str, date_col: str, value_col: str,
             "metadata": {k: v for k, v in meta.items() if k != "n_before_resample"},
             "conclusion": (f"{method} 检出 {len(anomalies)} 个异常点"
                            + ("（已截断）" if truncated else "") + "；"
-                           f"异常点仅报告不剔除"),
+                           "异常点仅报告不剔除"),
         }
         res = ok(result, summary)
         res["__image__"] = img
         return res
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

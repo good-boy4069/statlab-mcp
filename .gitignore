@@ -13,3 +13,6 @@ data/
 # 系统文件
 Thumbs.db
 .DS_Store
+# 覆盖率/分析产物
+.coverage
+htmlcov/

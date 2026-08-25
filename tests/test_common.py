@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 """tests/test_common.py —— tools/_common.py 七函数测试（规范 10）。
 
 独立性：均值对照 statistics.mean（标准库，独立于 pandas/numpy 实现）；
 to_jsonable 用 json.dumps(allow_nan=False) 强断言（红队裁决 2）。
 """
 import json
-import math
 import sys
 from pathlib import Path
 
@@ -212,11 +210,10 @@ def test_xlsx_corrupted_cn(tmp_path):
 
 def test_xlsx_zip_bomb_rejected(monkeypatch, tmp_path):
     """红队 A S1/I1：解压体积超限拒绝（monkeypatch 阈值到极小）。"""
-    import zipfile
     p = tmp_path / "ok.xlsx"
     pd.DataFrame({"a": [1, 2]}).to_excel(p, index=False)          # 正常小 xlsx
     monkeypatch.setattr(C, "MAX_MEM_BYTES", 100)                  # 阈值压到 100 字节
-    with pytest.raises(C.DataLabError, match="压缩炸弹|体积过大"):
+    with pytest.raises(C.DataLabError, match=r"压缩炸弹|体积过大"):
         C.check_file(str(p))
 
 
@@ -237,7 +234,7 @@ def test_date_span_guard(tmp_path):
     C._prepare_series(df_ok, "date", "value")                      # 不抛（约 12.8 万天 < 200 万）
     df_bad = pd.DataFrame({
         "date": ["2025-01-01 00:00", "2025-01-01 00:01", "2025-01-01 00:02",
-                 "2250-01-01 00:00"],                                # 1 分钟频率 + ~225 年跨度（pandas/Timedelta 界内，约 1.2e8 点）
+                 "2250-01-01 00:00"],   # 1 分钟频率 + 225 年跨度，约 1.2e8 点（界内）
         "value": [1.0, 2.0, 3.0, 4.0]})
     with pytest.raises(C.DataLabError, match="日期跨度过大"):
         C._prepare_series(df_bad, "date", "value")

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """trend_analysis —— 时序组 · 趋势分析（工具 19，简化实现）。
 
 docstring = agent 使用说明书，与 docs/design/06_timeseries.md 同步维护。
@@ -21,11 +20,17 @@ docstring = agent 使用说明书，与 docs/design/06_timeseries.md 同步维�
     trend_analysis("samples/timeseries.csv", date_col="date", value_col="value")
 """
 import math
+
 import numpy as np
-import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table, _prepare_series
+from statlab_mcp.tools._common import (
+    DataLabError,
+    _prepare_series,
+    err,
+    ok,
+    read_table,
+)
 
 _MIN_N = 8
 _MAX_PAIRS = 50000
@@ -108,7 +113,7 @@ def trend_analysis(file_path: str, date_col: str, value_col: str,
         return ok(result, summary)
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

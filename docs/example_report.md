@@ -26,7 +26,7 @@
 - **回归**：R²=0.093（调整后），即 age+score 只解释收入变化的 9.3%
   [来源: linear_regression.r_squared]；系数：age β=49.90（p=0.034）、
   score β=4.82（p=0.878）[来源: linear_regression.coefficients]
-- **图**：图 1 相关热力图（`C:\dsh工作文件夹\statlab-mcp\reports\plots\plot_heatmap_all_20260826_031536.png`）
+- **图**：图 1 相关热力图（`reports/plots/20260826/plot_heatmap_all_*.png（以当日实际生成为准）`）
   [来源: plot_heatmap.__image__]
 
 ## 4. 结论

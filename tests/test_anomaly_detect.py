@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_anomaly_detect.py —— 工具 20 测试（规范 10）。
 
 独立性：注入已知 spike（+10σ）后三种方法都应检出的语义核验；
@@ -10,7 +9,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -117,7 +115,7 @@ def test_json_safe_and_deterministic():
 
 def test_anomaly_output_truncated():
     """红队 B B2：异常输出截断 100 条 + truncated 标记。"""
-    rng = np.random.default_rng(9)
+    np.random.default_rng(9)
     n = 500
     dates = pd.date_range("2025-01-01", periods=n).strftime("%Y-%m-%d")
     # 剧烈振荡数据 + 低阈值 -> 大量异常

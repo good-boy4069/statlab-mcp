@@ -1,17 +1,20 @@
-# -*- coding: utf-8 -*-
 """plot_scatter —— 可视化组 · 散点图（工具 21，核心实现）。
 
 生成 x-y 散点图，图上标注 Pearson r 与样本量；缺失按成对剔除并报数。
 图协议走 _common.save_plot（附录 D）；返回顶层 __image__ 绝对路径。
 """
-from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
 from statlab_mcp.tools._common import (
-    CJK_FONT_OK, DataLabError, err, ok, read_table, save_plot,
+    CJK_FONT_OK,
+    DataLabError,
+    err,
+    ok,
+    read_table,
+    save_plot,
 )
 
 
@@ -25,7 +28,7 @@ def plot_scatter(file_path: str, x_col: str, y_col: str) -> dict:
             if not pd.api.types.is_numeric_dtype(df[c]):
                 raise DataLabError(f"列 {c} 不是数值列，无法画散点图")
         m = df[[x_col, y_col]].dropna()
-        n = int(len(m))
+        n = len(m)
         if n == 0:
             raise DataLabError(f"列 {x_col}/{y_col} 无有效数据（成对剔除后为空）")
         dropped = int(len(df) - n)
@@ -56,7 +59,7 @@ def plot_scatter(file_path: str, x_col: str, y_col: str) -> dict:
         return res
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """outlier_detect —— 数据探查组 · 异常值检测（工具 5，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/02_data_exploration_batch2.md 同步维护。
@@ -19,14 +18,19 @@ docstring = agent 使用说明书，与 docs/design/02_data_exploration_batch2.m
 示例:
     outlier_detect("samples/dirty.csv")
 """
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
 from statlab_mcp.tools._common import (
-    CJK_FONT_OK, DataLabError, err, ok, read_table, save_plot,
+    CJK_FONT_OK,
+    DataLabError,
+    err,
+    ok,
+    read_table,
+    save_plot,
 )
 
 IQR_K = 1.5
@@ -34,7 +38,7 @@ MIN_N = 4
 MAX_OUTLIERS_PER_COL = 100
 
 
-def _detect_col(s: pd.Series) -> Dict[str, Any]:
+def _detect_col(s: pd.Series) -> dict[str, Any]:
     """单列 IQR 检测：返回边界、异常行号（0 基，原行序）与数值。"""
     valid = s.dropna()
     n = int(valid.size)
@@ -60,7 +64,7 @@ def _detect_col(s: pd.Series) -> Dict[str, Any]:
     }
 
 
-def _plot_boxplot(df: pd.DataFrame, cols: List[str], columns: Dict[str, Any]) -> Any:
+def _plot_boxplot(df: pd.DataFrame, cols: list[str], columns: dict[str, Any]) -> Any:
     """并列箱线图：异常值红色 scatter；无中文字体时自动切换英文标题（降级约定）。"""
     fig, ax = plt.subplots(figsize=(max(6.0, 1.4 * len(cols)), 4.2))
     data = [df[c].dropna().to_numpy() for c in cols]
@@ -129,7 +133,7 @@ def outlier_detect(file_path: str, method: str = "iqr") -> dict:
         return res
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

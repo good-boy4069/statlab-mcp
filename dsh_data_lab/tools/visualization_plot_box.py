@@ -1,17 +1,20 @@
-# -*- coding: utf-8 -*-
 """plot_box —— 可视化组 · 箱线图（工具 25，核心实现）。
 
 单列箱线图：图上标五数概括（min/q1/中位/q3/max）与 IQR 异常数（同 outlier_detect 口径，
 但仅单列、无异常点导出表——异常定位请用工具 5）。
 """
-from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
 from statlab_mcp.tools._common import (
-    CJK_FONT_OK, DataLabError, err, ok, read_table, save_plot,
+    CJK_FONT_OK,
+    DataLabError,
+    err,
+    ok,
+    read_table,
+    save_plot,
 )
 
 MIN_N = 4
@@ -39,10 +42,9 @@ def plot_box(file_path: str, column: str) -> dict:
             iqr = q3 - q1
             lo, hi = q1 - 1.5 * iqr, q3 + 1.5 * iqr
             arr = v.to_numpy(dtype=float)
-            if iqr == 0:
-                n_outliers = 0                      # 常量列无异常（同 outlier_detect）
-            else:
-                n_outliers = int(np.sum((arr < lo) | (arr > hi)))
+            # 常数列（iqr=0）无异常（同 outlier_detect）
+            n_outliers = (0 if iqr == 0
+                          else int(np.sum((arr < lo) | (arr > hi))))
         else:
             lo = hi = None
 
@@ -73,7 +75,7 @@ def plot_box(file_path: str, column: str) -> dict:
         return res
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """confidence_interval —— 统计推断组 · 置信区间（工具 10，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/03_inference_batch1.md 同步维护。
@@ -20,7 +19,7 @@ docstring = agent 使用说明书，与 docs/design/03_inference_batch1.md 同�
     confidence_interval("samples/clean.csv", column="income", confidence=0.90,
                         method="bootstrap_median")
 """
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -59,7 +58,7 @@ def confidence_interval(file_path: str, column: str, confidence: float = 0.95,
             t_crit = float(sps.t.ppf(1 - alpha / 2, n - 1))
             margin = t_crit * se
             ci_lower, ci_upper = mean - margin, mean + margin
-            result: Dict[str, Any] = {
+            result: dict[str, Any] = {
                 "method": method, "confidence": confidence, "n": n,
                 "point_estimate": mean, "estimate_type": "mean",
                 "ci_lower": ci_lower, "ci_upper": ci_upper,
@@ -96,7 +95,7 @@ def confidence_interval(file_path: str, column: str, confidence: float = 0.95,
         return ok(result, summary)
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

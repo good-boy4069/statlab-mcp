@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """seasonal_decompose —— 时序组 · 季节分解（工具 18，简化实现）。
 
 docstring = agent 使用说明书，与 docs/design/06_timeseries.md 同步维护。
@@ -18,16 +17,20 @@ docstring = agent 使用说明书，与 docs/design/06_timeseries.md 同步维�
 示例:
     seasonal_decompose("samples/timeseries.csv", date_col="date", value_col="value")
 """
-from typing import Any, Dict, Optional
 
 import numpy as np
-import pandas as pd
-from statsmodels.tsa.seasonal import seasonal_decompose as sm_decompose
 from matplotlib import pyplot as plt
+from statsmodels.tsa.seasonal import seasonal_decompose as sm_decompose
 
 from statlab_mcp.tools._common import (
-    CJK_FONT_OK, DataLabError, _estimate_period, _prepare_series,
-    err, ok, read_table, save_plot,
+    CJK_FONT_OK,
+    DataLabError,
+    _estimate_period,
+    _prepare_series,
+    err,
+    ok,
+    read_table,
+    save_plot,
 )
 
 MIN_N = 15
@@ -35,7 +38,7 @@ _MODELS = {"additive", "multiplicative", "auto"}
 
 
 def seasonal_decompose(file_path: str, date_col: str, value_col: str,
-                       period: Optional[int] = None, model: str = "auto") -> dict:
+                       period: int | None = None, model: str = "auto") -> dict:
     """时间序列分解：趋势 + 季节 + 残差（含周期自动估计与 4 子图）。"""
     try:
         if model not in _MODELS:
@@ -98,7 +101,8 @@ def seasonal_decompose(file_path: str, date_col: str, value_col: str,
         # ---- 图（4 子图）----
         t = yv.index
         fig, axes = plt.subplots(4, 1, figsize=(9, 8), sharex=True)
-        axes[0].plot(t, yv.values, lw=0.8); axes[0].set_title("原值" if CJK_FONT_OK else "Observed")
+        axes[0].plot(t, yv.values, lw=0.8)
+        axes[0].set_title("原值" if CJK_FONT_OK else "Observed")
         axes[1].plot(t, trend.values, lw=0.8, color="C1")
         axes[1].set_title("趋势" if CJK_FONT_OK else "Trend")
         axes[2].plot(t, season.values, lw=0.8, color="C2")
@@ -132,7 +136,7 @@ def seasonal_decompose(file_path: str, date_col: str, value_col: str,
         return res
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

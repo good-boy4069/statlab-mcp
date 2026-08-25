@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_normality_test.py —— 工具 9 测试（规范 10）。
 
 独立性：skew 用测试内手写 Fisher 修正公式对照（Excel SKEW 同式，可人工复核）；
@@ -50,7 +49,9 @@ def test_clean_score_normal():
 
 def test_skew_matches_describe():
     """与 describe_statistics 同一口径（互验一致性）。"""
-    from statlab_mcp.tools.data_exploration_describe_statistics import describe_statistics
+    from statlab_mcp.tools.data_exploration_describe_statistics import (
+        describe_statistics,
+    )
     d = describe_statistics(str(SAMPLES / "clean.csv"))["result"]["columns"]["score"]
     r = _call(SAMPLES / "clean.csv", column="score")
     assert r["result"]["skew"] == pytest.approx(d["skew"], abs=1e-12)

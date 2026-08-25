@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """公共基础模块（规范 7.8，先于工具 1 实现）：25 个工具唯一的基础依赖，禁止各自重新实现。
 
 包含七个函数：read_table / check_file / ok / err / save_plot / to_jsonable / validate_columns。
@@ -17,9 +16,10 @@ import math
 import os
 import re
 import sys
+from collections.abc import Iterable
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -49,10 +49,11 @@ if not logger.handlers:                     # 日志 -> stderr（红队 I3：审
     logger.setLevel(logging.INFO)
 
 # ---- matplotlib：Agg 后端必须先行（附录 D 第 3 条），再探测中文字体 ----
-import matplotlib  # noqa: E402
+import matplotlib
+
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-from matplotlib import font_manager  # noqa: E402
+import matplotlib.pyplot as plt
+from matplotlib import font_manager
 
 _CJK_CANDIDATES = ["Microsoft YaHei", "SimHei"]
 CJK_FONT_OK = any(f.name in _CJK_CANDIDATES for f in font_manager.fontManager.ttflist)
@@ -91,7 +92,9 @@ def check_file(file_path: str) -> dict[str, Any]:
         raise DataLabError(f"文件不存在或不可访问: {os.path.basename(path)}")
     size = os.path.getsize(path)
     if size > MAX_FILE_BYTES:
-        raise DataLabError(f"文件过大（{size / 1024 / 1024:.1f}MB），超过 {MAX_FILE_BYTES // 1024 // 1024}MB 上限，请拆分后重试")
+        limit_mb = MAX_FILE_BYTES // 1024 // 1024
+        raise DataLabError(
+            f"文件过大（{size / 1024 / 1024:.1f}MB），超过 {limit_mb}MB 上限，请拆分后重试")
     ext = os.path.splitext(path)[1].lower().lstrip(".")   # 红队 A B2：重构时丢失的定义
     rows_est = None
     if ext == "xlsx":
@@ -105,14 +108,14 @@ def check_file(file_path: str) -> dict[str, Any]:
         except DataLabError:
             raise
         except Exception:
-            raise DataLabError("Excel 文件损坏或无法打开，请另存为 .xlsx 后重试")
+            raise DataLabError("Excel 文件损坏或无法打开，请另存为 .xlsx 后重试") from None
         try:
             from openpyxl import load_workbook
             wb = load_workbook(path, read_only=True)
             rows_est = wb.active.max_row
             wb.close()
         except Exception:
-            raise DataLabError("Excel 文件损坏或无法打开，请另存为 .xlsx 后重试")
+            raise DataLabError("Excel 文件损坏或无法打开，请另存为 .xlsx 后重试") from None
         if rows_est is not None and rows_est > MAX_ROWS:
             raise DataLabError(f"Excel 预估 {rows_est} 行，超过 200 万行上限，请抽样后重试")
     elif size > WARN_FILE_BYTES:
@@ -159,22 +162,22 @@ def read_table(file_path: str) -> pd.DataFrame:
                 with open(path, encoding="utf-8-sig") as f:
                     raw = f.read()
             except UnicodeDecodeError:
-                raise DataLabError("JSON 文件编码无法识别（仅支持 UTF-8），请另存为 UTF-8 后重试")
+                raise DataLabError("JSON 文件编码无法识别（仅支持 UTF-8），请另存为 UTF-8 后重试") from None
             try:
                 df = pd.read_json(io.StringIO(raw))
             except ValueError:
-                raise DataLabError("JSON 文件不是表格结构（需记录数组或 records 形式）")
+                raise DataLabError("JSON 文件不是表格结构（需记录数组或 records 形式）") from None
         else:  # xlsx
             df = pd.read_excel(path, sheet_name=0, engine="openpyxl")
     except DataLabError:
         raise
     except pd.errors.EmptyDataError:
-        raise DataLabError("文件为空或无可读数据")
+        raise DataLabError("文件为空或无可读数据") from None
     except UnicodeDecodeError:
-        raise DataLabError("文件编码无法识别，请另存为 UTF-8 后重试")
-    except Exception as e:
+        raise DataLabError("文件编码无法识别，请另存为 UTF-8 后重试") from None
+    except Exception:
         logger.exception("read_table 解析失败（内部详情仅留 stderr，红队 I3）")
-        raise DataLabError("文件解析失败，请检查文件内容与格式")
+        raise DataLabError("文件解析失败，请检查文件内容与格式") from None
     if df.empty:
         raise DataLabError("文件为空或无可读数据")
     mem = int(df.memory_usage(deep=True).sum())
@@ -236,7 +239,7 @@ def validate_columns(df: pd.DataFrame, required: Iterable[str]) -> None:
         raise DataLabError(f"缺少必需列: {', '.join(missing)}；实际列: {list(df.columns)}")
 
 
-def _estimate_period(y: pd.Series) -> Optional[int]:
+def _estimate_period(y: pd.Series) -> int | None:
     """时序周期自动估计（FFT 主频法，设计文档 06 口径 2）。
 
     去线性趋势 -> rfft 幅度 -> 排除 DC 与 Nyquist -> 最大幅度对应频率的周期；
@@ -254,7 +257,7 @@ def _estimate_period(y: pd.Series) -> Optional[int]:
     i = int(np.argmax(spec))
     if spec[i] <= 0 or freqs[i] <= 0:
         return None
-    period = int(round(1.0 / freqs[i]))
+    period = round(1.0 / freqs[i])
     return period if 2 <= period <= n // 2 else None
 
 

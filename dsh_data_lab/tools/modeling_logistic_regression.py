@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """logistic_regression —— 建模组 · 逻辑回归（工具 13，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/05_modeling.md 同步维护。
@@ -21,13 +20,12 @@ docstring = agent 使用说明书，与 docs/design/05_modeling.md 同步维护�
     logistic_regression("tests/fixtures/binary_noisy.csv", target="label", features=["score"])
 """
 import warnings
-from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
-from statsmodels.api import Logit, add_constant
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
+from statsmodels.api import Logit, add_constant
 
 from statlab_mcp.tools._common import DataLabError, err, ok, read_table
 
@@ -48,7 +46,7 @@ def _auc_ci_hanley(auc: float, n_pos: int, n_neg: int) -> tuple:
     return float(max(lo, 0.0)), float(min(hi, 1.0))
 
 
-def logistic_regression(file_path: str, target: str, features: List[str],
+def logistic_regression(file_path: str, target: str, features: list[str],
                         test_size: float = 0.3, random_state: int = 42,
                         class_weight: str = "balanced") -> dict:
     """二分类逻辑回归：类别分布/acc/混淆矩阵/AUC-CI/OR 与 p。"""
@@ -70,8 +68,8 @@ def logistic_regression(file_path: str, target: str, features: List[str],
             if not pd.api.types.is_numeric_dtype(df[f]):
                 raise DataLabError(f"特征 {f} 不是数值列（本工具不做 one-hot）")
 
-        m = df[[target] + features].dropna()
-        n_all = int(len(m))
+        m = df[[target, *features]].dropna()
+        len(m)
         labels = m[target].dropna()
         uniq = sorted(labels.unique().tolist())
         if len(uniq) < 2:
@@ -87,7 +85,7 @@ def logistic_regression(file_path: str, target: str, features: List[str],
             X_tr, X_te, y_tr, y_te = train_test_split(
                 X, y, test_size=test_size, random_state=random_state, stratify=y)
         except ValueError:
-            raise DataLabError("类别样本过少，无法分层划分，请增大样本或合并类别")
+            raise DataLabError("类别样本过少，无法分层划分，请增大样本或合并类别") from None
         n_tr0 = int(np.sum(y_tr == 0))
         n_tr1 = int(np.sum(y_tr == 1))
         if n_tr0 < 2 or n_tr1 < 2:
@@ -96,15 +94,11 @@ def logistic_regression(file_path: str, target: str, features: List[str],
         # ---- class_weight：少数类确定性复制（如实披露）----
         copied = 0
         if class_weight == "balanced" and n_tr0 != n_tr1:
-            if n_tr0 > n_tr1:
-                minor = (X_tr[y_tr == 1], y_tr[y_tr == 1])
-                big_n = n_tr0
-            else:
-                minor = (X_tr[y_tr == 0], y_tr[y_tr == 0])
-                big_n = n_tr1
+            minor = ((X_tr[y_tr == 1], y_tr[y_tr == 1]) if n_tr0 > n_tr1
+                     else (X_tr[y_tr == 0], y_tr[y_tr == 0]))
             n_train_tot = n_tr0 + n_tr1
             w = n_train_tot / (2 * minor[1].size)    # sklearn balanced 口径：n/(2*类计数)
-            copies = max(0, int(round(w)) - 1)
+            copies = max(0, round(w) - 1)
             if copies > 0:
                 rng = np.random.default_rng(random_state)      # 局部固定：复制顺序恒定
                 idx = rng.integers(0, minor[1].size, size=copies * minor[1].size)
@@ -121,7 +115,7 @@ def logistic_regression(file_path: str, target: str, features: List[str],
             try:
                 res = model.fit(disp=False)
             except Exception:
-                raise DataLabError("Logit 拟合失败（可能存在完全共线特征）")
+                raise DataLabError("Logit 拟合失败（可能存在完全共线特征）") from None
         conv_msg = None
         for w in wlist:
             text = str(w.message)
@@ -129,9 +123,9 @@ def logistic_regression(file_path: str, target: str, features: List[str],
                     or "perfect" in text.lower()):
                 conv_msg = "存在完美可分特征，系数不稳定（分离现象）；OR 值可能极端"
                 break
-        if conv_msg is None and getattr(res, "mle_retvals", None) is not None:
-            if res.mle_retvals.get("converged") is False:
-                conv_msg = "存在完美可分特征，系数不稳定（分离现象）；OR 值可能极端"
+        if conv_msg is None and getattr(res, "mle_retvals", None) is not None \
+                and res.mle_retvals.get("converged") is False:
+            conv_msg = "存在完美可分特征，系数不稳定（分离现象）；OR 值可能极端"
 
         params = res.params
         pvalues = res.pvalues
@@ -158,10 +152,7 @@ def logistic_regression(file_path: str, target: str, features: List[str],
         acc = float(np.mean(pred == y_te))
         n_pos_test = int(np.sum(y_te == 1))
         n_neg_test = int(np.sum(y_te == 0))
-        if n_pos_test >= 1 and n_neg_test >= 1:
-            auc = float(roc_auc_score(y_te, prob))
-        else:
-            auc = None
+        auc = float(roc_auc_score(y_te, prob)) if n_pos_test >= 1 and n_neg_test >= 1 else None
         if auc is None:
             auc_ci = (None, None)
         elif auc == 1.0:
@@ -193,8 +184,8 @@ def logistic_regression(file_path: str, target: str, features: List[str],
             "auc_ci_lower": auc_ci[0], "auc_ci_upper": auc_ci[1],
             "auc_ci_method": "Hanley-McNeil 正态近似",
             "odds_ratios": ors,
-            "n_train_after_weight": int(len(y_tr)), "copied_rows": copied,
-            "n_test": int(len(y_te)),
+            "n_train_after_weight": len(y_tr), "copied_rows": copied,
+            "n_test": len(y_te),
             "label_mapping": label_mapping,
             "convergence_warning": conv_msg,
             "class_weight_note": f"balanced 以少数类复制实现（复制 {copied} 行）" if copied
@@ -203,7 +194,7 @@ def logistic_regression(file_path: str, target: str, features: List[str],
         return ok(result, summary)
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

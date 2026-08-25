@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """pca_analysis —— 建模组 · 主成分分析（工具 15，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/05_modeling.md 同步维护。
@@ -17,16 +16,21 @@ docstring = agent 使用说明书，与 docs/design/05_modeling.md 同步维护�
 示例:
     pca_analysis("samples/clean.csv", n_components=2)
 """
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-from matplotlib import pyplot as plt
 
 from statlab_mcp.tools._common import (
-    CJK_FONT_OK, DataLabError, err, ok, read_table, save_plot,
+    CJK_FONT_OK,
+    DataLabError,
+    err,
+    ok,
+    read_table,
+    save_plot,
 )
 
 
@@ -41,7 +45,7 @@ def pca_analysis(file_path: str, n_components: int) -> dict:
         excluded = [c for c in df.columns if c not in numeric_cols]
         if not numeric_cols:
             raise DataLabError("未找到数值列，无法做主成分分析")
-        n_samples = int(len(df))
+        n_samples = len(df)
         n_features = len(numeric_cols)
         k_max = min(n_samples, n_features)
         if not (1 <= n_components <= k_max):
@@ -60,7 +64,7 @@ def pca_analysis(file_path: str, n_components: int) -> dict:
             cum.append(acc)
         # 载荷反标准化：成分向量 × 特征标准差（原单位近似权重）
         stds = scaler.scale_
-        loadings: List[Dict[str, Any]] = []
+        loadings: list[dict[str, Any]] = []
         for i in range(n_components):
             for j, col in enumerate(numeric_cols):
                 loadings.append({
@@ -78,8 +82,8 @@ def pca_analysis(file_path: str, n_components: int) -> dict:
         ax1.set_xlabel("主成分" if CJK_FONT_OK else "Component")
         ax1.set_ylabel("比例" if CJK_FONT_OK else "Ratio")
         if n_components >= 2:
-            pc1 = {l["feature"]: l["loading"] for l in loadings if l["component"] == 1}
-            pc2 = {l["feature"]: l["loading"] for l in loadings if l["component"] == 2}
+            pc1 = {ld["feature"]: ld["loading"] for ld in loadings if ld["component"] == 1}
+            pc2 = {ld["feature"]: ld["loading"] for ld in loadings if ld["component"] == 2}
             feats = numeric_cols
             ax2.bar(feats, [pc1[f] for f in feats], alpha=0.6, label="PC1")
             ax2.bar(feats, [pc2[f] for f in feats], alpha=0.6, label="PC2")
@@ -96,9 +100,9 @@ def pca_analysis(file_path: str, n_components: int) -> dict:
         # ---- 结论（模板）----
         top_note = []
         if n_components >= 1:
-            pc_top = sorted((l for l in loadings if l["component"] == 1),
+            pc_top = sorted((ld for ld in loadings if ld["component"] == 1),
                             key=lambda x: -abs(x["loading"]))[:3]
-            top_note = "、".join(f"{l['feature']}({l['loading']:.2f})" for l in pc_top)
+            top_note = "、".join(f"{ld['feature']}({ld['loading']:.2f})" for ld in pc_top)
         single_note = "；单特征数据，PCA 无降维意义（仅供参考）" if n_features == 1 else ""
         conclusion = (f"前 {n_components} 个主成分累计解释 {cum[-1]:.1%} 方差；"
                       f"PC1 主要载荷：{top_note}；主成分是特征线性组合，不等于业务因子{single_note}")
@@ -120,7 +124,7 @@ def pca_analysis(file_path: str, n_components: int) -> dict:
         return res
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

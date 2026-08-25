@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """里程碑 1 冒烟测试：官方 SDK 最小 client 走 stdio 完整协议调用真实工具（留档用）。
 
 运行：.venv\\Scripts\\python.exe tests\\smoke_stdio.py
@@ -15,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from mcp import ClientSession  # mcp 2.x 顶层导出
-from mcp.client.stdio import stdio_client, StdioServerParameters
+from mcp.client.stdio import StdioServerParameters, stdio_client
 
 SERVER = str(ROOT / "statlab_mcp" / "server.py")
 
@@ -29,10 +28,11 @@ async def main() -> None:
         cwd=str(ROOT),
         env={**os.environ, "PYTHONUTF8": "1"},
     )
-    async with stdio_client(params) as (read, write):
-        async with ClientSession(read, write) as session:
+    async with stdio_client(params) as (read, write), \
+            ClientSession(read, write) as session:
             init = await session.initialize()
-            print(f"[SMOKE] initialize ok: server={init.server_info.name} {init.server_info.version}")  # 2.x 属性名 server_info
+            print(f"[SMOKE] initialize ok: server={init.server_info.name} "
+                  f"{init.server_info.version}")  # 2.x 属性名 server_info
             tools = await session.list_tools()
             names = sorted(t.name for t in tools.tools)
             print(f"[SMOKE] tools({len(names)}): {names}")

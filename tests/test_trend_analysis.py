@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_trend_analysis.py —— 工具 19 测试（规范 10）。
 
 独立性：Theil-Sen 斜率手算硬编码（小样本点对枚举，Excel 可复核）；

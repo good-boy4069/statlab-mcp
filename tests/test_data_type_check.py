@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_data_type_check.py —— 工具 2 测试（规范 10）。
 
 独立性：类型判定为确定性规则，期望值来自 pandas 官方语义与人工检查表
@@ -9,7 +8,6 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 

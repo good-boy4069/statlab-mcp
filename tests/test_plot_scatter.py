@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_plot_scatter.py —— 工具 21 测试。
 独立性：r 与 correlation_matrix 实测值交叉核对；图文件存在性断言。
 """
@@ -6,7 +5,6 @@ import json
 import sys
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -22,7 +20,9 @@ def test_clean_scatter_r_cross_check():
     assert r["status"] == "ok", r.get("message")
     rs = r["result"]
     assert rs["n"] == 50 and rs["dropped_rows"] == 0
-    from statlab_mcp.tools.data_exploration_correlation_matrix import correlation_matrix
+    from statlab_mcp.tools.data_exploration_correlation_matrix import (
+        correlation_matrix,
+    )
     cm = correlation_matrix(str(SAMPLES / "clean.csv"))["result"]["correlation"]
     assert rs["pearson_r"] == pytest.approx(cm["age"]["income"], abs=1e-12)
     img = Path(r["__image__"])

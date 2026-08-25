@@ -21,7 +21,7 @@
 ## 参数表
 | 参数名 | 类型 | 默认值 | 校验规则 | 例子 |
 |---|---|---|---|---|
-| file_path | str | 必填 | 本地 csv/tsv/xlsx/json；拒绝 UNC/空串 | `"C:\\data\\clean.csv"` |
+| file_path | str | 必填 | 本地 csv/tsv/xlsx/json；拒绝 UNC/空串 | `"data/clean.csv"` |
 | method | str | "pearson" | ∈ {pearson, spearman, kendalltau}；非法值报中文错误 | `method="spearman"` |
 | p_adjust | str | "fdr_bh" | ∈ {none, bonferroni, fdr_bh}；非法值报中文错误 | `p_adjust="none"` |
 
@@ -97,7 +97,7 @@
 ## 参数表
 | 参数名 | 类型 | 默认值 | 校验规则 | 例子 |
 |---|---|---|---|---|
-| file_path | str | 必填 | 本地 csv/tsv/xlsx/json；拒绝 UNC/空串 | `"C:\\data\\dirty.csv"` |
+| file_path | str | 必填 | 本地 csv/tsv/xlsx/json；拒绝 UNC/空串 | `"data/dirty.csv"` |
 | method | str | "iqr" | 仅 {iqr}（规格 4 唯一定义；zscore 留待时序组 rolling_zscore 场景），非法值报中文错误 | `method="iqr"` |
 
 ## 统计口径（钉死）
@@ -127,7 +127,7 @@
       "value": {"n_outliers": 0, "lower_bound": 30.3, "upper_bound": 64.1, "outlier_indices": [], "outlier_values": []}
     }
   },
-  "__image__": "C:\\dsh工作文件夹\\statlab-mcp\\reports\\plots\\outlier_detect_all_20260826_123456.png",
+  "__image__": "<PROJECT_ROOT>\\reports\\plots\\outlier_detect_all_20260826_123456.png",
   "summary": "共发现 1 个异常值（extreme 列 1 个：1e9）；异常值仅报告不剔除；箱线图已保存"
 }
 ```
@@ -171,3 +171,4 @@
 - ⑦ 参数风格一致：均 file_path 首位；method 均有枚举校验与中文报错，与批 1 一致
 - ⑧ 与已确认组无重叠：correlation 与 describe（分布数字）互补不重复；outlier 与 missing（缺失）不同维度；与推断组 hypothesis/effect_size 无重叠（本组不做检验假设）
 - ⑨ 统计方法使用条件写明：pearson 需线性关系+近似连续正态（spearman 为秩相关备选）；IQR 法对偏态分布稳健但对小样本（n<4）无定义——均已写明并落入边界表
+

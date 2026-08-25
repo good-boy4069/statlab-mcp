@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """normality_test —— 统计推断组 · 正态性检验（工具 9，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/03_inference_batch1.md 同步维护。
@@ -20,9 +19,7 @@ docstring = agent 使用说明书，与 docs/design/03_inference_batch1.md 同�
 示例:
     normality_test("samples/clean.csv", column="score")
 """
-from typing import Any, Dict
 
-import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
@@ -90,7 +87,7 @@ def normality_test(file_path: str, column: str, method: str = "auto") -> dict:
         return ok(result, summary)
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

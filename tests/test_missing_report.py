@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_missing_report.py —— 工具 3 测试（规范 10）。
 
 独立性：总缺失/缺失率期望值来自 fixtures 生成脚本的人工检查表
@@ -8,7 +7,6 @@ import json
 import sys
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_cluster_analysis.py —— 工具 14 测试（规范 10）。
 
 独立性：反标准化质心 = 原空间簇均值（KMeans 数学性质，手算每组均值核对）；

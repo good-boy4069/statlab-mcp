@@ -1,17 +1,19 @@
-# -*- coding: utf-8 -*-
 """plot_histogram —— 可视化组 · 直方图（工具 22，核心实现）。
 
 单列分布直方图，图上标 n/mean/std；分箱 = min(40, max(8, ceil(sqrt(n))))。
 """
 import math
-from typing import Any, Dict
 
-import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
 from statlab_mcp.tools._common import (
-    CJK_FONT_OK, DataLabError, err, ok, read_table, save_plot,
+    CJK_FONT_OK,
+    DataLabError,
+    err,
+    ok,
+    read_table,
+    save_plot,
 )
 
 
@@ -29,7 +31,7 @@ def plot_histogram(file_path: str, column: str) -> dict:
             raise DataLabError(f"至少需要 2 个有效值，当前 {n}")
         n_missing = int(len(df) - n)
         mean, std = float(v.mean()), float(v.std(ddof=1))
-        bins = min(40, max(8, int(math.ceil(math.sqrt(n)))))
+        bins = min(40, max(8, math.ceil(math.sqrt(n))))
 
         fig, ax = plt.subplots(figsize=(6.5, 4.2))
         ax.hist(v.to_numpy(dtype=float), bins=bins, edgecolor="white", color="#4C72B0")
@@ -49,7 +51,7 @@ def plot_histogram(file_path: str, column: str) -> dict:
         return res
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

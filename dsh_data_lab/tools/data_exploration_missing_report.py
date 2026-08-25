@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """missing_report —— 数据探查组 · 缺失报告（工具 3，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/01_data_exploration_batch1.md 同步维护。
@@ -21,9 +20,7 @@ patterns 最多 10 条，按缺失行数降序；无缺失时 patterns=[]。
 示例:
     missing_report("samples/dirty.csv")
 """
-from typing import Any, Dict, List
-
-import pandas as pd
+from typing import Any
 
 from statlab_mcp.tools._common import DataLabError, err, ok, read_table
 
@@ -35,14 +32,14 @@ def missing_report(file_path: str) -> dict:
     """输出各列缺失数量/缺失率与缺失模式（单列/成对/全缺失）。"""
     try:
         df = read_table(file_path)
-        n_rows = int(len(df))
+        n_rows = len(df)
         n_columns = int(df.shape[1])
         mask = df.isna()
         per_col = mask.sum()
 
         total_missing = int(mask.to_numpy().sum())
         overall_rate = total_missing / float(n_rows * n_columns) if n_rows * n_columns else 0.0
-        columns: Dict[str, Any] = {
+        columns: dict[str, Any] = {
             c: {"n_missing": int(per_col[c]), "missing_rate": float(per_col[c]) / n_rows}
             for c in df.columns
         }
@@ -51,7 +48,7 @@ def missing_report(file_path: str) -> dict:
 
         # 缺失模式：单列（全缺失列注记）+ 成对（同时缺失行数），行数降序取前 10
         missing_cols = [c for c in df.columns if per_col[c] > 0]
-        patterns: List[Dict[str, Any]] = []
+        patterns: list[dict[str, Any]] = []
         for c in missing_cols:
             r = int(per_col[c])
             patterns.append({"columns": [c], "rows": r,
@@ -72,9 +69,9 @@ def missing_report(file_path: str) -> dict:
             keep_rows = [c for c in df.columns if columns[c]["n_missing"] > 0]
             high = [c for c in keep_rows if columns[c]["missing_rate"] >= HIGH_RATE]
             parts = [
-                f"共 {n_rows} 行 {n_columns} 列，总缺失 {total_missing} 个"
+                (f"共 {n_rows} 行 {n_columns} 列，总缺失 {total_missing} 个"
                 f"（缺失率 {overall_rate:.1%}）；"
-                f"完整行 {complete_rows} 行（{complete_rows / n_rows:.1%}）"
+                f"完整行 {complete_rows} 行（{complete_rows / n_rows:.1%}）")
             ]
             if high:
                 parts.append(f"高缺失列（≥{HIGH_RATE:.0%}）：{', '.join(high)}")
@@ -93,7 +90,7 @@ def missing_report(file_path: str) -> dict:
         return ok(result, summary)
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

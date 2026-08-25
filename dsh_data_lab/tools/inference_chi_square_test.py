@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """chi_square_test —— 统计推断组 · 卡方独立性检验（工具 8，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/04_inference_batch2.md 同步维护。
@@ -20,7 +19,7 @@ docstring = agent 使用说明书，与 docs/design/04_inference_batch2.md 同�
 示例:
     chi_square_test("samples/clean.csv", col_a="category", col_b="category")
 """
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -89,7 +88,7 @@ def chi_square_test(file_path: str, col_a: str, col_b: str) -> dict:
             or_val, p_val = sps.fisher_exact(obs, alternative="two-sided")
             test_used = "fisher_exact"
             statistic = float(or_val)
-            df_val: Optional[int] = None
+            df_val: int | None = None
             p_value = float(p_val)
         else:
             test_used = "chi_square"
@@ -134,7 +133,7 @@ def chi_square_test(file_path: str, col_a: str, col_b: str) -> dict:
         return ok(result, summary)
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

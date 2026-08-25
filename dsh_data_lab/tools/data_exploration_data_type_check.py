@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """data_type_check —— 数据探查组 · 列类型识别（工具 2，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/01_data_exploration_batch1.md 同步维护。
@@ -30,7 +29,7 @@ category/text 处理）:
     data_type_check("samples/dirty.csv")
 """
 import warnings
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -45,7 +44,7 @@ def _fmt_example(v: Any) -> str:
     return str(v)[:20]
 
 
-def _judge_numeric_col(s: pd.Series) -> Dict[str, Any]:
+def _judge_numeric_col(s: pd.Series) -> dict[str, Any]:
     valid = s.dropna()
     n = int(valid.size)
     if n == 0:
@@ -66,11 +65,11 @@ def _judge_numeric_col(s: pd.Series) -> Dict[str, Any]:
     }
 
 
-def _judge_object_col(s: pd.Series, n_rows: int) -> Dict[str, Any]:
+def _judge_object_col(s: pd.Series, n_rows: int) -> dict[str, Any]:
     valid = s.dropna()
     n = int(valid.size)
     n_missing = n_rows - n
-    out: Dict[str, Any] = {"n_valid": n, "n_missing": n_missing, "dirty_count": 0, "note": None}
+    out: dict[str, Any] = {"n_valid": n, "n_missing": n_missing, "dirty_count": 0, "note": None}
     if n == 0:
         out["detected_type"] = "missing"
         out["note"] = "全缺失列"
@@ -141,15 +140,13 @@ def data_type_check(file_path: str) -> dict:
     """识别每列类型（numeric/integer/category/date/text/mixed/missing）并输出脏数据提示。"""
     try:
         df = read_table(file_path)
-        n_rows = int(len(df))
+        n_rows = len(df)
         columns = {}
         invalid_dates, mixed_cols, missing_cols = [], [], []
         for col in df.columns:
             s = df[col]
-            if pd.api.types.is_numeric_dtype(s):
-                d = _judge_numeric_col(s)
-            else:
-                d = _judge_object_col(s, n_rows)
+            d = (_judge_numeric_col(s) if pd.api.types.is_numeric_dtype(s)
+                 else _judge_object_col(s, n_rows))
             columns[col] = d
             if d["detected_type"] == "missing":
                 missing_cols.append(col)
@@ -159,7 +156,7 @@ def data_type_check(file_path: str) -> dict:
                 invalid_dates.append(col)
 
         # summary 由代码模板拼数字生成
-        type_counts: Dict[str, int] = {}
+        type_counts: dict[str, int] = {}
         for d in columns.values():
             type_counts[d["detected_type"]] = type_counts.get(d["detected_type"], 0) + 1
         parts = [f"共 {n_rows} 行 {df.shape[1]} 列"]
@@ -184,7 +181,7 @@ def data_type_check(file_path: str) -> dict:
         return ok(result, "；".join(parts) + "。")
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

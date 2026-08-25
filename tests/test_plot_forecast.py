@@ -1,12 +1,9 @@
-# -*- coding: utf-8 -*-
 """tests/test_plot_forecast.py —— 工具 24 测试。
 独立性：与工具 17 共用 _prepare_series（插值 3 核数）；仅作图不预测断言。
 """
 import json
 import sys
 from pathlib import Path
-
-import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """linear_regression —— 建模组 · 线性回归（工具 12，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/05_modeling.md 同步维护。
@@ -20,19 +19,22 @@ docstring = agent 使用说明书，与 docs/design/05_modeling.md 同步维护�
     linear_regression("samples/clean.csv", target="income", features=["age"])
     linear_regression("samples/clean.csv", target="score", features=["age", "category"])
 """
-from typing import Any, Dict, List, Optional
 
-import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 from scipy import stats as sps
-from statsmodels.api import add_constant as sm_add_constant  # 别名防参数名遮蔽
 from statsmodels.api import OLS
+from statsmodels.api import add_constant as sm_add_constant  # 别名防参数名遮蔽
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 from statsmodels.stats.stattools import durbin_watson
-from matplotlib import pyplot as plt
 
 from statlab_mcp.tools._common import (
-    CJK_FONT_OK, DataLabError, err, ok, read_table, save_plot,
+    CJK_FONT_OK,
+    DataLabError,
+    err,
+    ok,
+    read_table,
+    save_plot,
 )
 
 
@@ -40,7 +42,7 @@ def _fmt_p(p: float) -> str:
     return "<0.001" if p < 0.001 else f"{p:.4f}"
 
 
-def linear_regression(file_path: str, target: str, features: List[str],
+def linear_regression(file_path: str, target: str, features: list[str],
                       add_constant: bool = True, alpha: float = 0.05) -> dict:
     """OLS 线性回归：系数表、整体拟合、VIF、残差诊断与图。"""
     try:
@@ -60,7 +62,7 @@ def linear_regression(file_path: str, target: str, features: List[str],
             raise DataLabError(f"列 {target} 不是数值列，无法做线性回归")
 
         # ---- one-hot 类别特征 + 设计矩阵 ----
-        dummy_mapping: Dict[str, str] = {}
+        dummy_mapping: dict[str, str] = {}
         parts = []
         for f in features:
             if pd.api.types.is_numeric_dtype(df[f]):
@@ -92,14 +94,14 @@ def linear_regression(file_path: str, target: str, features: List[str],
         # ---- 截距与样本量门槛 ----
         Xd = sm_add_constant(X, has_constant="add") if add_constant else X
         n_cols = int(Xd.shape[1])
-        n_rows = int(len(y))
+        n_rows = len(y)
         if n_rows <= n_cols + 2:
             raise DataLabError(f"样本量不足（n={n_rows} ≤ 特征数+2={n_cols + 2}），无法稳定估计")
 
         model = OLS(y, Xd).fit()
 
         # ---- VIF（不含截距）----
-        vifs: Dict[str, Optional[float]] = {}
+        vifs: dict[str, float | None] = {}
         for i, c in enumerate(Xd.columns):
             if c == "const":
                 vifs[c] = None
@@ -188,7 +190,7 @@ def linear_regression(file_path: str, target: str, features: List[str],
         return res
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

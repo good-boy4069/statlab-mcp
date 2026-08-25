@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """time_series_forecast —— 时序组 · 时间序列预测（工具 17，简化实现）。
 
 docstring = agent 使用说明书，与 docs/design/06_timeseries.md 同步维护。
@@ -19,16 +18,21 @@ docstring = agent 使用说明书，与 docs/design/06_timeseries.md 同步维�
     time_series_forecast("samples/timeseries.csv", date_col="date", value_col="value",
                          horizon=14)
 """
-from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
-from pmdarima import auto_arima
 from matplotlib import pyplot as plt
+from pmdarima import auto_arima
 
 from statlab_mcp.tools._common import (
-    CJK_FONT_OK, DataLabError, _estimate_period, _prepare_series,
-    err, ok, read_table, save_plot,
+    CJK_FONT_OK,
+    DataLabError,
+    _estimate_period,
+    _prepare_series,
+    err,
+    ok,
+    read_table,
+    save_plot,
 )
 
 MIN_N = 15
@@ -64,7 +68,6 @@ def time_series_forecast(file_path: str, date_col: str, value_col: str,
             model_info = {"order": [0, 0, 0], "seasonal_order": None,
                           "seasonal": False, "aic": None}
             method = "CONSTANT"
-            m = None
         else:
             model = auto_arima(
                 yv, seasonal=seasonal, m=int(period) if seasonal else 1,
@@ -82,7 +85,6 @@ def time_series_forecast(file_path: str, date_col: str, value_col: str,
                 "aic": float(model.aic()) if model.aic() is not None else None,
             }
             method = "SARIMA" if model_info["seasonal"] else "ARIMA"
-            m = model
 
         # ---- 图（历史 + 预测 + CI 带）----
         fig, ax = plt.subplots(figsize=(9, 4.2))
@@ -104,7 +106,7 @@ def time_series_forecast(file_path: str, date_col: str, value_col: str,
         last_val = float(y.dropna().iloc[-1])
         f0 = forecast[0]
         meta_out = {k: v for k, v in meta.items() if k != "n_before_resample"}
-        steps_note = (f"；常数列预测退化为均值" if method == "CONSTANT"
+        steps_note = ("；常数列预测退化为均值" if method == "CONSTANT"
                       else f"；{'SARIMA' if seasonal else 'ARIMA'}，AIC={model_info['aic']:.1f}"
                       if model_info["aic"] is not None else "")
         summary = (f"{method}（order={model_info['order']}"
@@ -137,7 +139,7 @@ def time_series_forecast(file_path: str, date_col: str, value_col: str,
         return res
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

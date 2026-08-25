@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 """tests/test_linear_regression.py —— 工具 12 测试（规范 10）。
 
 独立性：精确线性 y=2x+1 硬编码（Excel SLOPE/INTERCEPT 可复核）；R² 与
 correlation_matrix 的 r² 交叉验证（数学恒等 R²=r²，单特征时）。
 """
 import json
-import math
 import sys
 from pathlib import Path
 
@@ -52,7 +50,9 @@ def test_perfect_line_exact_coefficients(tmp_path):
 
 def test_r2_equals_correlation_squared():
     """income~age 单特征：R² = r²（数学恒等；r 来自 correlation_matrix 独立实测）。"""
-    from statlab_mcp.tools.data_exploration_correlation_matrix import correlation_matrix
+    from statlab_mcp.tools.data_exploration_correlation_matrix import (
+        correlation_matrix,
+    )
     cm = correlation_matrix(str(SAMPLES / "clean.csv"))["result"]
     r_val = cm["correlation"]["age"]["income"]
     lr = _call(SAMPLES / "clean.csv", target="income", features=["age"])["result"]
@@ -79,7 +79,9 @@ def test_categorical_one_hot_mapping(tmp_path):
 
 def test_listwise_dropna_reported(tmp_path):
     xs = list(range(1, 21))
-    xs[3] = None; xs[9] = None; xs[15] = None    # 3 个缺失
+    xs[3] = None
+    xs[9] = None
+    xs[15] = None    # 3 个缺失
     p = _csv(tmp_path, x=xs, y=list(range(20)))
     rs = _call(p, target="y", features=["x"])["result"]
     assert rs["dropped_rows"] == 3

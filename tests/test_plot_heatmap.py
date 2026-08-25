@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_plot_heatmap.py —— 工具 23 测试。
 独立性：矩阵与 correlation_matrix 的 r 交叉核对；常量列 r=null；对角=1.0。
 """
@@ -25,7 +24,9 @@ def test_clean_heatmap_cross_check():
     assert rs["excluded_columns"] == ["category", "date"]
     m = rs["matrix"]
     assert m["id"]["id"] == 1.0
-    from statlab_mcp.tools.data_exploration_correlation_matrix import correlation_matrix
+    from statlab_mcp.tools.data_exploration_correlation_matrix import (
+        correlation_matrix,
+    )
     cm = correlation_matrix(str(SAMPLES / "clean.csv"))["result"]["correlation"]
     assert m["age"]["income"] == pytest.approx(cm["age"]["income"], abs=1e-12)
     img = Path(r["__image__"])

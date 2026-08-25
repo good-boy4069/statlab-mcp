@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_confidence_interval.py —— 工具 10 测试（规范 10）。
 
 独立性：mean_t 用 t 分布临界值手算硬编码（Excel =T.INV.2T 可复算）；

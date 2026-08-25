@@ -1,18 +1,22 @@
-# -*- coding: utf-8 -*-
 """plot_heatmap —— 可视化组 · 相关热力图（工具 23，核心实现）。
 
 全部数值列两两 Pearson 相关热力图（格内标 r；常量列对应 r=null）。
 矩阵用 pandas .corr()（与 correlation_matrix 的 scipy pearsonr 同公式），
 本工具不做 p 值与校正（与工具 4 明确分工）。
 """
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
 from statlab_mcp.tools._common import (
-    CJK_FONT_OK, DataLabError, err, ok, read_table, save_plot,
+    CJK_FONT_OK,
+    DataLabError,
+    err,
+    ok,
+    read_table,
+    save_plot,
 )
 
 MAX_COLS = 20
@@ -30,7 +34,7 @@ def plot_heatmap(file_path: str) -> dict:
             raise DataLabError(f"数值列超过 {MAX_COLS} 个，相关矩阵过大，请先挑选列")
 
         corr = df[numeric_cols].corr().to_numpy(dtype=float)
-        n = int(len(df))
+        n = len(df)
 
         fig, ax = plt.subplots(figsize=(max(5.0, 0.9 * len(numeric_cols)),
                                         max(4.0, 0.8 * len(numeric_cols))))
@@ -51,7 +55,7 @@ def plot_heatmap(file_path: str) -> dict:
         fig.tight_layout()
         img = save_plot(fig, "plot_heatmap_all")
 
-        matrix: Dict[str, Dict[str, Any]] = {}
+        matrix: dict[str, dict[str, Any]] = {}
         for i, a in enumerate(numeric_cols):
             matrix[a] = {}
             for j, b in enumerate(numeric_cols):
@@ -67,7 +71,7 @@ def plot_heatmap(file_path: str) -> dict:
         return res
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

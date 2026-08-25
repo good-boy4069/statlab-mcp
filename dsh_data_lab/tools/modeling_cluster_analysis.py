@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """cluster_analysis —— 建模组 · KMeans 聚类（工具 14，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/05_modeling.md 同步维护。
@@ -16,7 +15,7 @@ docstring = agent 使用说明书，与 docs/design/05_modeling.md 同步维护�
 示例:
     cluster_analysis("samples/clean.csv", k=3)
 """
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -44,7 +43,7 @@ def cluster_analysis(file_path: str, k: int) -> dict:
         excluded = [c for c in df.columns if c not in numeric_cols]
         if not numeric_cols:
             raise DataLabError("未找到数值列，无法聚类")
-        n = int(len(df))
+        n = len(df)
         if not (2 <= k <= n - 1):
             raise DataLabError(f"k 必须在 2 到 N-1 之间（样本数 N={n}）")
 
@@ -66,7 +65,7 @@ def cluster_analysis(file_path: str, k: int) -> dict:
             })
 
         # ---- k±1 对照 ----
-        compare: Dict[str, Any] = {}
+        compare: dict[str, Any] = {}
         if k > 2:
             _, s1 = _run_kmeans(Xs, k - 1)
             compare["k_minus_1"] = {"k": k - 1, "silhouette": s1}
@@ -103,7 +102,7 @@ def cluster_analysis(file_path: str, k: int) -> dict:
         return ok(result, summary)
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

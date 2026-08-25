@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_seasonal_decompose.py —— 工具 18 测试（规范 10）。
 
 独立性：timeseries.csv 生成公式已知（趋势 10->35 + 5*sin(2pi t/30) + σ=1.5 噪声）：

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_outlier_detect.py —— 工具 5 测试（规范 10）。
 
 独立性：IQR 边界手算硬编码（Excel 可复核：=QUARTILE.INC）；

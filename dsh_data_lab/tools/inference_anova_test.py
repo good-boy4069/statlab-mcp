@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """anova_test —— 统计推断组 · 方差分析（工具 7，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/04_inference_batch2.md 同步维护。
@@ -22,14 +21,14 @@ docstring = agent 使用说明书，与 docs/design/04_inference_batch2.md 同�
 示例:
     anova_test("samples/clean.csv", group_col="category", value_col="score")
 """
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from scipy import stats as sps
+from statsmodels.stats.libqsturng import qsturng
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from statsmodels.stats.oneway import anova_oneway
-from statsmodels.stats.libqsturng import qsturng
 
 from statlab_mcp.tools._common import DataLabError, err, ok, read_table
 
@@ -47,7 +46,7 @@ def _welch_df(s1: float, s2: float, n1: int, n2: int) -> float:
     return float((a + b) ** 2 / denom) if denom > 0 else float("nan")
 
 
-def _shapiro_one(x: np.ndarray) -> Dict[str, Any]:
+def _shapiro_one(x: np.ndarray) -> dict[str, Any]:
     n = int(x.size)
     if not (SHAPIRO_MIN_N <= n <= SHAPIRO_MAX_N):
         return {"statistic": None, "p_value": None, "normal": None,
@@ -57,8 +56,8 @@ def _shapiro_one(x: np.ndarray) -> Dict[str, Any]:
             "normal": bool(p > 0.05), "note": None}
 
 
-def _games_howell_pairs(groups: Dict[str, np.ndarray], keys: List[str],
-                        alpha: float) -> List[Dict[str, Any]]:
+def _games_howell_pairs(groups: dict[str, np.ndarray], keys: list[str],
+                        alpha: float) -> list[dict[str, Any]]:
     """Games-Howell 事后（手写）：q 临界值 + 每对 CI + 显著判定（p 值省略并注明）。"""
     k = len(keys)
     pairs = []
@@ -105,8 +104,8 @@ def anova_test(file_path: str, group_col: str, value_col: str, alpha: float = 0.
         if len(keys) > MAX_GROUPS:
             raise DataLabError(f"组数超过 {MAX_GROUPS}，请合并类别")
 
-        groups: Dict[str, np.ndarray] = {}
-        group_meta: Dict[str, Dict[str, Any]] = {}
+        groups: dict[str, np.ndarray] = {}
+        group_meta: dict[str, dict[str, Any]] = {}
         sets = []
         for key in keys:
             idx = df_all[group_col] == key
@@ -161,12 +160,12 @@ def anova_test(file_path: str, group_col: str, value_col: str, alpha: float = 0.
                         "p_value": float(tuk.pvalues[flat_idx]),
                         "significant": bool(tuk.reject[flat_idx]),   # 0.14.6 实测属性名 confint/pvalues
                     })
-            posthoc: Dict[str, Any] = {"method": "tukey_hsd", "pairs": pairs,
+            posthoc: dict[str, Any] = {"method": "tukey_hsd", "pairs": pairs,
                                        "correction": "family-wise（按族校正，Tukey）"}
         else:
             gh = _games_howell_pairs(groups, keys, alpha)
             posthoc = {"method": "games_howell", "pairs": gh,
-                       "correction": "family-wise（按族校正，Games-Howell）；p 值省略，" 
+                       "correction": "family-wise（按族校正，Games-Howell）；p 值省略，"
                                      "以 95% 置信区间是否含 0 判定（学生化极差分布无现成 CDF）"}
 
         if res_p < alpha:
@@ -199,7 +198,7 @@ def anova_test(file_path: str, group_col: str, value_col: str, alpha: float = 0.
         return ok(result, summary)
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

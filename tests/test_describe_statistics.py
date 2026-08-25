@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_describe_statistics.py —— 工具 1 测试（规范 10）。
 
 独立性（红队裁决 13，三级策略）：
@@ -11,7 +10,6 @@ import statistics
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytest
 

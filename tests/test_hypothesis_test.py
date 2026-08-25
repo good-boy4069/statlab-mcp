@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_hypothesis_test.py —— 工具 6 测试（规范 10）。
 
 独立性：t/df/均值差/CI/效应量全部用**手算公式硬编码期望值**（不引用 scipy 结果，

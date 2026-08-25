@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_anova_test.py —— 工具 7 测试（规范 10）。
 
 独立性：F 值用方差分析公式手算硬编码（MSTr/MSE，Excel 数据分析工具可复核）；

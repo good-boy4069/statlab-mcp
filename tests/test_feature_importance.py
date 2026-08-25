@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_feature_importance.py —— 工具 16 测试（规范 10）。
 
 独立性：构造"只有 age 影响目标"的合成数据——语义结论（age 应是第一名）
@@ -106,7 +105,8 @@ def test_param_validation(tmp_path):
 
 def test_dropped_rows_reported(tmp_path):
     xs = list(np.arange(60.0))
-    xs[5] = None; xs[20] = None
+    xs[5] = None
+    xs[20] = None
     p = _csv(tmp_path, a=xs, y=list(np.arange(60.0)))
     rs = _call(p, target="y", n_estimators=50)["result"]
     assert rs["dropped_rows"] == 2 and rs["n"] == 58

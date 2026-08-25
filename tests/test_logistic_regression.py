@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_logistic_regression.py —— 工具 13 测试（规范 10）。
 
 独立性：可分离数据（score>50 完美分类）AUC=1.0 为数学事实；复现性断言固定 seed；
@@ -10,7 +9,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -77,7 +75,7 @@ def test_balanced_copying(tmp_path):
     n1_tr = rs["class_distribution"]["train"]["1"]["n"]
     n0_tr = rs["class_distribution"]["train"]["0"]["n"]
     w = (n0_tr + n1_tr) / (2 * min(n0_tr, n1_tr))
-    expected_copies = max(0, int(round(w)) - 1) * min(n0_tr, n1_tr)
+    expected_copies = max(0, round(w) - 1) * min(n0_tr, n1_tr)
     assert rs["copied_rows"] == expected_copies
     assert rs["n_train_after_weight"] == n0_tr + n1_tr + expected_copies
     assert "复制" in rs["class_weight_note"]

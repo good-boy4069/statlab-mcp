@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """effect_size —— 统计推断组 · 效应量（工具 11，简化实现）。
 
 docstring = agent 使用说明书，与 docs/design/04_inference_batch2.md 同步维护。
@@ -25,7 +24,7 @@ docstring = agent 使用说明书，与 docs/design/04_inference_batch2.md 同�
 示例:
     effect_size("samples/clean.csv", group_col="category", value_col="score")
 """
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -38,7 +37,7 @@ D_THRESHOLDS = [(0.2, "小"), (0.5, "中"), (0.8, "大")]
 CLIFF_THRESHOLDS = [(0.147, "小"), (0.33, "中"), (0.474, "大")]
 
 
-def _label(v: float, thrs: List[Any]) -> str:
+def _label(v: float, thrs: list[Any]) -> str:
     for t, name in thrs:
         if v < t:
             return name
@@ -127,7 +126,7 @@ def effect_size(file_path: str, group_col: str, value_col: str,
         return ok(result, summary)
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

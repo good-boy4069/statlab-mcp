@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """生成 tests/fixtures/ 测试数据（固定 seed，入库防 seed 漂移）。
 
 单一 seed 源：复用 samples/make_sample_data.py 的生成函数（红队 I7 裁决），
@@ -74,5 +73,5 @@ if __name__ == "__main__":
     empty.write_text("", encoding="utf-8")          # 空文件（0 字节）
     header = FIX / "header_only.csv"
     header.write_text("a,b,c\n", encoding="utf-8")  # 仅表头
-    print(f"fixtures/empty.csv (0B), fixtures/header_only.csv")
+    print("fixtures/empty.csv (0B), fixtures/header_only.csv")
     print("FIXTURES-GENERATED seed=42")

@@ -4,9 +4,9 @@
 > 必须以 `-m statlab_mcp.server` 且工作目录 = 项目根启动，否则 `import statlab_mcp` 失败。
 
 ## 通用启动参数（所有客户端共用）
-- command：`C:\dsh工作文件夹\statlab-mcp\.venv\Scripts\python.exe`（venv 解释器绝对路径）
+- command：`<PROJECT_ROOT>\.venv\Scripts\python.exe`（venv 解释器绝对路径）
 - args：`["-m", "statlab_mcp.server"]`
-- cwd（工作目录）：`C:\dsh工作文件夹\statlab-mcp`
+- cwd（工作目录）：`<PROJECT_ROOT>`
 - env（环境变量）：`PYTHONUTF8=1`（server 入口另有 sys.stdout.reconfigure 兜底）
 
 ## Claude Code（格式可直接用）
@@ -15,7 +15,7 @@
 {
   "mcpServers": {
     "statlab-mcp": {
-      "command": "C:\\dsh工作文件夹\\statlab-mcp\\.venv\\Scripts\\python.exe",
+      "command": "<PROJECT_ROOT>\\.venv\\Scripts\\python.exe",
       "args": ["-m", "statlab_mcp.server"],
       "env": {"PYTHONUTF8": "1"}
     }
@@ -30,9 +30,9 @@ Claude Code 工作目录即项目根，不需要 cwd 字段（如不在项目根
 {
   "mcpServers": {
     "statlab-mcp": {
-      "command": "C:\\dsh工作文件夹\\statlab-mcp\\.venv\\Scripts\\python.exe",
+      "command": "<PROJECT_ROOT>\\.venv\\Scripts\\python.exe",
       "args": ["-m", "statlab_mcp.server"],
-      "cwd": "C:\\dsh工作文件夹\\statlab-mcp",
+      "cwd": "<PROJECT_ROOT>",
       "env": {"PYTHONUTF8": "1"}
     }
   }
@@ -46,7 +46,7 @@ Claude Code 工作目录即项目根，不需要 cwd 字段（如不在项目根
   "servers": {
     "statlab-mcp": {
       "type": "stdio",
-      "command": "C:\\dsh工作文件夹\\statlab-mcp\\.venv\\Scripts\\python.exe",
+      "command": "<PROJECT_ROOT>\\.venv\\Scripts\\python.exe",
       "args": ["-m", "statlab_mcp.server"],
       "env": {"PYTHONUTF8": "1"}
     }
@@ -69,3 +69,6 @@ Claude Code 工作目录即项目根，不需要 cwd 字段（如不在项目根
 - DeepSeek Harness：`read_image` 工具读 `__image__` 返回的绝对路径
 - Claude Code：`Read` 工具读同一路径
 - 其余客户端：用各自的文件读取/图片查看能力读 `__image__` 路径
+
+> 提示：<PROJECT_ROOT> 请替换为你的项目根绝对路径（本文件已脱敏，勿提交本机路径）。
+

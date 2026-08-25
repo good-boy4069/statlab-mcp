@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_time_series_forecast.py —— 工具 17 测试（规范 10）。
 
 独立性：timeseries.csv 已知生成公式（趋势 10→35 + 周期 30 + σ=1.5 噪声），
@@ -11,7 +10,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -60,7 +58,7 @@ def test_duplicate_dates_merged(tmp_path):
     dates = []
     vals = []
     for d in range(20):
-        for rep in range(2 if d in (0, 7, 15) else 1):
+        for _rep in range(2 if d in (0, 7, 15) else 1):
             dates.append(f"2025-01-{d + 1:02d}")
             vals.append(float(d + 1))
     p = _csv(tmp_path, dates, vals)

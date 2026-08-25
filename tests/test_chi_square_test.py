@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_chi_square_test.py —— 工具 8 测试（规范 10）。
 
 独立性：2x2 卡方手算硬编码（Σ(O-E)^2/E，Excel CHISQ.TEST 可复核）；
@@ -65,7 +64,7 @@ def test_associated_2x2_significant(tmp_path):
 def test_fisher_switch_2x2(tmp_path):
     """[[1,15],[4,20]]：n=40；期望最小值=5*19/40=2.375<5 且占 100%>20% -> Fisher。
     OR 与 p 以 scipy 输出为准；df=null。"""
-    p = _csv(tmp_path, ["X"] * 16 + ["Y"] * 24,
+    _csv(tmp_path, ["X"] * 16 + ["Y"] * 24,
              ["1"] * 16 + ["2"] * 0 + ["1"] * 4 + ["2"] * 20)
     # 修正构造：X 组 16 个（1 个"1"、15 个"2"），Y 组 24 个（4 个"1"、20 个"2"）
     p2 = tmp_path / "c2.csv"

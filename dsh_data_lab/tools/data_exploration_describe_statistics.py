@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """describe_statistics —— 数据探查组 · 描述性统计（工具 1，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/01_data_exploration_batch1.md 同步维护。
@@ -28,7 +27,7 @@ docstring = agent 使用说明书，与 docs/design/01_data_exploration_batch1.m
 示例:
     describe_statistics("samples/clean.csv")
 """
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -39,11 +38,11 @@ from statlab_mcp.tools._common import DataLabError, err, ok, read_table
 MAX_NUMERIC_COLS = 200      # 防超大 JSON 输出（红队 B S3）
 
 
-def _describe_numeric_col(s: pd.Series, n_rows: int) -> Dict[str, Any]:
+def _describe_numeric_col(s: pd.Series, n_rows: int) -> dict[str, Any]:
     """单列描述统计：缺失按有效值计算，边界口径见模块 docstring。"""
     valid = s.dropna()
     n = int(valid.size)
-    out: Dict[str, Any] = {
+    out: dict[str, Any] = {
         "n": n, "mean": None, "median": None, "std": None,
         "min": None, "q1": None, "q3": None, "max": None,
         "skew": None, "kurtosis": None, "n_missing": n_rows - n,
@@ -73,7 +72,7 @@ def describe_statistics(file_path: str) -> dict:
     """对数据文件的每一数值列输出描述统计（n/均值/中位数/标准差/分位数/偏度/峰度/缺失）。"""
     try:
         df = read_table(file_path)
-        n_rows = int(len(df))
+        n_rows = len(df)
         n_columns = int(df.shape[1])
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         if not numeric_cols:
@@ -124,7 +123,7 @@ def describe_statistics(file_path: str) -> dict:
         return ok(result, summary)
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:  # 计算层兜底：中文报错
+    except Exception:  # 计算层兜底：中文报错
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

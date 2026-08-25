@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """hypothesis_test —— 统计推断组 · 假设检验（工具 6，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/03_inference_batch1.md 同步维护。
@@ -25,7 +24,7 @@ docstring = agent 使用说明书，与 docs/design/03_inference_batch1.md 同�
     hypothesis_test("samples/clean.csv", column="score", test="one_sample", mu0=70.0)
     hypothesis_test("samples/clean.csv", column="score", test="independent", group_col="category")
 """
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -49,7 +48,7 @@ def _welch_df(s1: float, s2: float, n1: int, n2: int) -> float:
     return float((a + b) ** 2 / denom) if denom > 0 else float("nan")
 
 
-def _shapiro_check(x: np.ndarray) -> Dict[str, Any]:
+def _shapiro_check(x: np.ndarray) -> dict[str, Any]:
     """Shapiro 预检（官方建议 3~5000，out of range 跳过并注明）。"""
     n = int(x.size)
     if not (SHAPIRO_MIN_N <= n <= SHAPIRO_MAX_N):
@@ -71,7 +70,7 @@ def _conclusion_text(p: float, alpha: float, desc: str) -> str:
 
 
 def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
-                    group_col: Optional[str] = None, sample2_col: Optional[str] = None,
+                    group_col: str | None = None, sample2_col: str | None = None,
                     mu0: float = 0.0, alternative: str = "two_sided",
                     alpha: float = 0.05) -> dict:
     """单样本/独立/配对 t 检验：统计量、p、均值差、CI、效应量 d、固定结论文案。"""
@@ -102,7 +101,7 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
             mean_diff = mean - mu0
             se = sd / np.sqrt(x.size)
             d = abs(mean_diff) / sd if sd > 0 else 0.0
-            out_mean: Dict[str, Any] = {"mean": mean, "mean1": None, "mean2": None}
+            out_mean: dict[str, Any] = {"mean": mean, "mean1": None, "mean2": None}
             checks = {"data": _shapiro_check(x)}
         elif test == "independent":
             if group_col is None:
@@ -180,7 +179,7 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
             method = "paired_t"
 
         conclusion = _conclusion_text(p, alpha, desc)
-        skip_note = next((c["note"] for c in checks.values() if c.get("note")), None)
+        next((c["note"] for c in checks.values() if c.get("note")), None)
 
         result = {
             "test": test, "method": method,
@@ -206,7 +205,7 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
         return ok(result, summary)
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """correlation_matrix —— 数据探查组 · 相关矩阵（工具 4，核心实现）。
 
 docstring = agent 使用说明书，与 docs/design/02_data_exploration_batch2.md 同步维护。
@@ -22,7 +21,7 @@ result: {method, n_pairs, p_adjust_method, excluded_columns,
     correlation_matrix("samples/clean.csv")
     correlation_matrix("samples/clean.csv", method="spearman", p_adjust="none")
 """
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -60,7 +59,7 @@ def correlation_matrix(file_path: str, method: str = "pearson", p_adjust: str = 
             raise DataLabError(f"数值列超过 {MAX_COLS} 个，相关矩阵过大，请先挑选列")
 
         k = len(keep)
-        pairs: List[Tuple[int, int, Any, Any, int]] = []   # (i, j, stat, p, n)
+        pairs: list[tuple[int, int, Any, Any, int]] = []   # (i, j, stat, p, n)
         for i in range(k):
             x = df[keep[i]]
             for j in range(i + 1, k):
@@ -81,14 +80,14 @@ def correlation_matrix(file_path: str, method: str = "pearson", p_adjust: str = 
             raw = np.array([p for _, _, p in computable])
             corrected = multipletests(
                 raw, method="fdr_bh" if p_adjust == "fdr_bh" else "bonferroni")[1]
-            adj_map = {(i, j): float(min(pc, 1.0)) for (i, j, _), pc in zip(computable, corrected)}
+            adj_map = {(i, j): float(min(pc, 1.0)) for (i, j, _), pc in zip(computable, corrected, strict=False)}
         else:
             adj_map = {(i, j): p for (i, j, p) in computable}
 
         # 装配对称矩阵（对角 r=1.0、p=null、n=该列有效样本）
-        corr: Dict[str, Dict[str, Any]] = {}
-        pval: Dict[str, Dict[str, Any]] = {}
-        npw: Dict[str, Dict[str, int]] = {}
+        corr: dict[str, dict[str, Any]] = {}
+        pval: dict[str, dict[str, Any]] = {}
+        npw: dict[str, dict[str, int]] = {}
         for i in range(k):
             a = keep[i]
             corr[a], pval[a], npw[a] = {}, {}, {}
@@ -153,7 +152,7 @@ def correlation_matrix(file_path: str, method: str = "pearson", p_adjust: str = 
         return ok(result, summary)
     except DataLabError as e:
         return err(str(e))
-    except Exception as e:
+    except Exception:
         return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 

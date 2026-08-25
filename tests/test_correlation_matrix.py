@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """tests/test_correlation_matrix.py —— 工具 4 测试（规范 10）。
 
 独立性（红队裁决 13）：测试内**手写 pearson 公式**（Σ(x-x̄)(y-ȳ) / √(ΣΣ)）作独立对照
@@ -32,7 +31,7 @@ def _pearson_hand(xs: list, ys: list) -> float:
     """测试内独立实现 pearson 公式（对照用，不依赖 scipy/numpy 实现）。"""
     n = len(xs)
     mx, my = sum(xs) / n, sum(ys) / n
-    num = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    num = sum((x - mx) * (y - my) for x, y in zip(xs, ys, strict=False))
     den = math.sqrt(sum((x - mx) ** 2 for x in xs) * sum((y - my) ** 2 for y in ys))
     return num / den
 
