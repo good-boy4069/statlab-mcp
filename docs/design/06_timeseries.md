@@ -141,7 +141,9 @@
 & .\.venv\Scripts\python.exe -c "from statlab_mcp.tools.timeseries_seasonal_decompose import seasonal_decompose; import json; print(json.dumps(seasonal_decompose('samples/timeseries.csv', date_col='date', value_col='value'), ensure_ascii=False, indent=1))"
 ```
 - timeseries.csv 生成公式已知：趋势 linspace(10,35) + 5·sin(2π·t/30) + 噪声
-  → **期望 period=30**？FFT 主频应检出 30；**季节幅度 ≈10**（5·sin 峰峰值）；趋势两段值≈10/35——数学事实核验点！
+  → **期望 period=30**？FFT 主频应检出 30；**季节幅度**：理论 10，但相位平均仅 4 点/相位
+  （120/30），噪声极值统计使估计天然偏大（实测 11~13）——断言取统计区间；
+  趋势两段值≈10/35——数学事实核验点！
 
 ---
 

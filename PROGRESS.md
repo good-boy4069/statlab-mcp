@@ -36,6 +36,7 @@
 - pca_analysis | feat: pca_analysis | 2026-08-26 | 周翔宇（AI 代做模式）
 - feature_importance | feat: feature_importance | 2026-08-26 | 周翔宇（AI 代做模式）
 - time_series_forecast | feat: time_series_forecast | 2026-08-26 | 周翔宇（AI 代做模式）
+- seasonal_decompose | feat: seasonal_decompose | 2026-08-26 | 周翔宇（AI 代做模式）
 
 ## 进行中（当前工具、当前步骤）
 - 阶段二：项目初始化 ✅（提交 chore: 项目初始化 21e4d94；git 身份 good-boy4069/369235902@qq.com，LICENSE=周翔宇）
@@ -64,6 +65,8 @@
 - data_type_check：①✅ 10/10+回归46/46 ②✅ 实跑 data/销量.csv（备注列混 "1,000" → text+脏值提示 1 个）+ samples/dirty.csv（bad_date→date+非法日期 2024-02-30、empty_col→missing）核对 ③✅ commit feat: data_type_check，验收结论（代写）：
   "data_type_check 给每列贴类型标签：数字、整数、日期、类别、文本、混合、全空。拿到新文件不知道该用什么工具、哪列能算数时先用它；看到 mixed 或"疑似数字文本"就去洗数据，看到 missing 列就直接跳过。"
   ⚠️ 三亲手已于 2026-08-26 经使用者决定废止（AI 代做模式，详见 SPEC 增补 16）。
+- seasonal_decompose：①✅ 7/7+回归184/184 ②✅ 实跑 samples/timeseries.csv（additive：周期自动=30（FFT 精确）、趋势 22.5→末端 34.7、季节幅度 12.68、残差 σ=1.28——幅度>理论 10 的抽样噪声行为已查明并写入文档）+ auto 选型（全正→multiplicative、非正→additive 注明）+ 乘法负值报错 ③✅ commit feat: seasonal_decompose，验收结论（代写）：
+  "seasonal_decompose 把序列拆三层：趋势（长期走向）、季节（周期性波动，输出幅度和每个相位的影响）、残差（说不清的部分，σ 大=模型外还有东西）。周期不知道时它会用 FFT 自动猜（timeseries 猜出 30 天猜对了）；乘法模型要求数据全正，有负数自动降级加法并告诉你。"
 - time_series_forecast：①✅ 9/9+回归179/179 ②✅ 实跑 samples/timeseries.csv（SARIMA(1,1,0)(2,0,0,30)——FFT 精确检出生成公式的周期 30；预测 35.07 落趋势末端；已插值 3 个缺失点）+ 五前置构造验证（重复按天聚合 3 行、时区统一 UTC、非法日期剔除 2 行、常数列退化预测）③✅ commit feat: time_series_forecast，验收结论（代写）：
   "time_series_forecast 预测未来 N 步：自动判断有没有季节（有周期就 SARIMA，没有就 ARIMA），输出每一步的预测值和 95% 区间（区间越宽越没底）。看结果先看第 1 步和 CI 宽度；预测步数别超样本一半（长了基本是瞎猜）。重复日期自动按天求和、缺失自动插值并告诉你插了几个。"
 - feature_importance：①✅ 9/9+回归172/172 ②✅ 实跑 samples/clean.csv（income 目标：age 0.464 第一，语义合理）+ 构造"只有 age 影响 y"（age 排名 1 验证语义）+ n<50 硬性拒绝（40 行 → 中文报错）③✅ commit feat: feature_importance，验收结论（代写）：
