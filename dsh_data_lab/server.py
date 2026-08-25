@@ -13,9 +13,10 @@ sys.stdout.reconfigure(encoding="utf-8")
 from mcp.server.mcpserver import MCPServer  # mcp 2.x：FastMCP 重构后的高层服务器类
 
 from statlab_mcp.tools import _common  # noqa: F401  导入即执行 seed(42)/Agg/字体/日志配置
+from statlab_mcp.tools import data_exploration_describe_statistics as _t1  # 工具 1
 
 # 工具模块注册表：随实现推进逐个加入（每工具一行）
-_TOOL_MODULES: list = []
+_TOOL_MODULES: list = [_t1]
 
 mcp = MCPServer("statlab-mcp")
 
