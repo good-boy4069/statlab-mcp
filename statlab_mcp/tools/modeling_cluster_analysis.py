@@ -44,10 +44,18 @@ def cluster_analysis(file_path: str, k: int) -> dict:
         if not numeric_cols:
             raise DataLabError("未找到数值列，无法聚类")
         n = len(df)
-        if not (2 <= k <= n - 1):
-            raise DataLabError(f"k 必须在 2 到 N-1 之间（样本数 N={n}）")
+        # 含 NaN 数值列须 listwise 剔除并报告（与 linear/logistic 对齐；否则 KMeans 抛
+        # "Input contains NaN" 被通用 except 吞成"计算失败"，外部评审 M3）
+        raw_df = df[numeric_cols].dropna()
+        n_used = len(raw_df)
+        dropped = n - n_used
+        if n_used == 0:
+            raise DataLabError("所有行的数值列均含缺失值，无法聚类")
+        if not (2 <= k <= n_used - 1):
+            raise DataLabError(
+                f"k 必须在 2 到有效样本数-1 之间（剔除缺失后有效样本 N={n_used}）")
 
-        raw = df[numeric_cols].to_numpy(dtype=float)
+        raw = raw_df.to_numpy(dtype=float)
         scaler = StandardScaler().fit(raw)
         Xs = scaler.transform(raw)                     # 标准化（z-score）
         km, sil = _run_kmeans(Xs, k)
@@ -71,14 +79,14 @@ def cluster_analysis(file_path: str, k: int) -> dict:
             compare["k_minus_1"] = {"k": k - 1, "silhouette": s1}
         else:
             compare["k_minus_1"] = None                # k 已是最小值
-        if k < n - 1:
+        if k < n_used - 1:
             _, s2 = _run_kmeans(Xs, k + 1)
             compare["k_plus_1"] = {"k": k + 1, "silhouette": s2}
         else:
             compare["k_plus_1"] = None
 
         sil_label = ("结构良好" if sil > 0.5 else "可接受" if sil > 0.25 else "结构弱")
-        sizes = "；".join(f"簇{c} {clusters[c]['n_members']} 人" for c in range(k))
+        sizes = "；".join(f"簇{c} {clusters[c]['n_members']} 个样本" for c in range(k))
         cmp_txt = []
         if compare["k_minus_1"]:
             cmp_txt.append(f"k={k-1} 时为 {compare['k_minus_1']['silhouette']:.2f}")
@@ -87,10 +95,13 @@ def cluster_analysis(file_path: str, k: int) -> dict:
         cmp_s = "、".join(cmp_txt)
         summary = (f"k={k} 聚类完成：轮廓系数 {sil:.2f}（{sil_label}）"
                    + (f"；对照 {cmp_s}" if cmp_s else "")
-                   + f"；各簇样本量：{sizes}；标准化(z-score)后计算，质心已还原原单位")
+                   + f"；各簇样本量：{sizes}"
+                   + (f"；已剔除 {dropped} 行含缺失值" if dropped else "")
+                   + "；标准化(z-score)后计算，质心已还原原单位")
 
         result = {
-            "k": k, "n_samples": n,
+            "k": k, "n_samples": n_used,
+            "dropped_na_rows": dropped,
             "excluded_columns": excluded,
             "standardized": True,
             "silhouette": sil,

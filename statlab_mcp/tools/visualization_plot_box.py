@@ -37,6 +37,8 @@ def plot_box(file_path: str, column: str) -> dict:
         q1 = float(v.quantile(0.25)) if n >= MIN_N else None
         q3 = float(v.quantile(0.75)) if n >= MIN_N else None
         median = float(v.median())
+        v_min = float(v.min())
+        v_max = float(v.max())
         n_outliers = 0
         if n >= MIN_N:
             iqr = q3 - q1
@@ -52,7 +54,7 @@ def plot_box(file_path: str, column: str) -> dict:
         ax.boxplot(v.to_numpy(dtype=float))
         ax.set_xticks([])
         ax.set_ylabel(column)
-        stats_txt = f"n={n}"
+        stats_txt = f"n={n}，min={v_min:.2f}，max={v_max:.2f}"
         if q1 is not None:
             stats_txt += f"，Q1={q1:.2f}，中位={median:.2f}，Q3={q3:.2f}"
         stats_txt += f"，异常={n_outliers}"
@@ -62,10 +64,11 @@ def plot_box(file_path: str, column: str) -> dict:
         img = save_plot(fig, f"plot_box_{column}")
 
         result = {"column": column, "n": n, "n_missing": n_missing,
+                  "min": v_min, "max": v_max,
                   "q1": q1, "median": median, "q3": q3,
                   "lower_bound": lo, "upper_bound": hi,
                   "n_outliers": n_outliers}
-        summary = (f"箱线图已保存：{column}（n={n}"
+        summary = (f"箱线图已保存：{column}（n={n}，min={v_min:.2f}/max={v_max:.2f}"
                    + (f"，Q1={q1:.2f}/中位 {median:.2f}/Q3={q3:.2f}" if q1 is not None
                       else "，样本不足 4 无法定义 IQR")
                    + f"，IQR 异常 {n_outliers} 个"

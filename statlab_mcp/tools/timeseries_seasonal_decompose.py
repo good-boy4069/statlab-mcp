@@ -119,6 +119,10 @@ def seasonal_decompose(file_path: str, date_col: str, value_col: str,
             summary += f"；{model_note}"
         if meta["interpolated"]:
             summary += f"；已插值 {meta['interpolated']} 个缺失点"
+        if meta["dup_note"]:
+            summary += f"；{meta['dup_note']}（合并 {meta['merged_duplicates']} 行）"
+        elif meta["merged_duplicates"]:
+            summary += f"；重复时间戳已按天求和聚合（合并 {meta['merged_duplicates']} 行）"
         if meta["utc_note"]:
             summary += f"；{meta['utc_note']}"
         summary += "；分解基于固定周期假设"

@@ -92,6 +92,7 @@ def describe_statistics(file_path: str) -> dict:
                 constant_cols.append(col)
         non_numeric = [c for c in df.columns if c not in numeric_cols]
         non_numeric.sort()
+        dup_cols = df.attrs.get("duplicate_columns_renamed") or []   # L10：pandas 已改名须注明
 
         result = {
             "n_rows": n_rows,
@@ -99,12 +100,16 @@ def describe_statistics(file_path: str) -> dict:
             "numeric_columns": numeric_cols,
             "non_numeric_columns": non_numeric,
             "fully_missing_columns": fully_missing,
+            "duplicate_columns_renamed": dup_cols,
             "columns": columns,
         }
 
         # summary 由代码模板拼数字生成（第一层禁止 LLM 文字）
         head = f"共 {n_rows} 行 {n_columns} 列；数值列 {len(numeric_cols)} 个（{', '.join(numeric_cols)}）"
         parts = [head]
+        if dup_cols:
+            parts.append(f"重复列名 {', '.join(dup_cols)} 已被 pandas 自动改名（如 x→x.1），"
+                         f"统计结果按改名后列名输出")
         if fully_missing:
             parts.append(f"全缺失列 {len(fully_missing)} 个：{', '.join(fully_missing)}")
         if constant_cols:

@@ -135,7 +135,8 @@ def anova_test(file_path: str, group_col: str, value_col: str, alpha: float = 0.
             method = "welch_anova"
             res = anova_oneway(sets, use_var="unequal")
             res_f, res_p = float(res.statistic), float(res.pvalue)
-            df_between, df_within = int(res.df_num), int(res.df_denom)   # statsmodels 0.14.6 实测属性名
+            # Welch 的 df_denom 通常为小数（Welch-Satterthwaite），保留精度不取整（外部评审 L3）
+            df_between, df_within = int(res.df_num), float(res.df_denom)  # statsmodels 0.14.6 实测属性名
 
         # 事后检验
         all_vals = np.concatenate(sets)
@@ -145,8 +146,7 @@ def anova_test(file_path: str, group_col: str, value_col: str, alpha: float = 0.
             pairs = []
             for a in range(k):
                 for b in range(a + 1, k):
-                    idx = tuk.groupsunique.tolist().index(keys[a]) if keys[a] in tuk.groupsunique.tolist() else None
-                    # pairwise_tukeyhsd 按 groupsunique 内部排序，用名字解析对
+                    # pairwise_tukeyhsd 按 groupsunique 内部排序，用名字解析对（外部评审 L2：删死代码）
                     names = tuk.groupsunique.tolist()
                     ia, ib = names.index(keys[a]), names.index(keys[b])
                     flat_idx = sum(len(names) - 1 - x for x in range(ia)) + (ib - ia - 1)

@@ -40,6 +40,11 @@ def _to_categories(s: pd.Series, name: str) -> Any:
     """列 -> 类别 Series；数值列自动等宽分箱；返回 (类别, binning_note)。"""
     if pd.api.types.is_numeric_dtype(s):
         n_uniq = int(s.nunique())
+        # 常量数值列等宽箱边界全等，pd.cut 会抛 ValueError；须先友好报错（外部评审 M8）
+        if n_uniq <= 1:
+            raise DataLabError(
+                f"数值列 {name} 只有 {n_uniq} 个不同值，无法做关联检验"
+                + ("（无有效数据）" if n_uniq == 0 else "（常量列无类别区分）"))
         n_bins = min(MAX_BINS, max(2, n_uniq))
         cats = pd.cut(s, bins=n_bins, include_lowest=True).astype(str)
         return cats, f"数值列 {name} 已自动等宽分箱为 {n_bins} 箱"

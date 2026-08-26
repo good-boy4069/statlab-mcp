@@ -7,7 +7,8 @@ docstring = agent 使用说明书，与 docs/design/02_data_exploration_batch2.m
     method (str, "pearson"): pearson / spearman / kendalltau（逐对取 scipy，
         返回对象取 .statistic/.pvalue；pandas corr 无 p 值故不用）
     p_adjust (str, "fdr_bh"): none / bonferroni / fdr_bh；默认 BH-FDR 并标注；
-        校正单元 k = n(n-1)/2 上三角对数（statsmodels.multipletests）
+        校正单元 = 实际可计算的上三角对数（常量列对 r/p=null 不参与校正）
+        （statsmodels.multipletests）
 
 返回: 成功 {"status":"ok","result":{...},"summary":"..."}；失败 {"status":"error",...}
 result: {method, n_pairs, p_adjust_method, excluded_columns,
@@ -108,15 +109,16 @@ def correlation_matrix(file_path: str, method: str = "pearson", p_adjust: str = 
                     npw[a][b] = _n
 
         n_pairs = k * (k - 1) // 2
+        n_adj = len(computable)   # 实际参与校正的对数（常量列对 r/p=null 不参与，外部评审 M7）
         if p_adjust == "none":
             adj_note = "未做多重比较校正"
             adj_short = adj_note
         elif p_adjust == "fdr_bh":
-            adj_note = f"fdr_bh（Benjamini-Hochberg 校正，共 {n_pairs} 对）"
-            adj_short = f"已应用 fdr_bh 校正（共 {n_pairs} 对）"
+            adj_note = f"fdr_bh（Benjamini-Hochberg 校正，实际校正 {n_adj} 对）"
+            adj_short = f"已应用 fdr_bh 校正（共 {n_adj} 对）"
         else:
-            adj_note = f"bonferroni（Bonferroni 校正，共 {n_pairs} 对）"
-            adj_short = f"已应用 bonferroni 校正（共 {n_pairs} 对）"
+            adj_note = f"bonferroni（Bonferroni 校正，实际校正 {n_adj} 对）"
+            adj_short = f"已应用 bonferroni 校正（共 {n_adj} 对）"
 
         # summary 由代码模板拼数字生成（固定尾注"相关≠因果"）
         strong, medium, shown = [], [], 0

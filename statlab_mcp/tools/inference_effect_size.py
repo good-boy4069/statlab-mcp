@@ -38,9 +38,14 @@ CLIFF_THRESHOLDS = [(0.147, "小"), (0.33, "中"), (0.474, "大")]
 
 
 def _label(v: float, thrs: list[Any]) -> str:
+    """档位判定：返回 |v| 未超过的最后一档（外部评审 M5：cliff_delta 有符号，
+    须按 |v| 比阈值；同时修正循环语义——"v < t 返回上一档"而非 t 所在档）。"""
+    v = abs(float(v))
+    label = thrs[0][1]
     for t, name in thrs:
         if v < t:
-            return name
+            return label
+        label = name
     return "大"          # 超过最大阈值仍记"大"（设计文档档位：小/中/大）
 
 
@@ -89,16 +94,17 @@ def effect_size(file_path: str, group_col: str, value_col: str,
             se = float(np.sqrt(1.0 / n1 + d ** 2 / (2 * n1)))   # 配对近似
             threshold = D_THRESHOLDS
         else:
-            pooled = float(np.sqrt(((n1 - 1) * float(x.var(ddof=1))
-                                    + (n2 - 1) * float(y.var(ddof=1))) / (n1 + n2 - 2)))
-            if pooled == 0:
-                raise DataLabError("两组合并方差为 0（全常量），无法计算效应量")
-            d = abs(mean1 - mean2) / pooled
             if method == "cliff_delta":
+                # cliff_delta 不依赖方差：全常量组也有明确定义（全部 x<y 对 -> -1）
                 d = _cliff_delta(x, y)
                 se = float(np.sqrt((1 - d ** 2) / (n1 * n2)))
                 threshold = CLIFF_THRESHOLDS
             else:
+                pooled = float(np.sqrt(((n1 - 1) * float(x.var(ddof=1))
+                                        + (n2 - 1) * float(y.var(ddof=1))) / (n1 + n2 - 2)))
+                if pooled == 0:
+                    raise DataLabError("两组合并方差为 0（全常量），无法计算效应量")
+                d = abs(mean1 - mean2) / pooled
                 se = float(np.sqrt(1.0 / n1 + 1.0 / n2 + d ** 2 / (2 * (n1 + n2))))
                 threshold = D_THRESHOLDS
 

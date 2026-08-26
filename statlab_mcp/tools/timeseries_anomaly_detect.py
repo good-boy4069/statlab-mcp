@@ -6,11 +6,13 @@ docstring = agent 使用说明书，与 docs/design/06_timeseries.md 同步维�
     file_path (str): 本地数据文件（csv/tsv/xlsx/json）
     date_col / value_col (str): 日期列与数值列
     method (str, "stl"): stl / iqr / rolling_zscore
-        stl: statsmodels STL(robust=True) 残差 |resid| > threshold*MAD_std
-             （MAD_std = 1.4826*median|resid-median| 稳健尺度）
-        iqr: 一阶差分上 IQR 规则（Q1-1.5IQR / Q3+1.5IQR，同探查组口径），索引映射回原行
+        stl: statsmodels STL(robust=True) 残差 |resid| > threshold*残差标准差
+             （std(ddof=1) 判据；MAD_std=1.4826*median|resid-median| 对"主体集中+
+             稀疏厚尾"残差低估尺度，实现期修订弃用，见 docs/design/06）
+        iqr: 一阶差分上 IQR 规则（Q1-1.5IQR / Q3+1.5IQR，同探查组口径），
+             threshold 参数不参与 iqr 判据，索引映射回原行
         rolling_zscore: 窗口 7 滚动 mean/std（min_periods=3），|z| > threshold
-    threshold (float, 3.0): >0
+    threshold (float, 3.0): >0；仅 stl 与 rolling_zscore 使用
 
 保证: 异常点仅报告不剔除；常数序列（尺度 0）无异常并注明。
 
@@ -73,6 +75,7 @@ def _detect_stl(yv: pd.Series, threshold: float) -> list[dict[str, Any]]:
 
 
 def _detect_iqr(yv: pd.Series, threshold: float) -> list[dict[str, Any]]:
+    # threshold 参数保留仅为三法统一签名：IQR 判据固定 1.5 倍（探查组口径），不使用 threshold
     diff = yv.diff().dropna()
     q1, q3 = float(diff.quantile(0.25)), float(diff.quantile(0.75))
     iqr = q3 - q1
@@ -141,9 +144,10 @@ def anomaly_detect(file_path: str, date_col: str, value_col: str,
             ax.scatter([yv.index[a["index"]] for a in anomalies],
                        [a["value"] for a in anomalies], color="red", s=30, zorder=3,
                        label="异常点" if CJK_FONT_OK else "Anomaly")
-        ax.set_title(f"时序异常检测（{method}，threshold={threshold}，"
-                     f"检出 {len(anomalies)} 个）" if CJK_FONT_OK else
-                     f"Anomaly ({method}, th={threshold}, n={len(anomalies)})")
+        ax.set_title(f"时序异常检测（{method}"
+                     + (f"，threshold={threshold}" if method != "iqr" else "，IQR 1.5×")
+                     + f"，检出 {len(anomalies)} 个）" if CJK_FONT_OK else
+                     f"Anomaly ({method}, n={len(anomalies)})")
         ax.legend()
         fig.tight_layout()
         img = save_plot(fig, "anomaly_detect_all")
@@ -167,9 +171,15 @@ def anomaly_detect(file_path: str, date_col: str, value_col: str,
             summary += f"：{'，'.join(a['date'] for a in anomalies[:5])}"
             if len(anomalies) > 5:
                 summary += " 等"
-        summary += f"；threshold={threshold:g}；异常仅报告不剔除"
+        if method != "iqr":            # iqr 判据固定 1.5×IQR，不使用 threshold（外部评审 M6）
+            summary += f"；threshold={threshold:g}"
+        summary += "；异常仅报告不剔除"
         if meta["interpolated"]:
             summary += f"；已插值 {meta['interpolated']} 个缺失点"
+        if meta["dup_note"]:
+            summary += f"；{meta['dup_note']}（合并 {meta['merged_duplicates']} 行）"
+        elif meta["merged_duplicates"]:
+            summary += f"；重复时间戳已按天求和聚合（合并 {meta['merged_duplicates']} 行）"
 
         result = {
             "method": method, "threshold": threshold,

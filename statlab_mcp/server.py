@@ -54,6 +54,9 @@ def _register_all() -> None:
         mod.register(mcp)
 
 
+# 模块级执行（外部评审 L9）：无论 `python -m statlab_mcp.server` 直跑，还是被 import
+# 的启动方式（第三方托管器 import 本模块后调 run），25 个工具都会注册。
+_register_all()
+
 if __name__ == "__main__":
-    _register_all()
     mcp.run()

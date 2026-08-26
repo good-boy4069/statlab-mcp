@@ -43,8 +43,9 @@ def plot_scatter(file_path: str, x_col: str, y_col: str) -> dict:
         ax.set_xlabel(x_col)
         ax.set_ylabel(y_col)
         r_txt = f"，r={r:.2f}" if r is not None else "，r 不可计算（常量列或 n<2）"
+        r_txt_en = f", r={r:.2f}" if r is not None else ", r n/a (constant or n<2)"  # L6：非 CJK 分支不再裸拼 None
         ax.set_title(f"{x_col} vs {y_col}（n={n}{r_txt}）"
-                     if CJK_FONT_OK else f"{x_col} vs {y_col} (n={n}, r={r})")
+                     if CJK_FONT_OK else f"{x_col} vs {y_col} (n={n}{r_txt_en})")
         fig.tight_layout()
         img = save_plot(fig, "plot_scatter_all")
 

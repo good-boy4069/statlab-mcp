@@ -151,7 +151,7 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
                 raise DataLabError("配对差值无变异（所有差值相同），无法检验")
             se = sd_diff / np.sqrt(len(m))
             d = abs(mean_diff) / sd_diff
-            out_mean = {"mean": float(xp.mean()), "mean1": float(yp.mean()), "mean2": None}
+            out_mean = {"mean": None, "mean1": float(xp.mean()), "mean2": float(yp.mean())}
             checks = {"diff": _shapiro_check(diffs)}
 
         # ---- 双侧 CI（1-alpha）与结论 ----
@@ -179,7 +179,7 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
             method = "paired_t"
 
         conclusion = _conclusion_text(p, alpha, desc)
-        next((c["note"] for c in checks.values() if c.get("note")), None)
+        check_note = next((c["note"] for c in checks.values() if c.get("note")), None)  # L1：结果须进 summary
 
         result = {
             "test": test, "method": method,
@@ -199,7 +199,8 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
 
         ci_txt = f"均值差 {mean_diff:.2f}（{int((1 - alpha) * 100)}% CI [{ci_lower:.2f}, {ci_upper:.2f}]）"
         norm_txt = "；非正态警示" if normality_warning else ""
-        summary = (f"{method}：{ci_txt}，{conclusion}{norm_txt}；"
+        note_txt = f"；{check_note}" if check_note else ""
+        summary = (f"{method}：{ci_txt}，{conclusion}{norm_txt}{note_txt}；"
                    f"效应量 d={d:.2f}（{'小' if d < 0.2 else '中' if d < 0.5 else '大' if d < 0.8 else '很大'}）；"
                    f"相关≠因果")
         return ok(result, summary)

@@ -70,9 +70,15 @@ def trend_analysis(file_path: str, date_col: str, value_col: str,
             raise DataLabError("method 仅支持 mann_kendall/theil_sen")
         df = read_table(file_path)
         y, meta = _prepare_series(df, date_col, value_col)
+        # _prepare_series 的插值只填中间缺失，头部 NaN 保留（interpolate 无法回填）；
+        # 必须 dropna 后检验，否则 kendalltau 遇 NaN 返回 (nan,nan) 被改写为无趋势（外部评审 S2）
+        head_nan = 0
+        if not bool(y.notna().all()):
+            head_nan = int(y.notna().to_numpy().argmax())   # 第一个有效值的位置 = 开头缺失数
+            y = y.dropna()
         n = int(y.size)
         if n < _MIN_N:
-            raise DataLabError(f"样本过短（n={n}<{_MIN_N}），趋势检验不可靠")
+            raise DataLabError(f"有效样本不足（n={n}<{_MIN_N}），趋势检验不可靠")
         yv = y.to_numpy(dtype=float)
 
         tau, p = sps.kendalltau(yv, np.arange(n))       # MK：tau + 正态近似双侧 p
@@ -89,19 +95,27 @@ def trend_analysis(file_path: str, date_col: str, value_col: str,
 
         sampled = "；大样本点对斜率已抽样 50000 对（seed=42）" if n > _FULL_ENUM_LIMIT else ""
         season_note = "；含季节成分时趋势结论需谨慎（未做季节校正）"
-        if monotonic:
+        nan_note = f"；开头 {head_nan} 个缺失未参与计算" if head_nan else ""
+        dup_txt = (f"；{meta['dup_note']}（合并 {meta['merged_duplicates']} 行）"
+                   if meta["dup_note"] else "")
+        if monotonic and direction != "无":
             concl = (f"p={_fmt_p(p)} <0.05：存在显著{'上升' if direction == '上升' else '下降'}"
                      f"的单调趋势；斜率（Theil-Sen）={slope:.4f}/单位时间")
+        elif monotonic:
+            # 斜率恰为 0 而检验显著：MK 与 Theil-Sen 统计量不一致，方向无法判定（外部评审 L7）
+            concl = (f"p={_fmt_p(p)} <0.05：检验显著，但 Theil-Sen 斜率中位数恰为 0，"
+                     f"趋势方向无法判定（建议换 theil_sen 方法复核）")
         else:
             concl = (f"p={_fmt_p(p)} ≥0.05：无显著单调趋势；"
                      f"斜率（Theil-Sen）={slope:.4f}/单位时间")
         summary = (f"Mann-Kendall：tau={tau:.3f}（p={_fmt_p(p)}），"
-                   f"{'显著' + direction + '趋势' if monotonic else '无显著单调趋势'}；"
+                   f"{'显著' + direction + '趋势' if monotonic and direction != '无' else '无显著单调趋势'}；"
                    f"Theil-Sen 斜率 {slope:.3f}/单位时间"
-                   f"{sampled}{season_note}")
+                   f"{sampled}{nan_note}{dup_txt}{season_note}")
 
         result = {
             "method": method, "n": n,
+            "head_dropped": head_nan,
             "tau": tau, "p_value": p,
             "slope": slope,
             "slope_note": "Theil-Sen 点对斜率中位数" + ("（抽样）" if sampled else ""),

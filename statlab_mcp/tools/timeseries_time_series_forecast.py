@@ -77,14 +77,17 @@ def time_series_forecast(file_path: str, date_col: str, value_col: str,
             forecast = [{"step": i + 1, "value": float(fc.iloc[i]),
                          "ci_lower": float(ci[i][0]), "ci_upper": float(ci[i][1])}
                         for i in range(horizon)]
+            so = model.seasonal_order
+            # pmdarima 的 seasonal_order 恒为 4 元组，非季节时为 (0,0,0,0)；
+            # 必须按 P/D/Q 非全零判定，否则非季节数据被恒标 SARIMA（外部评审 M2）
+            is_seasonal = bool(so is not None and any(int(v) != 0 for v in so[:3]))
             model_info = {
                 "order": [int(v) for v in model.order],
-                "seasonal_order": ([int(v) for v in model.seasonal_order]
-                                   if model.seasonal_order else None),
-                "seasonal": bool(model.seasonal_order is not None),
+                "seasonal_order": ([int(v) for v in so] if is_seasonal else None),
+                "seasonal": is_seasonal,
                 "aic": float(model.aic()) if model.aic() is not None else None,
             }
-            method = "SARIMA" if model_info["seasonal"] else "ARIMA"
+            method = "SARIMA" if is_seasonal else "ARIMA"
 
         # ---- 图（历史 + 预测 + CI 带）----
         fig, ax = plt.subplots(figsize=(9, 4.2))
@@ -107,7 +110,7 @@ def time_series_forecast(file_path: str, date_col: str, value_col: str,
         f0 = forecast[0]
         meta_out = {k: v for k, v in meta.items() if k != "n_before_resample"}
         steps_note = ("；常数列预测退化为均值" if method == "CONSTANT"
-                      else f"；{'SARIMA' if seasonal else 'ARIMA'}，AIC={model_info['aic']:.1f}"
+                      else f"；{method}，AIC={model_info['aic']:.1f}"
                       if model_info["aic"] is not None else "")
         summary = (f"{method}（order={model_info['order']}"
                    + (f", seasonal_order={model_info['seasonal_order']}"
@@ -117,7 +120,9 @@ def time_series_forecast(file_path: str, date_col: str, value_col: str,
                    + steps_note)
         if meta["interpolated"]:
             summary += f"；已插值 {meta['interpolated']} 个缺失点"
-        if meta["merged_duplicates"]:
+        if meta["dup_note"]:
+            summary += f"；{meta['dup_note']}（合并 {meta['merged_duplicates']} 行）"
+        elif meta["merged_duplicates"]:
             summary += f"；重复时间戳已按天求和聚合（合并 {meta['merged_duplicates']} 行）"
         if meta["utc_note"]:
             summary += f"；{meta['utc_note']}"

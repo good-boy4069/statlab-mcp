@@ -45,13 +45,20 @@ def pca_analysis(file_path: str, n_components: int) -> dict:
         excluded = [c for c in df.columns if c not in numeric_cols]
         if not numeric_cols:
             raise DataLabError("未找到数值列，无法做主成分分析")
-        n_samples = len(df)
+        n_raw = len(df)
+        # 含 NaN 数值列须 listwise 剔除并报告（与 linear/logistic/cluster 对齐，
+        # 否则 StandardScaler 抛 "Input contains NaN" 被通用 except 吞掉，外部评审 M3）
+        raw_df = df[numeric_cols].dropna()
+        n_samples = len(raw_df)
+        dropped = n_raw - n_samples
+        if n_samples == 0:
+            raise DataLabError("所有行的数值列均含缺失值，无法做主成分分析")
         n_features = len(numeric_cols)
         k_max = min(n_samples, n_features)
         if not (1 <= n_components <= k_max):
             raise DataLabError(f"n_components 必须在 1 到 min(样本,特征)={k_max} 之间")
 
-        raw = df[numeric_cols].to_numpy(dtype=float)
+        raw = raw_df.to_numpy(dtype=float)
         scaler = StandardScaler().fit(raw)
         Xs = scaler.transform(raw)
         pca = PCA(n_components=n_components, random_state=42).fit(Xs)
@@ -104,15 +111,18 @@ def pca_analysis(file_path: str, n_components: int) -> dict:
                             key=lambda x: -abs(x["loading"]))[:3]
             top_note = "、".join(f"{ld['feature']}({ld['loading']:.2f})" for ld in pc_top)
         single_note = "；单特征数据，PCA 无降维意义（仅供参考）" if n_features == 1 else ""
+        na_note = f"；已剔除 {dropped} 行含缺失值" if dropped else ""
         conclusion = (f"前 {n_components} 个主成分累计解释 {cum[-1]:.1%} 方差；"
-                      f"PC1 主要载荷：{top_note}；主成分是特征线性组合，不等于业务因子{single_note}")
+                      f"PC1 主要载荷：{top_note}；主成分是特征线性组合，"
+                      f"不等于业务因子{single_note}{na_note}")
         summary = (f"PCA：PC1 解释 {evr[0]:.1%}" +
                    (f"、PC2 解释 {evr[1]:.1%}" if n_components >= 2 else "") +
-                   f"（累计 {cum[-1]:.1%}）{single_note}；载荷图已保存")
+                   f"（累计 {cum[-1]:.1%}）{single_note}{na_note}；载荷图已保存")
 
         result = {
             "n_components": n_components,
             "n_features": n_features, "n_samples": n_samples,
+            "dropped_na_rows": dropped,
             "excluded_columns": excluded,
             "explained_variance_ratio": evr,
             "cumulative_ratio": cum,

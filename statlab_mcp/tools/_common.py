@@ -15,6 +15,7 @@ import logging
 import math
 import os
 import re
+import shutil
 import sys
 from collections.abc import Iterable
 from datetime import date, datetime
@@ -157,6 +158,16 @@ def read_table(file_path: str) -> pd.DataFrame:
                 df = pd.read_csv(path, sep=sep, encoding="utf-8-sig")
             except UnicodeDecodeError:
                 df = pd.read_csv(path, sep=sep, encoding="gbk")
+            # 重复列名检测（pandas 已自动改名 x -> x.1，须如实注明；外部评审 L10）
+            try:
+                with open(path, encoding="utf-8-sig", errors="replace") as f:
+                    header_line = f.readline()
+                raw_cols = header_line.rstrip("\r\n").split(sep)
+                dups = sorted({c for c in raw_cols if raw_cols.count(c) > 1})
+                if dups:
+                    df.attrs["duplicate_columns_renamed"] = dups
+            except Exception:
+                pass   # 检测失败不影响读表
         elif ext == "json":
             try:
                 with open(path, encoding="utf-8-sig") as f:
@@ -302,11 +313,19 @@ def _prepare_series(df: pd.DataFrame, date_col: str, value_col: str) -> tuple:
 
     # 重复时间戳 -> 按天求和聚合（规则固定为 sum）
     merged = 0
+    dup_note = None
     if s.index.has_duplicates:
         _check_span_seconds(s.index.min(), s.index.max(), 86400.0, "按天聚合")
         orig = int(s.size)
+        # 日内频率检测（外部评审 M1）：若原始含时分秒，按天聚合会损失日内粒度，须如实说明
+        intraday = bool(np.any(np.asarray(s.index.hour) > 0)
+                        or np.any(np.asarray(s.index.minute) > 0)
+                        or np.any(np.asarray(s.index.second) > 0))
         s = s.resample("D").sum()
         merged = orig - int(s.size)
+        if intraday:
+            dup_note = ("原始数据为日内频率（含时分秒），因存在重复时间戳，"
+                        "已整体按天求和聚合，日内粒度已损失")
 
     # 频率推断
     freq = pd.infer_freq(s.index)
@@ -321,7 +340,12 @@ def _prepare_series(df: pd.DataFrame, date_col: str, value_col: str) -> tuple:
         freq_offset = pd.tseries.frequencies.to_offset(freq)
 
     n_before = int(s.size)
-    _check_span_seconds(s.index.min(), s.index.max(), freq_offset.nanos / 1e9, f"重采样({freq})")
+    # 频率步长（秒）：以锚点实测一步的真实时长，兼容 MonthEnd/QuarterEnd/YearEnd 等
+    # 非固定频率（其 .nanos 在 pandas 3.x 直接抛 ValueError，且旧版返回 0 会误判超限；
+    # 外部评审 S1 修复：月/季/年频此前 100% 失效）
+    step_td = (s.index.min() + freq_offset) - s.index.min()
+    _check_span_seconds(s.index.min(), s.index.max(),
+                        max(float(step_td.total_seconds()), 1e-9), f"重采样({freq})")
     s = s.asfreq(freq_offset)
     interpolated = int(s.isna().sum())
     s = s.interpolate(method="linear")
@@ -331,6 +355,7 @@ def _prepare_series(df: pd.DataFrame, date_col: str, value_col: str) -> tuple:
         "n": int(s.size),
         "dropped_invalid_dates": invalid,
         "merged_duplicates": merged,
+        "dup_note": dup_note,
         "interpolated": interpolated,
         "tail_nan": tail_nan,
         "freq": str(freq),
@@ -348,6 +373,23 @@ def _safe_name(name: str) -> str:
     return name[:40]
 
 
+def _cleanup_old_plots(keep_days: int = 30) -> None:
+    """删除超过 keep_days 天的图片归档目录（外部评审：图片按日归档必须有清理策略）。"""
+    today = datetime.now().date()
+    try:
+        for d in PLOT_DIR.iterdir():
+            if not d.is_dir():
+                continue
+            try:
+                day = datetime.strptime(d.name, "%Y%m%d").date()  # noqa: DTZ007 归档目录名即本地日期，无时区比较
+            except ValueError:
+                continue
+            if (today - day).days > keep_days:
+                shutil.rmtree(d, ignore_errors=True)
+    except OSError:
+        pass
+
+
 def save_plot(fig: Any, name: str) -> str:
     """按附录 D 保存图片，存 reports/plots/YYYYmmdd/ 子目录（红队 C B2：防堆积且不删旧图）。
 
@@ -359,6 +401,7 @@ def save_plot(fig: Any, name: str) -> str:
     ts = now.strftime("%Y%m%d_%H%M%S_%f")[:-3]
     day_dir = PLOT_DIR / now.strftime("%Y%m%d")
     day_dir.mkdir(parents=True, exist_ok=True)
+    _cleanup_old_plots()
     fname = f"{_safe_name(name)}_{ts}.png"
     out = day_dir / fname
     fig.savefig(out, dpi=150, bbox_inches="tight")

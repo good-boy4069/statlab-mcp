@@ -36,6 +36,7 @@ from statlab_mcp.tools._common import (
 IQR_K = 1.5
 MIN_N = 4
 MAX_OUTLIERS_PER_COL = 100
+MAX_NUMERIC_COLS = 200      # 数值列上限（外部评审安全风险 4：几百列会生成超大箱线图）
 
 
 def _detect_col(s: pd.Series) -> dict[str, Any]:
@@ -84,7 +85,7 @@ def _plot_boxplot(df: pd.DataFrame, cols: list[str], columns: dict[str, Any]) ->
             vals = df[c].dropna()
             ys = [float(vals.loc[r]) for r in d["outlier_indices"]]
             ax.scatter([i] * len(ys), ys, color="red", zorder=3, s=28,
-                       label="异常值" if not labeled else None)
+                       label=("异常值" if CJK_FONT_OK else "Outliers") if not labeled else None)
             labeled = True
     if labeled:
         ax.legend(loc="upper right")
@@ -102,6 +103,8 @@ def outlier_detect(file_path: str, method: str = "iqr") -> dict:
         skipped = [c for c in df.columns if c not in numeric_cols]
         if not numeric_cols:
             raise DataLabError("至少需要 1 个数值列才能检测异常值")
+        if len(numeric_cols) > MAX_NUMERIC_COLS:
+            raise DataLabError(f"数值列超过 {MAX_NUMERIC_COLS} 个，箱线图过大，请先挑选列")
 
         columns = {c: _detect_col(df[c]) for c in numeric_cols}
         total = int(sum(d["n_outliers"] for d in columns.values()))
