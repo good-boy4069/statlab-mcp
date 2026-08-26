@@ -163,8 +163,11 @@ def read_table(file_path: str) -> pd.DataFrame:
                 with open(path, encoding="utf-8-sig", errors="replace") as f:
                     header_line = f.readline()
                 raw_cols = header_line.rstrip("\r\n").split(sep)
-                dups = sorted({c for c in raw_cols if raw_cols.count(c) > 1})
-                if dups:
+                # 仅当原始表头确有重复且 pandas 已实际改名（df.columns != raw_cols）才记录：
+                # 无表头文件的首行是数据行，不能据此误报"重复列名"
+                if any(raw_cols.count(c) > 1 for c in raw_cols) \
+                        and [str(c) for c in df.columns] != raw_cols:
+                    dups = sorted({c for c in raw_cols if raw_cols.count(c) > 1})
                     df.attrs["duplicate_columns_renamed"] = dups
             except Exception:
                 pass   # 检测失败不影响读表

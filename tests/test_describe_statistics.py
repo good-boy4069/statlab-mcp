@@ -132,6 +132,14 @@ def test_duplicate_columns_survive():
     assert "自动改名" in r["summary"]
 
 
+def test_no_header_file_no_false_duplicate(tmp_path):
+    """无表头文件（首行是数据行）不得误报"重复列名"。"""
+    p = tmp_path / "nohdr.csv"
+    p.write_text("5,6,7\n1,2,3\n", encoding="utf-8-sig")
+    r = _call(p)
+    assert r["result"]["duplicate_columns_renamed"] == []
+
+
 def test_chinese_columns_ok():
     r = _call(FIX / "chinese_columns.csv")
     assert "成绩" in r["result"]["columns"]
