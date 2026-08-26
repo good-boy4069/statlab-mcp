@@ -93,6 +93,15 @@ def test_nan_rows_dropped_reported(tmp_path):
     assert "已剔除 2 行含缺失值" in pca_analysis(str(p), 2)["summary"]
 
 
+def test_single_sample_rejected(tmp_path):
+    """红队复检新发现 4：n=1 时 PCA 无意义，必须中文拒绝而非输出全 null。"""
+    p = tmp_path / "one_row.csv"
+    pd.DataFrame({"v": [3.0], "w": [7.0]}).to_csv(p, index=False, encoding="utf-8-sig")
+    r = pca_analysis(str(p), 1)
+    assert r["status"] == "error"
+    assert "n<2" in r["message"] or "无意义" in r["message"]
+
+
 def test_errors(tmp_path):
     p = tmp_path / "pca.csv"
     pd.DataFrame({"a": np.arange(10.0), "b": np.arange(10.0) * 2}).to_csv(

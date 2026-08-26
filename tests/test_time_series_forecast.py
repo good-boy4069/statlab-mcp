@@ -103,6 +103,21 @@ def test_non_seasonal_not_labelled_sarima(tmp_path):
     assert "ARIMA" in r["summary"]
 
 
+def test_tail_nan_preserved_not_extrapolated(tmp_path):
+    """红队复检新发现 2：尾部缺失必须保留（pandas 默认 forward 会用末值常量外推），
+    如实报告 tail_nan，且不得把外推值当真实数据参与预测。"""
+    dates = pd.date_range("2025-01-01", periods=30).strftime("%Y-%m-%d")
+    vals = [float(i) for i in range(27)] + [None, None, None]   # 尾部 3 个缺失
+    p = tmp_path / "tailnan.csv"
+    pd.DataFrame({"date": dates, "value": vals}).to_csv(p, index=False,
+                                                        encoding="utf-8-sig")
+    r = _call(p, date_col="date", value_col="value", horizon=3)
+    md = r["result"]["metadata"]
+    assert md["tail_nan"] == 3                     # 尾部缺失保留，未外推
+    assert md["interpolated"] == 0                 # 无中间缺失可插
+    assert "两端缺失 3 个未插值" in r["summary"]
+
+
 def test_duplicate_dates_merged(tmp_path):
     """20 天中 3 天各有 2 个重复行（共 26 行）-> 按天求和聚合为 20 点。"""
     dates = []

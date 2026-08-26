@@ -160,8 +160,16 @@ def read_table(file_path: str) -> pd.DataFrame:
                 df = pd.read_csv(path, sep=sep, encoding="gbk")
             # 重复列名检测（pandas 已自动改名 x -> x.1，须如实注明；外部评审 L10）
             try:
-                with open(path, encoding="utf-8-sig", errors="replace") as f:
-                    header_line = f.readline()
+                # 与 read_csv 相同的编码链（utf-8-sig 失败换 gbk）：固定 errors="replace"
+                # 会把 GBK 字节替换成 U+FFFD，不同中文列名可能误判为重复（红队复检新发现 1）
+                enc = "utf-8-sig"
+                try:
+                    with open(path, encoding=enc) as f:
+                        header_line = f.readline()
+                except UnicodeDecodeError:
+                    enc = "gbk"
+                    with open(path, encoding=enc) as f:
+                        header_line = f.readline()
                 raw_cols = header_line.rstrip("\r\n").split(sep)
                 # 仅当原始表头确有重复且 pandas 已实际改名（df.columns != raw_cols）才记录：
                 # 无表头文件的首行是数据行，不能据此误报"重复列名"
@@ -350,9 +358,13 @@ def _prepare_series(df: pd.DataFrame, date_col: str, value_col: str) -> tuple:
     _check_span_seconds(s.index.min(), s.index.max(),
                         max(float(step_td.total_seconds()), 1e-9), f"重采样({freq})")
     s = s.asfreq(freq_offset)
-    interpolated = int(s.isna().sum())
-    s = s.interpolate(method="linear")
-    tail_nan = int(s.isna().sum())          # 两端缺失保留
+    gap_total = int(s.isna().sum())
+    # limit_area="inside"：仅插值两端有效值之间的缺失；头部/尾部缺失一律保留
+    # （红队复检：pandas 默认 forward 方向会用末值常量外推尾部 NaN，与"两端缺失保留"
+    # 的承诺及 forecast 文案不符，且未被披露）
+    s = s.interpolate(method="linear", limit_area="inside")
+    tail_nan = int(s.isna().sum())          # 头部/尾部未插值的缺失数
+    interpolated = gap_total - tail_nan     # 真实插值数
 
     meta = {
         "n": int(s.size),

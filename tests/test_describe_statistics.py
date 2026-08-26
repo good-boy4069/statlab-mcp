@@ -140,6 +140,18 @@ def test_no_header_file_no_false_duplicate(tmp_path):
     assert r["result"]["duplicate_columns_renamed"] == []
 
 
+def test_gbk_header_no_false_duplicate(tmp_path):
+    """GBK 中文表头（红队复检新发现 1）：不同中文列名不得被误报为重复列名。"""
+    p = tmp_path / "gbk.csv"
+    content = "姓名,年龄,收入\n张三,25,5000\n李四,30,6000\n"
+    p.write_bytes(content.encode("gbk"))
+    r = _call(p)                     # read_table 走 gbk 回退
+    assert r["status"] == "ok", r.get("message")
+    assert r["result"]["duplicate_columns_renamed"] == []
+    assert "年龄" in r["result"]["columns"]
+    assert "姓名" in r["result"]["non_numeric_columns"]
+
+
 def test_chinese_columns_ok():
     r = _call(FIX / "chinese_columns.csv")
     assert "成绩" in r["result"]["columns"]

@@ -53,6 +53,8 @@ def pca_analysis(file_path: str, n_components: int) -> dict:
         dropped = n_raw - n_samples
         if n_samples == 0:
             raise DataLabError("所有行的数值列均含缺失值，无法做主成分分析")
+        if n_samples < 2:
+            raise DataLabError(f"有效样本仅 {n_samples} 行（n<2），PCA 无意义，请补充数据")
         n_features = len(numeric_cols)
         k_max = min(n_samples, n_features)
         if not (1 <= n_components <= k_max):
