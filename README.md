@@ -8,9 +8,9 @@
 >
 > **安装（v1.0.3 起已发布 PyPI）**：`pip install statlab-mcp` 或 `uvx statlab-mcp`（详见[快速开始](#快速开始)）。
 
-| CI | 文档 |
-|---|---|
-| [![CI](https://github.com/good-boy4069/statlab-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/good-boy4069/statlab-mcp/actions/workflows/ci.yml) | [贡献指南](CONTRIBUTING.md) · [路线图](ROADMAP.md) · [变更日志](CHANGELOG.md) · [SPEC](docs/SPEC.md) |
+| CI | 文档 | PyPI |
+|---|---|---|
+| [![CI](https://github.com/good-boy4069/statlab-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/good-boy4069/statlab-mcp/actions/workflows/ci.yml) | [贡献指南](CONTRIBUTING.md) · [路线图](ROADMAP.md) · [变更日志](CHANGELOG.md) · [SPEC](docs/SPEC.md) | [![PyPI version](https://img.shields.io/pypi/v/statlab-mcp)](https://pypi.org/project/statlab-mcp/) |
 
 ---
 
