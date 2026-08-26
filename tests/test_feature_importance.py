@@ -64,8 +64,7 @@ def test_impurity_method_runs(tmp_path):
 
 
 def test_classification_target(tmp_path):
-    r = _call(FIX / "binary_noisy.csv", target="label", features=None, n_estimators=100) \
-        if False else _call(FIX / "binary_noisy.csv", target="label", n_estimators=100)
+    r = _call(FIX / "binary_noisy.csv", target="label", n_estimators=100)
     assert r["result"]["model_type"] == "classification"
     assert r["result"]["importances"][0]["feature"] == "score"      # score 主导标签
 

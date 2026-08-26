@@ -42,26 +42,22 @@ def test_mean_median_std_vs_statistics():
     assert col["std"] == pytest.approx(statistics.stdev(x))     # 标准库 stdev 即 ddof=1
 
 
-def test_q1_q3_hand_calculated():
+def test_q1_q3_hand_calculated(tmp_path):
     """q1/q3 linear 插值手算硬编码：数据 [2,4,4,4,5,5,7,9]。
     推导：(n-1)*p 位置线性插值。
       q1: (8-1)*0.25=1.75 -> x[1]+0.75*(x[2]-x[1]) = 4+0.75*0 = 4.0
       q3: (8-1)*0.75=5.25 -> x[5]+0.25*(x[6]-x[5]) = 5+0.25*2 = 5.5
     Excel 复核：=QUARTILE.INC(A1:A8,1)=4，=QUARTILE.INC(A1:A8,3)=5.5
     """
-    df = pd.DataFrame({"v": [2, 4, 4, 4, 5, 5, 7, 9]})
-    p = FIX / "_q_hand.csv"
-    df.to_csv(p, index=False, encoding="utf-8-sig")
-    try:
-        r = _call(p)
-        col = r["result"]["columns"]["v"]
-        assert col["q1"] == pytest.approx(4.0)
-        assert col["q3"] == pytest.approx(5.5)
-        assert col["min"] == pytest.approx(2.0) and col["max"] == pytest.approx(9.0)
-        assert col["mean"] == pytest.approx(statistics.mean([2, 4, 4, 4, 5, 5, 7, 9]))
-        assert col["std"] == pytest.approx(statistics.stdev([2, 4, 4, 4, 5, 5, 7, 9]))
-    finally:
-        p.unlink(missing_ok=True)
+    p = tmp_path / "q_hand.csv"
+    pd.DataFrame({"v": [2, 4, 4, 4, 5, 5, 7, 9]}).to_csv(p, index=False, encoding="utf-8-sig")
+    r = _call(p)
+    col = r["result"]["columns"]["v"]
+    assert col["q1"] == pytest.approx(4.0)
+    assert col["q3"] == pytest.approx(5.5)
+    assert col["min"] == pytest.approx(2.0) and col["max"] == pytest.approx(9.0)
+    assert col["mean"] == pytest.approx(statistics.mean([2, 4, 4, 4, 5, 5, 7, 9]))
+    assert col["std"] == pytest.approx(statistics.stdev([2, 4, 4, 4, 5, 5, 7, 9]))
 
 
 # ---------------- 原生类型与 JSON 强断言 ----------------
@@ -129,9 +125,11 @@ def test_single_row_min_stats_none():
 
 
 def test_duplicate_columns_survive():
-    """重复列名：pandas 自动改名（a -> a, a.1），工具不崩溃。"""
+    """重复列名：pandas 自动改名（a -> a, a.1），工具不崩溃且如实注明（外部评审 L10）。"""
     r = _call(FIX / "dup_columns.csv")
     assert len(r["result"]["columns"]) == 3      # a, a.1, b
+    assert r["result"]["duplicate_columns_renamed"]          # 检测到重复列名
+    assert "自动改名" in r["summary"]
 
 
 def test_chinese_columns_ok():

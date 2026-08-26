@@ -53,6 +53,56 @@ def test_timeseries_forecast_semantics():
 
 # ---------------- 前置：重复聚合 / 时区 / 非法日期 ----------------
 
+def test_monthly_frequency_ok(tmp_path):
+    """外部评审 S1 盲区：月频（MonthEnd 非固定频率）此前 100% 报错。
+    48 个月线性趋势（2020-01 起）→ forecast horizon=6 必须成功且预测 6 步。"""
+    dates = pd.date_range("2020-01-31", periods=48, freq="ME")
+    vals = [10 + i * 0.5 for i in range(48)]
+    p = tmp_path / "monthly.csv"
+    pd.DataFrame({"date": dates.strftime("%Y-%m-%d"), "value": vals}).to_csv(
+        p, index=False, encoding="utf-8-sig")
+    r = _call(p, date_col="date", value_col="value", horizon=6)
+    rs = r["result"]
+    assert rs["n"] == 48
+    assert len(rs["forecast"]) == 6
+    assert rs["freq"] in ("ME", "M") or "M" in str(rs["freq"])   # 月频识别
+    f1 = rs["forecast"][0]
+    assert 32 < f1["value"] < 38                       # 趋势末端 ~33.5，首步预测应在其附近
+    assert f1["ci_lower"] <= f1["value"] <= f1["ci_upper"]
+
+
+def test_quarterly_frequency_ok(tmp_path):
+    """外部评审 S1 盲区扩展：季频（QuarterEnd）同样必须可用。"""
+    dates = pd.date_range("2021-03-31", periods=24, freq="QE")
+    vals = [50 + i * 2 for i in range(24)]
+    p = tmp_path / "quarterly.csv"
+    pd.DataFrame({"date": dates.strftime("%Y-%m-%d"), "value": vals}).to_csv(
+        p, index=False, encoding="utf-8-sig")
+    r = _call(p, date_col="date", value_col="value", horizon=4)
+    rs = r["result"]
+    assert rs["n"] == 24 and len(rs["forecast"]) == 4
+    assert rs["freq"] in ("QE", "Q") or "Q" in str(rs["freq"])
+
+
+def test_non_seasonal_not_labelled_sarima(tmp_path):
+    """外部评审 M2 盲区：无周期数据拟合后 seasonal_order 全零（seed=42 实测
+    PERIOD_EST=6 -> auto_arima 跑 seasonal 但 P=D=Q=0），method 必须为 ARIMA，
+    summary 不得出现 "SARIMA……；ARIMA" 自相矛盾。"""
+    rng = np.random.default_rng(42)
+    dates = pd.date_range("2025-01-01", periods=90).strftime("%Y-%m-%d")
+    vals = np.linspace(10, 30, 90) + rng.normal(0, 0.5, 90)   # 纯线性趋势 + 小噪声
+    p = tmp_path / "nonseason.csv"
+    pd.DataFrame({"date": dates, "value": vals}).to_csv(p, index=False,
+                                                        encoding="utf-8-sig")
+    r = _call(p, date_col="date", value_col="value", horizon=5)
+    rs = r["result"]
+    assert rs["model"]["seasonal"] is False                 # 拟合结果确认非季节
+    assert rs["model"]["seasonal_order"] is None
+    assert rs["method"] == "ARIMA"
+    assert "SARIMA" not in r["summary"]
+    assert "ARIMA" in r["summary"]
+
+
 def test_duplicate_dates_merged(tmp_path):
     """20 天中 3 天各有 2 个重复行（共 26 行）-> 按天求和聚合为 20 点。"""
     dates = []

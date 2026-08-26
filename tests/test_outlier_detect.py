@@ -27,7 +27,7 @@ def _call(path, **kw) -> dict:
 
 # ---------------- 手算独立对照 ----------------
 
-def test_hand_calculated_iqr_bounds():
+def test_hand_calculated_iqr_bounds(tmp_path):
     """数据 [1,2,3,4,5,100]：Q1=2、Q3=5、IQR=3 → bounds [-2.5, 9.5] → 100 是唯一异常。
     推导：(n-1)*0.25=1.25 -> x[1]+0.25*(x[2]-x[1]) = 2.25? 注意 linear 插值:
     (6-1)*0.25=1.25 -> 排序 x=[1,2,3,4,5,100] -> x[1]=2, x[2]=3 -> 2+0.25*1=2.25
@@ -35,18 +35,15 @@ def test_hand_calculated_iqr_bounds():
     IQR=2.5 -> lower=2.25-3.75=-1.5, upper=4.75+3.75=8.5
     Excel 复核：QUARTILE.INC(...,1)=2.25、QUARTILE.INC(...,3)=4.75
     """
-    p = FIX / "_out_hand.csv"
+    p = tmp_path / "out_hand.csv"
     pd.DataFrame({"v": [1, 2, 3, 4, 5, 100]}).to_csv(p, index=False, encoding="utf-8-sig")
-    try:
-        r = _call(p)
-        d = r["result"]["columns"]["v"]
-        assert d["lower_bound"] == pytest.approx(-1.5)
-        assert d["upper_bound"] == pytest.approx(8.5)
-        assert d["n_outliers"] == 1
-        assert d["outlier_indices"] == [5]           # 0 基行号
-        assert d["outlier_values"] == [100.0]
-    finally:
-        p.unlink(missing_ok=True)
+    r = _call(p)
+    d = r["result"]["columns"]["v"]
+    assert d["lower_bound"] == pytest.approx(-1.5)
+    assert d["upper_bound"] == pytest.approx(8.5)
+    assert d["n_outliers"] == 1
+    assert d["outlier_indices"] == [5]           # 0 基行号
+    assert d["outlier_values"] == [100.0]
 
 
 # ---------------- dirty.csv：1e9 极端值 ----------------

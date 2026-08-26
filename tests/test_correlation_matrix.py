@@ -38,33 +38,27 @@ def _pearson_hand(xs: list, ys: list) -> float:
 
 # ---------------- 独立对照：手写公式 vs 工具 ----------------
 
-def test_r_matches_hand_formula():
+def test_r_matches_hand_formula(tmp_path):
     """用确定性小数据，工具输出对照测试内手写 pearson 公式。"""
     xs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     ys = [2, 4, 5, 4, 5, 8, 7, 10, 9, 11]
-    p = FIX / "_corr_hand.csv"
+    p = tmp_path / "corr_hand.csv"
     pd.DataFrame({"x": xs, "y": ys}).to_csv(p, index=False, encoding="utf-8-sig")
-    try:
-        r = _call(p)
-        got = r["result"]["correlation"]["x"]["y"]
-        assert got == pytest.approx(_pearson_hand(xs, ys), abs=1e-12)
-    finally:
-        p.unlink(missing_ok=True)
+    r = _call(p)
+    got = r["result"]["correlation"]["x"]["y"]
+    assert got == pytest.approx(_pearson_hand(xs, ys), abs=1e-12)
 
 
-def test_perfect_linear_r_exact():
+def test_perfect_linear_r_exact(tmp_path):
     xs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    p = FIX / "_corr_perfect.csv"
+    p = tmp_path / "corr_perfect.csv"
     pd.DataFrame({"x": xs, "p": [2 * v for v in xs], "n": [11 - v for v in xs]}).to_csv(
         p, index=False, encoding="utf-8-sig")
-    try:
-        r = _call(p)
-        c = r["result"]["correlation"]
-        assert c["x"]["p"] == pytest.approx(1.0)        # 完全正线性
-        assert c["x"]["n"] == pytest.approx(-1.0)       # 完全负线性
-        assert r["result"]["p_value"]["x"]["p"] < 0.001  # r=1 时 p 为极小浮点（如 1e-61）
-    finally:
-        p.unlink(missing_ok=True)
+    r = _call(p)
+    c = r["result"]["correlation"]
+    assert c["x"]["p"] == pytest.approx(1.0)        # 完全正线性
+    assert c["x"]["n"] == pytest.approx(-1.0)       # 完全负线性
+    assert r["result"]["p_value"]["x"]["p"] < 0.001  # r=1 时 p 为极小浮点（如 1e-61）
 
 
 # ---------------- 矩阵结构 ----------------

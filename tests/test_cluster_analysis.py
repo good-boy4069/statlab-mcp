@@ -70,10 +70,29 @@ def test_k_validation(tmp_path):
     p = tmp_path / "k.csv"
     pd.DataFrame({"a": np.arange(10.0), "b": np.arange(10.0) * 2}).to_csv(
         p, index=False, encoding="utf-8-sig")
-    assert "k 必须在 2 到 N-1" in cluster_analysis(str(p), 1)["message"]
-    assert "k 必须在 2 到 N-1" in cluster_analysis(str(p), 10)["message"]
+    assert "k 必须在 2 到有效样本数-1" in cluster_analysis(str(p), 1)["message"]
+    assert "k 必须在 2 到有效样本数-1" in cluster_analysis(str(p), 10)["message"]
     assert "k 必须是整数" in cluster_analysis(str(p), 3.5)["message"]
     assert "k 必须是整数" in cluster_analysis(str(p), True)["message"]
+
+
+def test_nan_rows_dropped_reported(tmp_path):
+    """含 NaN 数值列（外部评审 M3 盲区）：listwise 剔除并报告，KMeans 不再炸。"""
+    rng = np.random.default_rng(9)
+    a = rng.normal(25, 2, 20)
+    b = rng.normal(65, 2, 20)
+    x = np.concatenate([a, b])
+    x[0] = np.nan          # 每列 1 个 NaN（不同行）
+    x[10] = np.nan
+    p = tmp_path / "km_nan.csv"
+    pd.DataFrame({"x": x, "y": rng.normal(50, 10, 40)}).to_csv(
+        p, index=False, encoding="utf-8-sig")
+    r = _call(p, k=2)
+    rs = r["result"]
+    assert rs["dropped_na_rows"] == 2
+    assert rs["n_samples"] == 38
+    assert sum(c["n_members"] for c in rs["clusters"]) == 38
+    assert "已剔除 2 行含缺失值" in r["summary"]
 
 
 def test_no_numeric_cols(tmp_path):

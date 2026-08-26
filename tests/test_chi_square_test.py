@@ -105,6 +105,16 @@ def test_numeric_col_auto_binned(tmp_path):
 
 # ---------------- 错误与边界 ----------------
 
+def test_constant_numeric_col_friendly_error(tmp_path):
+    """外部评审 M8 盲区：常量数值列 pd.cut 等宽箱边界全等会抛 ValueError，
+    必须先于通用兜底给出友好中文报错。"""
+    p = _csv(tmp_path, [5.0] * 20, ["B"] * 10 + ["C"] * 10)
+    r = chi_square_test(str(p), col_a="a", col_b="b")
+    assert r["status"] == "error"
+    assert "只有 1 个不同值" in r["message"]
+    assert "无法做关联检验" in r["message"]
+
+
 def test_errors(tmp_path):
     p = _csv(tmp_path, ["A"] * 5, ["B"] * 5)
     assert "缺少必需列" in chi_square_test(str(p), col_a="nope", col_b="b")["message"]

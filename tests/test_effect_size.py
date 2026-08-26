@@ -67,6 +67,29 @@ def test_cliff_delta_hand_counted(tmp_path):
     assert rs["interpretation"]["label"] == "小"
 
 
+def test_cliff_delta_constant_groups_defined(tmp_path):
+    """外部评审 M4 盲区：两组全常量数据 cliff_delta 有明确定义
+    （x=[1,1,1], y=[2,2,2] 全部 x<y -> delta=-1.0），不得误报"合并方差为 0"。"""
+    p = _csv(tmp_path, ["A"] * 3 + ["B"] * 3, [1, 1, 1, 2, 2, 2])
+    r = _call(p, group_col="g", value_col="v", method="cliff_delta")
+    rs = r["result"]
+    assert rs["effect_size"] == pytest.approx(-1.0)
+    assert rs["interpretation"]["label"] == "大"            # |−1.0| ≥ 0.474
+    # 对照组：cohens_d 对同数据应正确拒绝（pooled=0）
+    p2 = _csv(tmp_path, ["A"] * 3 + ["B"] * 3, [1, 1, 1, 2, 2, 2])
+    r2 = effect_size(str(p2), group_col="g", value_col="v")
+    assert r2["status"] == "error" and "合并方差为 0" in r2["message"]
+
+
+def test_cliff_delta_negative_large_label(tmp_path):
+    """外部评审 M5 盲区：负向大效应 |delta|=0.75 档位必须按 |v| 判定为"大"
+    （x=[1,2], y=[2,3]：gt=0, lt=3 -> delta=-0.75）。"""
+    p = _csv(tmp_path, ["A"] * 2 + ["B"] * 2, [1, 2, 2, 3])
+    rs = _call(p, group_col="g", value_col="v", method="cliff_delta")["result"]
+    assert rs["effect_size"] == pytest.approx(-0.75)
+    assert rs["interpretation"]["label"] == "大"
+
+
 # ---------------- paired（简化语义） ----------------
 
 def test_paired_diff_effect(tmp_path):
@@ -105,17 +128,14 @@ def test_errors(tmp_path):
     assert effect_size(str(SAMPLES / "nope.csv"), group_col="g", value_col="v")["status"] == "error"
 
 
-def test_clean_two_groups_ok():
+def test_clean_two_groups_ok(tmp_path):
     """clean.csv 取 A/B 两组（人工子集）可跑。"""
     df = pd.read_csv(SAMPLES / "clean.csv", encoding="utf-8-sig")
     sub = df[df["category"].isin(["A", "B"])].copy()
-    p = ROOT / "tests" / "fixtures" / "_tmp_ab.csv"
+    p = tmp_path / "ab.csv"
     sub.to_csv(p, index=False, encoding="utf-8-sig")
-    try:
-        r = _call(p, group_col="category", value_col="score")
-        assert 0 < r["result"]["effect_size"] < 1
-    finally:
-        p.unlink(missing_ok=True)
+    r = _call(p, group_col="category", value_col="score")
+    assert 0 < r["result"]["effect_size"] < 1
 
 
 def test_json_safe_and_deterministic(tmp_path):

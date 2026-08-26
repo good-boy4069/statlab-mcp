@@ -56,17 +56,13 @@ def test_one_sample_hand_calculated(tmp_path):
     assert "不能拒绝 H0" in rs["conclusion"]
 
 
-def test_one_sample_mu0_equal_mean_p_exact():
+def test_one_sample_mu0_equal_mean_p_exact(tmp_path):
     """对称数据均值=假设值 -> t=0、p=1.0（精确断言，无需库对照）。"""
-    p = FIX / "_tmp_sym.csv"
-    pd.DataFrame({"x": [1, 2, 3, 4, 5]}).to_csv(p, index=False, encoding="utf-8-sig")
-    try:
-        r = hypothesis_test(str(p), column="x", test="one_sample", mu0=3.0)
-        rs = r["result"]
-        assert rs["statistic"] == pytest.approx(0.0, abs=1e-12)
-        assert rs["p_value"] == 1.0
-    finally:
-        p.unlink(missing_ok=True)
+    p = _hand_csv(tmp_path, x=[1, 2, 3, 4, 5])
+    r = hypothesis_test(str(p), column="x", test="one_sample", mu0=3.0)
+    rs = r["result"]
+    assert rs["statistic"] == pytest.approx(0.0, abs=1e-12)
+    assert rs["p_value"] == 1.0
 
 
 # ---------------- independent（Welch）手算对照 ----------------
@@ -120,31 +116,28 @@ def test_alternative_p_relationship(tmp_path):
 
 # ---------------- 错误路径 ----------------
 
-def test_errors():
-    assert "test 仅支持" in hypothesis_test("samples/clean.csv", column="score",
+def test_errors(tmp_path):
+    assert "test 仅支持" in hypothesis_test(str(SAMPLES / "clean.csv"), column="score",
                                             test="anova")["message"]
-    assert "alternative 仅支持" in hypothesis_test("samples/clean.csv", column="score",
+    assert "alternative 仅支持" in hypothesis_test(str(SAMPLES / "clean.csv"), column="score",
                                                     alternative="one_side")["message"]
-    assert "alpha 必须在" in hypothesis_test("samples/clean.csv", column="score",
+    assert "alpha 必须在" in hypothesis_test(str(SAMPLES / "clean.csv"), column="score",
                                               alpha=1.5)["message"]
-    assert "缺少必需列" in hypothesis_test("samples/clean.csv", column="nope")["message"]
-    assert "不是数值列" in hypothesis_test("samples/clean.csv", column="category")["message"]
-    assert "group_col" in hypothesis_test("samples/clean.csv", column="score",
+    assert "缺少必需列" in hypothesis_test(str(SAMPLES / "clean.csv"), column="nope")["message"]
+    assert "不是数值列" in hypothesis_test(str(SAMPLES / "clean.csv"), column="category")["message"]
+    assert "group_col" in hypothesis_test(str(SAMPLES / "clean.csv"), column="score",
                                           test="independent")["message"]
-    assert "sample2_col" in hypothesis_test("samples/clean.csv", column="score",
+    assert "sample2_col" in hypothesis_test(str(SAMPLES / "clean.csv"), column="score",
                                             test="paired")["message"]
     # 3 组 -> 引导 anova_test
-    assert "anova_test" in hypothesis_test("samples/clean.csv", column="score",
+    assert "anova_test" in hypothesis_test(str(SAMPLES / "clean.csv"), column="score",
                                            test="independent", group_col="category")["message"]
-    # 配对所有差值相同 -> 拒绝
-    p = FIX / "_tmp_same.csv"
+    # 配对所有差值相同 -> 拒绝（tmp_path，避免污染仓库 fixtures）
+    p = tmp_path / "same.csv"
     pd.DataFrame({"a": [1.0, 2.0, 3.0], "b": [5.0, 6.0, 7.0]}).to_csv(
         p, index=False, encoding="utf-8-sig")
-    try:
-        r = hypothesis_test(str(p), column="a", test="paired", sample2_col="b")
-        assert r["status"] == "error" and "无变异" in r["message"]
-    finally:
-        p.unlink(missing_ok=True)
+    r = hypothesis_test(str(p), column="a", test="paired", sample2_col="b")
+    assert r["status"] == "error" and "无变异" in r["message"]
     assert hypothesis_test(str(SAMPLES / "nope.csv"), column="x")["status"] == "error"
 
 

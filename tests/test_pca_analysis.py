@@ -77,6 +77,22 @@ def test_single_feature_degenerate(tmp_path):
         str(p), 1)["summary"]
 
 
+def test_nan_rows_dropped_reported(tmp_path):
+    """外部评审 M3 盲区：含 NaN 数值列 listwise 剔除并报告，PCA 不再被吞成"计算失败"。"""
+    rng = np.random.default_rng(11)
+    n = 60
+    X = np.column_stack([rng.normal(0, 2, n), rng.normal(0, 1, n)])
+    X[0, 0] = np.nan          # 第 1 行缺 v1
+    X[10, 1] = np.nan         # 第 11 行缺 v2
+    p = tmp_path / "pca_nan.csv"
+    pd.DataFrame(X, columns=["v1", "v2"]).to_csv(p, index=False, encoding="utf-8-sig")
+    rs = _call(p, 2)["result"]
+    assert rs["dropped_na_rows"] == 2
+    assert rs["n_samples"] == 58
+    assert sum(rs["explained_variance_ratio"]) == pytest.approx(1.0)
+    assert "已剔除 2 行含缺失值" in pca_analysis(str(p), 2)["summary"]
+
+
 def test_errors(tmp_path):
     p = tmp_path / "pca.csv"
     pd.DataFrame({"a": np.arange(10.0), "b": np.arange(10.0) * 2}).to_csv(
