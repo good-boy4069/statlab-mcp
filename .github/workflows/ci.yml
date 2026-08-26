@@ -28,7 +28,15 @@ jobs:
           python -m pip install -r requirements.txt --timeout 120
       - name: Lint (ruff)
         run: python -m ruff check statlab_mcp/ tests/
-      - name: Unit tests (pytest)
-        run: python -m pytest tests/ -q
+      - name: Unit tests + coverage (pytest)
+        run: python -m pytest tests/ -q --cov=statlab_mcp --cov-fail-under=80
+      - name: README claims check (数字/工具数防漂移)
+        run: python tests/check_readme_claims.py
       - name: stdio protocol smoke
         run: python tests/smoke_stdio.py
+      - name: Job summary (覆盖率证据)
+        shell: bash
+        run: |
+          echo "## statlab-mcp CI 结果" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 平台: ${{ matrix.os }} / Python ${{ matrix.python-version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- pytest: 全量（含 --cov=statlab_mcp --cov-fail-under=80，阈值断言在测试 step）" >> "$GITHUB_STEP_SUMMARY"

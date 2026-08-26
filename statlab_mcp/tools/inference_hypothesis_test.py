@@ -16,7 +16,8 @@ docstring = agent 使用说明书，与 docs/design/03_inference_batch1.md 同�
     one_sample -> scipy.stats.ttest_1samp；independent -> ttest_ind(equal_var=False)
     （Welch's t，规格硬性规定，df 用 Welch-Satterthwaite 公式手算，跨版本稳定）；
     paired -> ttest_rel（差值 = column - sample2_col，成正态预检对象）。
-    检验前 Shapiro 预检（3<=n<=5000）：违反只警示不阻断，建议非参检验（未实现）。
+    检验前 Shapiro 预检（3<=n<=5000）：违反只警示不阻断，可转用 nonparametric_test
+    （Wilcoxon/Mann-Whitney）。
     CI 一律双侧（1-alpha，t 分布）；效应量 Cohen's d（单样本|mean-mu0|/sd、
     独立 pooled sd、配对差值 sd）。结论文案固定模板 p<alpha 拒绝 H0 / p>=alpha 不能拒绝。
 
@@ -161,7 +162,8 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
         t_crit = _t_critical(alpha, df)
         ci_lower, ci_upper = float(mean_diff - t_crit * se), float(mean_diff + t_crit * se)
         violated = any(c.get("normal") is False for c in checks.values())
-        normality_warning = ("数据可能非正态，建议 Wilcoxon/Mann-Whitney（非参检验未实现）"
+        normality_warning = ("数据可能非正态，建议转用 nonparametric_test"
+                             "（Wilcoxon/Mann-Whitney）"
                              if violated else None)
 
         if test == "one_sample":

@@ -37,7 +37,7 @@
 | one_sample | 单样本 t（scipy.stats.ttest_1samp） | t | d=\|mean−mu0\|/sd |
 | independent | **Welch's t**（scipy.stats.ttest_ind, equal_var=False，规格硬性规定） | t | 合并 d 修正（pooled sd） |
 | paired | 配对 t（scipy.stats.ttest_rel，差值 = column − sample2_col） | t | d=mean(差)/sd(差) |
-所有方法前：Shapiro 正态预检（n≤5000 且 n≥3），p<0.05 在 result 记 `normality_warning` 并提示"建议 Wilcoxon/Mann-Whitney（非参检验未实现）"——**不阻断计算**，只警示。
+所有方法前：Shapiro 正态预检（n≤5000 且 n≥3），p<0.05 在 result 记 `normality_warning` 并提示"建议转用 nonparametric_test（Wilcoxon/Mann-Whitney，工具 26）"——**不阻断计算**，只警示。
 
 ## 返回（成功）
 ```jsonc
@@ -53,7 +53,7 @@
     "effect_size": 0.65, "effect_size_type": "cohens_d",
     "mu0": null, "alternative": "two_sided", "alpha": 0.05,
     "normality_shapiro": {"statistic": 0.98, "p_value": 0.61, "normal": true},
-    "normality_warning": null,              // 违反时: "数据可能非正态，建议 Wilcoxon/Mann-Whitney（未实现）"
+    "normality_warning": null,              // 违反时: "数据可能非正态，建议转用 nonparametric_test（Wilcoxon/Mann-Whitney）"
     "conclusion": "p<α 拒绝 H0（p=0.0241 < α=0.05）：两组均值差异显著"
   },
   "summary": "Welch t 检验：均值差 5.5（95% CI [0.74, 10.26]），p=0.0241 <0.05 拒绝 H0；效应量 d=0.65 中等；相关≠因果"

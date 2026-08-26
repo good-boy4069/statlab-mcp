@@ -31,6 +31,7 @@ from statlab_mcp.tools import inference_chi_square_test as _t8  # 工具 8
 from statlab_mcp.tools import inference_confidence_interval as _t10  # 工具 10
 from statlab_mcp.tools import inference_effect_size as _t11  # 工具 11
 from statlab_mcp.tools import inference_hypothesis_test as _t6  # 工具 6
+from statlab_mcp.tools import inference_nonparametric_test as _t26  # 工具 26
 from statlab_mcp.tools import inference_normality_test as _t9  # 工具 9
 from statlab_mcp.tools import modeling_cluster_analysis as _t14  # 工具 14
 from statlab_mcp.tools import modeling_feature_importance as _t16  # 工具 16
@@ -50,7 +51,7 @@ from statlab_mcp.tools import visualization_plot_scatter as _t21  # 工具 21
 # 工具模块注册表：随实现推进逐个加入（每工具一行）
 _TOOL_MODULES: list = [_t1, _t2, _t3, _t4, _t5, _t6, _t9, _t10, _t7, _t8, _t11,
                        _t12, _t13, _t14, _t15, _t16, _t17, _t18, _t19, _t20,
-                       _t21, _t22, _t23, _t24, _t25]
+                       _t21, _t22, _t23, _t24, _t25, _t26]
 
 _PARAM_HINT = "参数校验失败：请检查参数类型与取值范围（拒绝 NaN/Inf 等非法数值）"
 _PARAM_HINT_JSON = json.dumps({"status": "error", "message": _PARAM_HINT}, ensure_ascii=False)

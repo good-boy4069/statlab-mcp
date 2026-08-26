@@ -2,6 +2,28 @@
 
 本项目遵循[语义化版本](https://semver.org/lang/zh-CN/)。所有重大变更均记录于此。
 
+## [v1.0.3] - 2026-08-26
+
+### 新增
+- **`nonparametric_test`（工具 26）**：非参数检验三法——Wilcoxon 配对（含 0 差剔除与方向效应量 matched rank-biserial r）、Mann-Whitney 两组（rank-biserial r）、Kruskal-Wallis 多组（epsilon²=H/(N−1)）；alpha/alternative 参数与 NaN/Inf 防御；12 个手算对照测试（W=0/p=0.25、U=0/p=2/35、H=7.2 等）。hypothesis_test / normality_test 的"非参检验未实现"警示闭环为"可转用 nonparametric_test"。
+- **PyPI 发布**：`pip install statlab-mcp` / `uvx statlab-mcp` / `pipx run statlab-mcp` 一行启动（console script `statlab-mcp`）。
+- **packaging 双轨**：pyproject 写入 `dependencies`（范围约束，下限=锁定版本）；requirements.txt 保持开发/CI 锁定权威；SPEC 第 8 节说明。
+- **CI 覆盖率证据**：pytest 带 `--cov=statlab_mcp --cov-fail-under=80`；覆盖率写入 job summary；README 顶部真实 Actions 徽章。
+- **README 数字防漂移**：`tests/check_readme_claims.py`（pytest 数、工具数声明与实现自动比对，不符 CI 红）。
+- **社区基建**：CONTRIBUTING.md、ROADMAP.md（含决策记录）、Dockerfile（python:3.13-slim + Noto CJK + PYTHONUTF8）、.dockerignore、issue 模板。
+- **参数命名约定**：SPEC 第 2 节（column/value_col/group_col/x_col·y_col/col_a·col_b/target·features 按场景统一文档化）。
+- `docs/design/09_inference_batch3.md`（工具 26 设计文档）。
+
+### 变更
+- README 全面更新：26 个工具计数（6 处）、工具表、PyPI 安装段、Docker 段、文档导航、CI/文档徽章。
+- `requirements.min.txt` 头部说明同步双轨表述。
+- pyproject version 1.0.2 → 1.0.3；description "25 个"→"26 个"。
+
+### 验证
+- pytest 252 全绿（新增 12 用例）；ruff All checks passed；smoke ALL-STDIO-OK；覆盖率 ≥80% 阈值断言（本地实测 90% 区间）。
+- wheel 安装验证：干净 venv `pip install dist/*.whl` → import/console 脚本可用。
+- CI 4 job（Windows/Ubuntu × Python 3.12/3.13）全绿后发布。
+
 ## [v1.0.2] - 2026-08-26
 
 ### 修复（Qoder 锐评 v1.0.1 轮）

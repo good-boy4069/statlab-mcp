@@ -1,9 +1,9 @@
 # requirements.min.txt —— 最小直接依赖（纯 stdio 场景）
 # =====================================================
 # 用途：想避免 mcp 传递引入的整条 Web 依赖树（starlette/uvicorn/PyJWT 等）时，
-# 手工挑选全部"直接 import"的包（Qoder 锐评 #2 建议；SPEC 第 7 节已预告）。
+# 手工挑选全部"直接 import"的包（Qoder 锐评 #2 建议；SPEC 第 7 节）。
 # 注意：本文件来自手工整理而非 pip freeze，传递依赖仍会被 pip 自动解析安装；
-# 上界为 requirements.txt（全量锁定，开发与 CI 的唯一权威）。
+# 与 pyproject 的 dependencies（发布用范围约束）同源，本文件为锁定的开发用快照。
 # 版本号与 requirements.txt 对齐；如遇解析冲突，请以 requirements.txt 为准。
 
 numpy==2.5.2

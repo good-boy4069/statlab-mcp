@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "statlab-mcp"
-version = "1.0.2"
-description = "统计分析 MCP Server：25 个纯计算统计工具，让 AI agent 获得可复现、可追责的真实统计学能力（与 DeepSeek Harness 无关的独立项目）"
+version = "1.0.3"
+description = "统计分析 MCP Server：26 个纯计算统计工具，让 AI agent 获得可复现、可追责的真实统计学能力（与 DeepSeek Harness 无关的独立项目）"
 readme = "README.md"
 requires-python = ">=3.12"   # 锁定依赖 numpy 2.5.2 的最低要求（实测验证于 3.13；CI 覆盖 3.12/3.13）
 license = { text = "MIT" }
@@ -17,10 +17,25 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
 ]
 
+# 依赖双轨（v1.0.3 起，见 docs/SPEC.md 第 7 节）：
+# - dependencies 为发布用范围约束（下限 = 当前锁定版本，pip 安装时解析范围内最新版）
+# - requirements.txt 为开发/CI 锁定权威（可复现性承诺），两者不冲突
+dependencies = [
+    "numpy>=2.5.2,<3",
+    "pandas>=3.0.5,<4",
+    "scipy>=1.18.1,<2",
+    "statsmodels>=0.14.6,<1",
+    "scikit-learn>=1.9.0,<2",
+    "matplotlib>=3.11.1,<4",
+    "pmdarima>=2.1.1,<3",
+    "openpyxl>=3.1.5,<4",
+    "mcp>=2.1.0,<3",
+    "mcp-types>=2.1.0,<3",
+    "pydantic>=2.13.4,<3",
+]
+
 [project.scripts]
 statlab-mcp = "statlab_mcp.server:main"
-
-# 注意：依赖唯一权威 = requirements.txt（锁定版本），本文件不写 dependencies（项目规范）
 
 [tool.setuptools.packages.find]
 include = ["statlab_mcp*"]

@@ -4,13 +4,19 @@
 > 让 AI agent（Claude Code / Cursor / DeepSeek Harness / Codex 等）获得**真实统计学能力**：
 > LLM 直接口算统计会编造数字；本项目所有统计结果都来自真实计算
 > （numpy / scipy / statsmodels / scikit-learn / pmdarima），AI 只负责调用与解释，
-> 第一层 25 个工具内**禁止任何 LLM 参与计算**。
+> 第一层 26 个工具内**禁止任何 LLM 参与计算**。
+>
+> **安装（v1.0.3 起已发布 PyPI）**：`pip install statlab-mcp` 或 `uvx statlab-mcp`（详见[快速开始](#快速开始)）。
+
+| CI | 文档 |
+|---|---|
+| [![CI](https://github.com/good-boy4069/statlab-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/good-boy4069/statlab-mcp/actions/workflows/ci.yml) | [贡献指南](CONTRIBUTING.md) · [路线图](ROADMAP.md) · [变更日志](CHANGELOG.md) · [SPEC](docs/SPEC.md) |
 
 ---
 
 ## 它有什么用
 
-装上它之后，你对 AI 说"**帮我分析这个销售数据**"，AI 不再凭空断言，而是调用 25 个真实统计工具：算描述统计、查相关、跑假设检验、拟合回归、做聚类、预测时序、画中文图表——**每个数字都出自经过验证的统计库，可复现、可追责**。`summary` 字段给出一句中文结论，`result` 给出完整结构化数据，如：
+装上它之后，你对 AI 说"**帮我分析这个销售数据**"，AI 不再凭空断言，而是调用 26 个真实统计工具：算描述统计、查相关、跑假设检验、拟合回归、做聚类、预测时序、画中文图表——**每个数字都出自经过验证的统计库，可复现、可追责**。`summary` 字段给出一句中文结论，`result` 给出完整结构化数据，如：
 
 ```json
 {"status": "ok", "result": {"p_value": 0.0241, "mean_diff": 5.5, "effect_size": 0.65},
@@ -22,7 +28,7 @@
 | 人群 | 用法 | 收益 |
 |---|---|---|
 | **用 AI 写代码/做分析的人**（数据分析师、运营、产品） | 让 Claude Code / Cursor 等按需调用 | 分析结论有真实计算背书，不再担心 AI 编数字 |
-| **AI Agent 开发者** | 把它当统计后端接进自己的 agent/workflow | 25 个确定性工具 + 统一协议，好集成好测试 |
+| **AI Agent 开发者** | 把它当统计后端接进自己的 agent/workflow | 26 个确定性工具 + 统一协议，好集成好测试 |
 | **学过统计但不想手撸代码的人** | 自然语言提问，AI 代调工具 | 假设检验/回归/时序全自动选型，附逐步解释 |
 | **需要输出可追责分析报告的人** | 配合 auto_analysis 方案（决策树+模板+提示词） | 报告每个数字都标注来源工具，防幻觉 |
 | 想快速给数据画图的同学 | 一组 plot_* 工具 | 中文标签图表，图上直接标统计量 |
@@ -33,7 +39,8 @@
 |---|---|
 | "这堆数据长什么样、脏不脏" | describe / data_type_check / missing_report：体检、户口本、缺勤表 |
 | "哪两列有关系？是真的还是碰巧" | correlation_matrix（含 fdr_bh 多重比较校正）+ 热力图 |
-| "A 组和 B 组到底有没有差" | normality_test → hypothesis_test（Welch t）→ effect_size 三连 |
+| "A 组和 B 组到底有没有差" | normality_test → hypothesis_test（Welch t）→ effect_size 三连；数据非正态则用 nonparametric_test（Wilcoxon/Mann-Whitney） |
+| "多组分布是否不同（非正态）" | nonparametric_test：Kruskal-Wallis + ε² 效应量 |
 | "三个门店的销量差多少是真实的" | anova_test：自动 Levene→Welch→Tukey/Games-Howell 事后比较 |
 | "什么影响收入？能预测吗" | linear_regression（R²/VIF/残差诊断）+ feature_importance |
 | "新客户会不会买（是/否）" | logistic_regression：OR + AUC + 混淆矩阵 + 分离警告 |
@@ -45,14 +52,43 @@
 ## 特点与突出能力
 
 1. **确定性至上**：全部随机过程固定 seed（42）；同一文件跑两次结果**逐字节一致**（这是可追责的根基，测试里有专门断言）
-2. **防幻觉设计**：第一层 25 工具零 LLM；结论文案由代码模板拼数字生成；p<0.001 统一显示"<0.001"；每个结论固定附局限声明（相关≠因果、是否校正、样本量）
-3. **口径钉死并可复算**：q1/q3=linear 插值（Excel QUARTILE.INC 同口径）、偏度/峰度=scipy Fisher 口径、std=ddof=1（Excel STDEV.S）——**文档写明，测试对手算公式和标准库独立核对**（240 个 pytest，覆盖见 docs/）
+2. **防幻觉设计**：第一层 26 工具零 LLM；结论文案由代码模板拼数字生成；p<0.001 统一显示"<0.001"；每个结论固定附局限声明（相关≠因果、是否校正、样本量）
+3. **口径钉死并可复算**：q1/q3=linear 插值（Excel QUARTILE.INC 同口径）、偏度/峰度=scipy Fisher 口径、std=ddof=1（Excel STDEV.S）——**文档写明，测试对手算公式和标准库独立核对**（**252 个 pytest**，覆盖见 docs/；CI 自动核对本数字，漂移即红）
 4. **中文全链路**：中文列名、GBK 编码自动回退、中文字体图表（无字体自动降级英文并注明）、中文错误消息带解决建议
 5. **硬核安全与防护**：仅本地文件、拒绝 UNC/NUL 路径、无网络上传、>50MB/200 万行/500MB 内存三重保护、xlsx zip 炸弹与日期跨度防护、异常输出有上限截断（防止恶意输入卡死）
-6. **统一的调用体验**：所有工具同构（`参数校验 → 中文报错或 result+summary`），agent 和人都能无痛上手；MCP 工具描述 = 完整 docstring（参数表/返回结构/示例），**agent 打开工具列表就是使用说明书**
-7. **工程完备**：12 份设计文档（每工具参数表/边界表/JSON Schema/验证方法）+ 客户端接入配置 + GitHub Actions CI（Windows/Ubuntu × Python 3.11/3.13：pytest + ruff + stdio 冒烟）+ 覆盖率 82–96% + stdio 协议冒烟
+6. **统一的调用体验**：所有工具同构（`参数校验 → 中文报错或 result+summary`），agent 和人都能无痛上手；MCP 工具描述 = 完整 docstring（参数表/返回结构/示例），**agent 打开工具列表就是使用说明书**；**参数命名按场景统一**（见 SPEC：column=单值列 / value_col=分组与时序值列 / group_col / x_col·y_col / col_a·col_b / target·features）
+7. **工程完备**：13 份设计文档（每工具参数表/边界表/JSON Schema/验证方法）+ 客户端接入配置 + GitHub Actions CI（Windows/Ubuntu × Python 3.12/3.13：pytest + ruff + 覆盖率阈值 + README 数字自检 + stdio 冒烟）+ 覆盖率 82–96% + stdio 协议冒烟 + PyPI 发布
 
 ## 快速开始
+
+### 方式 A：PyPI 一键安装（v1.0.3 起，推荐）
+
+```powershell
+# 免检车（Python 3.12+）
+pip install statlab-mcp
+# 或零安装直接跑（uvx 会自动装到隔离环境）
+uvx statlab-mcp
+# 或 pipx 常规安装
+pipx install statlab-mcp
+```
+
+安装后命令行直接有 `statlab-mcp`（= stdio 服务器），MCP 客户端配置：
+
+```json
+{
+  "mcpServers": {
+    "statlab-mcp": {
+      "command": "statlab-mcp",
+      "args": [],
+      "env": {"PYTHONUTF8": "1"}
+    }
+  }
+}
+```
+
+> pip 安装会解析"范围内最新版"依赖；生产环境想完全复现开发栈，请用方式 B 的锁定 requirements.txt。
+
+### 方式 B：源码安装（锁定开发栈）
 
 ```powershell
 # 1. 安装（Python 3.12+，仅 pip）
@@ -88,12 +124,12 @@ $env:PYTHONUTF8="1"
 
 **数据上的三个铁律**：① 只收 `csv/xlsx/tsv/json`，绝对路径随意给（中文/GBK/空值/非法日期全自动处理）；② 真实数据放项目目录之外；③ 每次统计先看 `summary` 的中文人话结论，再翻 `result` 的结构化数字。
 
-## 25 个工具一览
+## 26 个工具一览
 
 | 组 | 工具 |
 |---|---|
 | 数据探查 | describe_statistics, correlation_matrix, missing_report, outlier_detect, data_type_check |
-| 统计推断 | hypothesis_test, anova_test, chi_square_test, normality_test, confidence_interval, effect_size |
+| 统计推断 | hypothesis_test, anova_test, chi_square_test, normality_test, confidence_interval, effect_size, nonparametric_test |
 | 建模 | linear_regression, logistic_regression, cluster_analysis, pca_analysis, feature_importance |
 | 时序 | time_series_forecast, seasonal_decompose, trend_analysis, anomaly_detect |
 | 可视化 | plot_scatter, plot_histogram, plot_heatmap, plot_forecast, plot_box |
@@ -113,13 +149,23 @@ $env:PYTHONUTF8="1"
    .\.venv\Scripts\Activate.ps1
    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt --timeout 60
    ```
-2. requirements.txt 是依赖唯一权威来源（pyproject.toml 只写元数据）。
+2. 依赖双轨：`requirements.txt` 是**开发/CI 锁定权威**（可复现）；PyPI 安装走 pyproject 的**范围约束**（`pip install statlab-mcp` 会解析范围内最新版；生产建议锁定 requirements 或等价 pin）。
 3. **运行前必须设置 UTF-8**（否则 stdio 用 GBK 写中文 JSON，MCP 连接直接挂）：
    ```powershell
    $env:PYTHONUTF8="1"
    ```
    server 入口文件最顶端也已写 `sys.stdout.reconfigure(encoding="utf-8")` 兜底。
 4. 数据读取统一走 `read_table()` 封装：utf-8-sig 试读 → csv/tsv 失败自动换 gbk → 再失败中文报错"文件编码无法识别，请另存为 UTF-8"；格式白名单 {csv, xlsx, tsv, json}，xlsx 只读第一个 sheet。
+
+## Docker（可选）
+
+```powershell
+docker build -t statlab-mcp:1.0.3 .
+docker run --rm -i statlab-mcp:1.0.3        # stdio 走 stdin/stdout，必须有 -i
+```
+
+MCP 客户端里把 command 配成 docker 的用法（如 `docker run --rm -i statlab-mcp:1.0.3` + 数据目录挂载 `-v D:\data:/data`）。
+> 说明：镜像含科学计算栈约 1-2GB；容器内已装 Noto CJK 中文字体（`ENV PYTHONUTF8=1`），中文 JSON/图表开箱即用。Dockerfile 见仓库根。
 
 ## Agent 如何看图
 

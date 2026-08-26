@@ -83,7 +83,7 @@ def normality_test(file_path: str, column: str, method: str = "auto") -> dict:
                        f"偏度 {skew:.2f}、峰度 {kurtosis:.2f}")
         else:
             summary = (f"{name} 检验：p={_fmt_p(p)} <α=0.05，拒绝正态假设（数据明显非正态）；"
-                       f"偏度 {skew:.2f}、峰度 {kurtosis:.2f}，建议改用非参方法")
+                       f"偏度 {skew:.2f}、峰度 {kurtosis:.2f}，建议改用 nonparametric_test")
         return ok(result, summary)
     except DataLabError as e:
         return err(str(e))
