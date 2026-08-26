@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "statlab-mcp"
-version = "1.0.1"
+version = "1.0.2"
 description = "统计分析 MCP Server：25 个纯计算统计工具，让 AI agent 获得可复现、可追责的真实统计学能力（与 DeepSeek Harness 无关的独立项目）"
 readme = "README.md"
 requires-python = ">=3.11"

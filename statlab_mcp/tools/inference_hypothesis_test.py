@@ -81,6 +81,9 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
             raise DataLabError("alternative 仅支持 two_sided/less/greater")
         if not (0 < alpha < 1):
             raise DataLabError("alpha 必须在 (0,1) 之间")
+        if isinstance(mu0, bool) or not isinstance(mu0, (int, float, np.integer, np.floating)) \
+                or not np.isfinite(mu0):
+            raise DataLabError("mu0 必须是有限数值（拒绝 NaN/Inf）")   # Qoder 锐评 #1 防御补全
         df_all = read_table(file_path)
         scipy_alt = "two-sided" if alternative == "two_sided" else alternative  # scipy 枚举用连字符
         if column not in df_all.columns:

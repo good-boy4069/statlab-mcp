@@ -4,12 +4,19 @@ Windows 硬性要求 1：stdio 用 UTF-8 编码输出中文 JSON（配合 $env:P
 双保险：stdout 流重配置为 utf-8）。
 注册机制（红队裁决 I4）：每个工具模块提供一个 register(mcp) 回调，本文件仅逐模块
 收集注册，每工具一行；任何统计计算都发生在 tools/ 下各工具模块，本文件不含逻辑。
+协议一致性（Qoder 锐评 #1）：pydantic 参数校验失败（NaN/Inf/类型错误等）默认由 SDK
+以英文 is_error 文本返回，StatlabServer 子类将其转换为统一的 {status:"error",...} JSON，
+与工具内错误格式闭环。
 """
+import json
 import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
 from mcp.server.mcpserver import MCPServer  # mcp 2.x：FastMCP 重构后的高层服务器类
+from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
+from mcp_types import CallToolResult, TextContent  # mcp 2.x：类型定义在 mcp_types 包
+from pydantic import ValidationError
 
 from statlab_mcp.tools import (
     _common,  # noqa: F401  导入即执行 seed(42)/Agg/字体/日志配置
@@ -45,7 +52,34 @@ _TOOL_MODULES: list = [_t1, _t2, _t3, _t4, _t5, _t6, _t9, _t10, _t7, _t8, _t11,
                        _t12, _t13, _t14, _t15, _t16, _t17, _t18, _t19, _t20,
                        _t21, _t22, _t23, _t24, _t25]
 
-mcp = MCPServer("statlab-mcp")
+_PARAM_HINT = "参数校验失败：请检查参数类型与取值范围（拒绝 NaN/Inf 等非法数值）"
+_PARAM_HINT_JSON = json.dumps({"status": "error", "message": _PARAM_HINT}, ensure_ascii=False)
+
+
+class StatlabServer(MCPServer):
+    """协议一致性子类：pydantic 参数校验失败转统一中文错误 JSON（Qoder 锐评 #1）。
+
+    SDK 默认把 ToolError(ValidationError) 以英文文本 is_error 返回，绕过本项目
+    "{status:error, message:中文}" 统一协议；此处仅转换参数校验失败场景，
+    其余 ToolError 原样透传（保持 SDK 行为）。
+    """
+
+    async def call_tool(self, name, arguments, context=None):
+        try:
+            return await super().call_tool(name, arguments, context)
+        except ToolError as e:
+            # 与 SDK _handle_call_tool 的分类逻辑对齐：仅普通 ToolError（且根因是参数
+            # ValidationError）属于"参数校验失败"；UnexpectedToolError（工具内部意外
+            # 异常）与其余 ToolError 原样透传，避免工具内部库抛出的 ValidationError
+            # 被误标为参数问题。
+            if not isinstance(e, UnexpectedToolError) and isinstance(e.__cause__, ValidationError):
+                return CallToolResult(
+                    content=[TextContent(type="text", text=_PARAM_HINT_JSON)],
+                    is_error=True)
+            raise
+
+
+mcp = StatlabServer("statlab-mcp")
 
 
 def _register_all() -> None:
