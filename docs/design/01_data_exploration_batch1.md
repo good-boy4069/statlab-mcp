@@ -95,12 +95,16 @@
 | file_path | str | 必填 | 同全局约定 | `"data/dirty.csv"` |
 
 ## 类型判定规则（确定性代码）
-1. pandas 数值 dtype → 数值；若该列所有值均为整数 → 整数（如 id）
-2. 字符串/object 列：先试 to_datetime（errors="coerce"）→ 成功比例 ≥95% → 日期（并统计无法解析的非法日期个数）
-3. 未过日期判定：再试 to_numeric（errors="coerce"）→ 若部分可转数字 → **混合**（注明脏值个数，如 "1,000"、"3kg"、空串）
-4. 其余：唯一值数 ≤ min(50, 行数×20%) → 类别（附 top3 取值）；否则 → 文本
-5. 全缺失列 → 类型 "missing"，不进以上判定
-6. 已知难以解析的日期（如 2024-02-30）→ to_datetime 失败计入非法日期数，该列仍判为日期（若合法部分 ≥95%），或判混合
+1. 全缺失列 → 类型 "missing"，不参与任何转换
+2. pandas 数值 dtype → 数值；若该列所有值均为整数 → 整数（如 id）
+3. 字符串/object 列：**先试 to_numeric（errors="coerce"）**（实现期修订 vs 早期设计文档：
+   数值先于日期，防纯数字字符串如 "123" 被 to_datetime 误认成日期）→ 成功比例 ≥95% → 数值
+   （有失配时 dirty_count=失败数，note 给脏值示例；全成功且全整数 → 整数）
+4. 未过数值判定：再试 to_datetime（errors="coerce"）→ 成功比例 ≥95% → 日期
+   （失配 = 非法日期，如 2024-02-30，记 dirty_count 并在 note 列示例）
+5. 两种转换成功数落在 (0, 95%) → **混合**（mixed；两种转换都失败的值 = 脏值）
+6. 完全不可转：唯一值数 ≤ min(50, 行数×20%) → 类别（note 给 top3）；否则 → 文本
+   （文本列顺带揪出"疑似数字/日期文本"并计入 dirty_count）
 
 ## 返回（成功）
 ```jsonc
@@ -114,7 +118,7 @@
       "bad_date": {"detected_type": "date",    "n_valid": 19, "n_missing": 0, "dirty_count": 1, "note": "含 1 个无法解析的日期（如 2024-02-30）"},
       "extreme":  {"detected_type": "numeric", "n_valid": 19, "n_missing": 1, "dirty_count": 0, "note": null}
     },
-    "issue_summary": {"dirty_value_columns": ["bad_date"], "fully_missing_columns": ["empty_col"]}
+    "issue_summary": {"mixed_columns": [], "fully_missing_columns": ["empty_col"], "invalid_date_columns": ["bad_date"]}
   },
   "summary": "共 20 行 5 列；数值 2 列、日期 1 列（含 1 个非法日期）、全缺失 1 列；建议先处理 empty_col 与 bad_date"
 }
@@ -171,7 +175,7 @@
     "n_rows": 20, "n_columns": 5,
     "total_missing": 23, "overall_missing_rate": 0.23,   // 缺少数/总单元格数
     "columns": {
-      "value":     {"n_missing": 2,  "missing_rate": 0.10},
+      "value":     {"n_missing": 1,  "missing_rate": 0.05},
       "empty_col": {"n_missing": 20, "missing_rate": 1.00}
     },
     "complete_rows": 17, "rows_with_missing": 3,
@@ -211,7 +215,7 @@
 ```powershell
 & .\.venv\Scripts\python.exe -c "from statlab_mcp.tools.data_exploration_missing_report import missing_report; import json; print(json.dumps(missing_report('samples/dirty.csv'), ensure_ascii=False, indent=1))"
 ```
-- 手工可复算：dirty.csv 20 行：value 缺 2（0.10）、empty_col 缺 20（1.00）、extreme 缺 1（0.05）→ total_missing=23、总体缺失率 23/100=0.23
+- 手工可复算：dirty.csv 20 行 5 列共 100 个单元格：value 缺 1（0.05）、empty_col 缺 20（1.00）、extreme 缺 1（0.05）、name 缺 1（0.05）→ total_missing=23、总体缺失率 23/100=0.23
 - Excel 验证方式：用 COUNTBLANK 对每列计数对比
 
 ---

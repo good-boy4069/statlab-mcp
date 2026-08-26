@@ -41,7 +41,7 @@
     "durbin_watson": 1.98, "residual_shapiro": {"statistic": 0.97, "p_value": 0.55, "normal": true},
     "coefficients": [{"name": "const", "beta": 500.2, "std_err": 120.1, "t": 4.16, "p_value": 0.000, "vif": null}, ...],
     "vif_flags": ["age(11.2)>10 强共线性"],
-    "dummy_mapping": {"categoryA": "category=A", ...}, "drop_zero_var": [],
+    "dummy_mapping": {"category_A": "category=A", ...}, "drop_zero_var": [],
     "conclusion": "R²=0.62（调整后 0.59），F 检验 p<0.001 模型整体显著；income 显著相关变量：age"
   },
   "__image__": "C:\\...\\residuals_linear_regression_all_20260826_123456.png",
@@ -115,7 +115,7 @@
     "confusion_matrix": {"tp": 8, "fp": 2, "fn": 4, "tn": 13, "label_positive": "1"},
     "roc_auc": 0.86, "auc_ci_lower": 0.74, "auc_ci_upper": 0.98, "auc_ci_method": "Hanley-McNeil 正态近似",
     "odds_ratios": [{"name": "age", "or": 1.12, "p_value": 0.003, "significant": true}, ...],
-    "n_train": 55, "n_test": 25, "convergence_warning": null,
+    "n_train_after_weight": 70, "copied_rows": 15, "n_test": 25, "convergence_warning": null,
     "class_weight_note": "balanced：少数类复制实现，复制后 n=70"
   },
   "summary": "逻辑回归：AUC=0.86（95% CI [0.74, 0.98]）；显著 OR：age(1.12)；acc=0.78（仅对照）；无分离警告；相关≠因果"
@@ -171,29 +171,31 @@
 {
   "status": "ok",
   "result": {
-    "k": 3, "n_samples": 50, "excluded_columns": ["category", "date"],
+    "k": 3, "n_samples": 50, "dropped_na_rows": 0, "excluded_columns": ["category", "date"],
     "silhouette": 0.42, "silhouette_compare": {"k_minus_1": {"k": 2, "silhouette": 0.38}, "k_plus_1": {"k": 4, "silhouette": 0.35}},
     "clusters": [
-      {"cluster": 0, "n_members": 20, "centroid_original_units": {"age": 45.2, "score": 71.3, "income": 9200.0}, "note": "高收入高评分"}
+      {"cluster": 0, "n_members": 20, "centroid_original_units": {"age": 45.2, "score": 71.3, "income": 9200.0}}
     ]
   },
-  "summary": "k=3 聚类：轮廓系数 0.42（可接受；k=2 为 0.38、k=4 为 0.35，k=3 最优或有更好 k 需业务判断）；簇 0 样本 20 人：均值 age=45 分 score=71 收入 9200"
+  "summary": "k=3 聚类：轮廓系数 0.42（可接受；k=2 为 0.38、k=4 为 0.35，k=3 最优或有更好 k 需业务判断）；簇 0 样本 20 个样本：均值 age=45 分 score=71 收入 9200"
 }
 ```
 | 键 | 说明 |
 |---|---|
 | silhouette_compare | k±1 的对照（k=2 时无 k−1，该键 null 并注明"k 已是最小值"） |
-| clusters[].centroid_original_units | 反标准化质心（原单位）；note 由模板按质心相对高低生成（不含因果语言） |
+| clusters[].centroid_original_units | 反标准化质心（原单位）= 簇内均值（可手算核对）；解读必须结合 n_members（规格硬性） |
+| dropped_na_rows | 含缺失值数值行的 listwise 剔除数（实现期修订 vs 早期设计：无 note 字段，质心解读以 n_members 为锚） |
 | 标准化细节 | z-score 均值 0 方差 1；result 注明 `standardized: true` |
 
 ## 边界行为表
 | 场景 | 行为 |
 |---|---|
-| k<2 或 k>样本数−1 | error："k 必须在 2 到 N−1 之间（样本数 N=..）" |
+| k<2 或 k>有效样本数−1 | error："k 必须在 2 到有效样本数-1 之间（剔除缺失后有效样本 N=..）" |
 | k 非整数/非数字 | error："k 必须是整数" |
 | 无数值列 | error："未找到数值列，无法聚类" |
+| 数值列含缺失 | listwise dropna 并报告 `dropped_na_rows`（与 linear/logistic 对齐） |
 | 单行文件 | k 范围校验自然拒绝（k≤0） |
-| 常数列 | z-score 后为 0（StandardScaler 对零方差给 0），聚类照常（KMeans 不炸），输出时注明"常数列已标准化为 0" |
+| 常数列 | z-score 后为 0（StandardScaler 对零方差给 0），聚类照常（KMeans 不炸） |
 | 中文列名 | 键原样输出 |
 
 ## 错误路径（≥3 种）
@@ -273,7 +275,7 @@
 | 参数名 | 类型 | 默认值 | 校验规则 | 例子 |
 |---|---|---|---|---|
 | file_path | str | 必填 | 同全局 | 例子 |
-| target | str | 必填 | 存在；类别（≤20 类）→ 分类树；连续 → 回归树 | `target="income"` |
+| target | str | 必填 | 存在；类别标签或 ≤20 类数值目标 → 分类树；>20 类数值目标 → 回归树；类别目标 >50 类 error | `target="income"` |
 | method | str | "permutation" | ∈ {permutation, impurity}；非法报错 | `method="impurity"` |
 | n_estimators | int | 200 | ≥10（整数）；过小报错 | `n_estimators=100` |
 | random_state | int | 42 | 固定森林随机性 | `random_state=7` |
@@ -282,7 +284,7 @@
 ## 统计口径（钉死）
 1. **n < 50 拒绝**（规格硬性）：error："样本量 n=N 小于 50，特征重要性不稳定，请积累数据或抽样"
 2. 数值特征直用（缺失 listwise dropna 注明）；类别特征 one-hot（同 linear_regression 的 get_dummies，输出映射）
-3. 模型：目标 ≤20 类 → `RandomForestClassifier`（n_estimators/random_state，`class_weight="balanced"` 分类时）；连续 → `RandomForestRegressor`
+3. 模型（实现期修订 vs 早期设计：以**目标值实际类别数**判定）：类别标签，或数值目标 nunique ≤20 → `RandomForestClassifier`（`class_weight="balanced"`）；数值目标 nunique >20 → `RandomForestRegressor`（连续目标跑回归，不做多分类）
 4. impurity（默认 spec 允许）：`feature_importances_`（基尼/方差减少，**训练集内**，森林集成后稳定）；permutation：`sklearn.inspection.permutation_importance(..., n_repeats=, random_state=42)`（打乱单特征看分数下降，**验证集思想**，更稳健）
 5. 输出：`importances: [{feature, importance, rank}]`（降序）+ `method` + `model_type`（分类/回归）+ `n_estimators`；summary 固定尾注"**重要性≠因果**"
 6. 结论模板：`按 {method} 法，最重要的特征是 {top1}（importance=x），其次 …；重要性≠因果`
@@ -307,7 +309,8 @@
 | 场景 | 行为 |
 |---|---|
 | n<50 | error（规格硬性） |
-| target >20 类 | 分类模型仍可跑（多分类 RF 支持）——但注明"类别多，重要性仅供参考"；>50 类 error |
+| 类别目标 >50 类 | error："目标类别数 N 超过 50，请先合并类别" |
+| 数值目标 21~50 类 | 走回归树（连续目标语义），不跑多分类（实现期修订） |
 | 特征全是零方差 | 重要性全部 ≈0，输出 + 注明"特征无信息量" |
 | 全类别特征 | one-hot 后照常（映射输出） |
 | permutation 时某特征打乱无变化 | importance=0（排序最低），正常 |

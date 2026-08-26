@@ -55,6 +55,11 @@
 
 ## 7. 依赖与版本（实测记录）
 
-Python 3.13.14 下实测兼容组合：numpy 2.5.2 / pandas 3.0.5 / scipy 1.18.1 / statsmodels 0.14.6 / sklearn 1.9.0 / matplotlib 3.11.1 / pmdarima 2.1.1 / openpyxl 3.1.5 / mcp 2.1.0 / pytest 9.1.1（互操作冒烟通过：OLS/ARIMA/KMeans/read_excel 全真跑）。
+最低要求 Python 3.11+（pyproject `requires-python >=3.11`，代码 target py311；README 同口径）。
+以下为 Python 3.13.14 下的实测兼容组合：numpy 2.5.2 / pandas 3.0.5 / scipy 1.18.1 / statsmodels 0.14.6 / sklearn 1.9.0 / matplotlib 3.11.1 / pmdarima 2.1.1 / openpyxl 3.1.5 / mcp 2.1.0 / pytest 9.1.1（互操作冒烟通过：OLS/ARIMA/KMeans/read_excel 全真跑）。
+pywin32 仅 Windows 安装（requirements 环境标记 `sys_platform == "win32"`），Linux/macOS 自动跳过。
 若未来出现不兼容：降级路径 = pandas==2.3.*（numpy 不降），重跑冒烟并更新本记录。
 requirements.txt 为依赖唯一权威；pyproject.toml 只写元数据。
+requirements 为 pip freeze 全量锁定，含 mcp 包传递引入的 Web 组件（starlette/uvicorn/PyJWT 等）：
+纯 stdio 服务并不使用它们，保留仅为依赖树可复现（知情披露；若需最小攻击面可自行裁剪为
+requirements.min）。

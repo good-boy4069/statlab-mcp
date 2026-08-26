@@ -46,16 +46,16 @@
 
 1. **确定性至上**：全部随机过程固定 seed（42）；同一文件跑两次结果**逐字节一致**（这是可追责的根基，测试里有专门断言）
 2. **防幻觉设计**：第一层 25 工具零 LLM；结论文案由代码模板拼数字生成；p<0.001 统一显示"<0.001"；每个结论固定附局限声明（相关≠因果、是否校正、样本量）
-3. **口径钉死并可复算**：q1/q3=linear 插值（Excel QUARTILE.INC 同口径）、偏度/峰度=scipy Fisher 口径、std=ddof=1（Excel STDEV.S）——**文档写明，测试对手算公式和标准库独立核对**（223 个 pytest，覆盖见 docs/）
+3. **口径钉死并可复算**：q1/q3=linear 插值（Excel QUARTILE.INC 同口径）、偏度/峰度=scipy Fisher 口径、std=ddof=1（Excel STDEV.S）——**文档写明，测试对手算公式和标准库独立核对**（233 个 pytest，覆盖见 docs/）
 4. **中文全链路**：中文列名、GBK 编码自动回退、中文字体图表（无字体自动降级英文并注明）、中文错误消息带解决建议
 5. **硬核安全与防护**：仅本地文件、拒绝 UNC/NUL 路径、无网络上传、>50MB/200 万行/500MB 内存三重保护、xlsx zip 炸弹与日期跨度防护、异常输出有上限截断（防止恶意输入卡死）
 6. **统一的调用体验**：所有工具同构（`参数校验 → 中文报错或 result+summary`），agent 和人都能无痛上手；MCP 工具描述 = 完整 docstring（参数表/返回结构/示例），**agent 打开工具列表就是使用说明书**
-7. **工程完备**：12 份设计文档（每工具参数表/边界表/JSON Schema/验证方法）+ 客户端接入配置 + 覆盖率 82–96% + ruff 全量通过 + stdio 协议冒烟
+7. **工程完备**：12 份设计文档（每工具参数表/边界表/JSON Schema/验证方法）+ 客户端接入配置 + GitHub Actions CI（Windows/Ubuntu × Python 3.11/3.13：pytest + ruff + stdio 冒烟）+ 覆盖率 82–96% + stdio 协议冒烟
 
 ## 快速开始
 
 ```powershell
-# 1. 安装（Python 3.13+，仅 pip）
+# 1. 安装（Python 3.11+，仅 pip）
 git clone https://github.com/good-boy4069/statlab-mcp.git
 cd statlab-mcp
 python -m venv .venv
@@ -107,7 +107,7 @@ $env:PYTHONUTF8="1"
 
 ## 环境准备（Windows）
 
-1. 依赖 Python 3.13+，独立虚拟环境（仅 pip，禁止 uv/poetry/conda）：
+1. 依赖 Python 3.11+（pyproject 声明 `requires-python >=3.11`），独立虚拟环境（仅 pip，禁止 uv/poetry/conda）：
    ```powershell
    python -m venv .venv
    .\.venv\Scripts\Activate.ps1

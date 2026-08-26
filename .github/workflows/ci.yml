@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        python-version: ["3.11", "3.13"]
+    runs-on: ${{ matrix.os }}
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          python -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt --timeout 120
+      - name: Lint (ruff)
+        run: python -m ruff check statlab_mcp/ tests/
+      - name: Unit tests (pytest)
+        run: python -m pytest tests/ -q
+      - name: stdio protocol smoke
+        run: python tests/smoke_stdio.py
