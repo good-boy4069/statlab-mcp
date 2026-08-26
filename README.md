@@ -55,7 +55,7 @@
 ## 快速开始
 
 ```powershell
-# 1. 安装（Python 3.11+，仅 pip）
+# 1. 安装（Python 3.12+，仅 pip）
 git clone https://github.com/good-boy4069/statlab-mcp.git
 cd statlab-mcp
 python -m venv .venv
@@ -107,7 +107,7 @@ $env:PYTHONUTF8="1"
 
 ## 环境准备（Windows）
 
-1. 依赖 Python 3.11+（pyproject 声明 `requires-python >=3.11`），独立虚拟环境（仅 pip，禁止 uv/poetry/conda）：
+1. 依赖 Python 3.12+（pyproject 声明 `requires-python >=3.12`；锁定依赖 numpy 2.5.2 的最低要求），独立虚拟环境（仅 pip，禁止 uv/poetry/conda）：
    ```powershell
    python -m venv .venv
    .\.venv\Scripts\Activate.ps1

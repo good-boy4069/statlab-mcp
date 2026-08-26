@@ -55,7 +55,7 @@
 
 ## 7. 依赖与版本（实测记录）
 
-最低要求 Python 3.11+（pyproject `requires-python >=3.11`，代码 target py311；README 同口径）。
+最低要求 Python 3.12+（pyproject `requires-python >=3.12`——锁定依赖 numpy 2.5.2 的最低要求；代码 target py312；README/CI 同口径，CI 于 3.12/3.13 双版本实测）。
 以下为 Python 3.13.14 下的实测兼容组合：numpy 2.5.2 / pandas 3.0.5 / scipy 1.18.1 / statsmodels 0.14.6 / sklearn 1.9.0 / matplotlib 3.11.1 / pmdarima 2.1.1 / openpyxl 3.1.5 / mcp 2.1.0 / pytest 9.1.1（互操作冒烟通过：OLS/ARIMA/KMeans/read_excel 全真跑）。
 pywin32 仅 Windows 安装（requirements 环境标记 `sys_platform == "win32"`），Linux/macOS 自动跳过。
 若未来出现不兼容：降级路径 = pandas==2.3.*（numpy 不降），重跑冒烟并更新本记录。

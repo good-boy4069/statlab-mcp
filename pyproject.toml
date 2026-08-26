@@ -7,7 +7,7 @@ name = "statlab-mcp"
 version = "1.0.2"
 description = "统计分析 MCP Server：25 个纯计算统计工具，让 AI agent 获得可复现、可追责的真实统计学能力（与 DeepSeek Harness 无关的独立项目）"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"   # 锁定依赖 numpy 2.5.2 的最低要求（实测验证于 3.13；CI 覆盖 3.12/3.13）
 license = { text = "MIT" }
 authors = [{ name = "周翔宇" }]
 keywords = ["mcp", "statistics", "data-analysis", "scipy", "statsmodels"]
@@ -17,6 +17,9 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
 ]
 
+[project.scripts]
+statlab-mcp = "statlab_mcp.server:main"
+
 # 注意：依赖唯一权威 = requirements.txt（锁定版本），本文件不写 dependencies（项目规范）
 
 [tool.setuptools.packages.find]
@@ -24,7 +27,7 @@ include = ["statlab_mcp*"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "ISC", "DTZ", "BLE"]

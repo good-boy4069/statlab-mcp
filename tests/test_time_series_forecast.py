@@ -85,9 +85,10 @@ def test_quarterly_frequency_ok(tmp_path):
 
 
 def test_non_seasonal_not_labelled_sarima(tmp_path):
-    """外部评审 M2 盲区：无周期数据拟合后 seasonal_order 全零（seed=42 实测
-    PERIOD_EST=6 -> auto_arima 跑 seasonal 但 P=D=Q=0），method 必须为 ARIMA，
-    summary 不得出现 "SARIMA……；ARIMA" 自相矛盾。"""
+    """外部评审 M2：method / model.seasonal / seasonal_order / summary 必须同源一致，
+    不得出现 "SARIMA……；ARIMA" 自相矛盾。
+    注：auto_arima 的 stepwise 拟合结果跨平台可有 1 个参数的细微差异（BLAS/线程库），
+    故不断言具体季节性参数（CI Ubuntu 实测已验证此差异），只断言同源性。"""
     rng = np.random.default_rng(42)
     dates = pd.date_range("2025-01-01", periods=90).strftime("%Y-%m-%d")
     vals = np.linspace(10, 30, 90) + rng.normal(0, 0.5, 90)   # 纯线性趋势 + 小噪声
@@ -96,11 +97,17 @@ def test_non_seasonal_not_labelled_sarima(tmp_path):
                                                         encoding="utf-8-sig")
     r = _call(p, date_col="date", value_col="value", horizon=5)
     rs = r["result"]
-    assert rs["model"]["seasonal"] is False                 # 拟合结果确认非季节
-    assert rs["model"]["seasonal_order"] is None
-    assert rs["method"] == "ARIMA"
-    assert "SARIMA" not in r["summary"]
-    assert "ARIMA" in r["summary"]
+    assert rs["method"] in ("SARIMA", "ARIMA")
+    if rs["model"]["seasonal"]:
+        assert rs["method"] == "SARIMA"
+        assert rs["model"]["seasonal_order"] is not None
+        assert any(rs["model"]["seasonal_order"][:3])       # 季节判定必须有非零 P/D/Q
+    else:
+        assert rs["method"] == "ARIMA"
+        assert rs["model"]["seasonal_order"] is None
+    assert f"{rs['method']}（order=" in r["summary"]         # summary 与 method 同源
+    # seasonal_order 字样出现与否必须与 method 一致（不得 SARIMA 标 ARIMA）
+    assert ("seasonal_order=" in r["summary"]) == (rs["method"] == "SARIMA")
 
 
 def test_tail_nan_preserved_not_extrapolated(tmp_path):

@@ -20,6 +20,12 @@
 
 ### 其他
 - README 测试数量口径统一为当前实测值（此前 223/233 并存）。
+- **版本声明修正**：真实最低要求为 Python 3.12+（锁定依赖 numpy 2.5.2 要求 `>=3.12`；
+  v1.0.1 声明的 3.11+ 有误——CI 首次运行即被 3.11 矩阵的安装失败暴露；pyproject/
+  README/SPEC/ruff target 已同步，CI 矩阵改为 3.12/3.13）。
+- **跨平台测试修复**：`test_non_seasonal_not_labelled_sarima` 原断言 pmdarima 拟合的
+  季节性参数固定为全零，但 auto_arima stepwise 结果跨平台有细微差异（CI Ubuntu 实测
+  P/D/Q 非零），改为断言 method/seasonal_order/summary 的同源一致性（M2 修复的实质）。
 
 ## [v1.0.1] - 2026-08-26
 

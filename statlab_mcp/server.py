@@ -92,5 +92,10 @@ def _register_all() -> None:
 # 的启动方式（第三方托管器 import 本模块后调 run），25 个工具都会注册。
 _register_all()
 
-if __name__ == "__main__":
+def main() -> None:
+    """console 入口（PyPI 发布后 `statlab-mcp` 命令 / `uvx statlab-mcp` 直接启动 stdio 服务器）。"""
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()
