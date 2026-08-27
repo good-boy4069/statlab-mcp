@@ -1,0 +1,5 @@
+captured_at=2026-08-27
+captured_commit=f66970b6165b831de146e3dfed638f743ec30a5c
+tool_count=27
+desc_mode=STATLAB_DESC_MODE unset (full)
+note=v1.1.0 released baseline; legacy v1.0.3 fixture retained as archive

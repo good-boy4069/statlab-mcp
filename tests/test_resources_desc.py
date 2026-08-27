@@ -1,14 +1,21 @@
-"""tests/test_resources_desc.py —— v1.1.0 P0-1：resources 能力 + description 双轨验收。
+"""tests/test_resources_desc.py —— resources 能力 + description 双轨验收（v1.2.0 C0 起基线换锚）。
 
 钉死验收项：
-1. 默认（STATLAB_DESC_MODE 未设置）tools/list 与 v1.0.3 留档逐字节一致
-   （唯一已知差异：description 中设计文档路径由旧版 docs/ 前缀改为包内
-    statlab_mcp/docs/ 前缀，
-   随打包闭环发生，CHANGELOG 已披露；对比按该归一化规则进行，其余字符零差异）；
+1. 默认（STATLAB_DESC_MODE 未设置）tools/list 与 **v1.1.0 基线**对比，差异仅允许四类白名单：
+   ① description 的 inline 说明段（变化行须含 "inline_data" 字样）
+   ② schema 新增可选 `inline_data` 属性（禁止删除/改动既有属性定义）
+   ③ `file_path` required 移除（且不得新增其它 required、类型定义不变）
+   ④ 新增工具单向白名单（_ADDED_SINCE_V1_1_0；基线内工具不得消失）；
+   未登记的任何差异一律红（机器判定，逐工具逐属性枚举，禁止人眼比对）。
+   [历史档案] tests/fixtures/tools_list_full_v1_0_3.json 为 v1.0.3 时代基线，
+   自本守护换锚起退役为存档；其内容涉及的 docs/→statlab_mcp/docs/ 路径词与
+   correlation_matrix 参数段差异已随基线切换失去维护意义，文件保留仅为追溯。
 2. slim 模式总字节数较 full 下降 ≥50%；
 3. slim 下每个工具 description 含其全部参数名（防瘦身过度）；
 4. resources/list 数量 = 工具数 + 1；statlab://spec 与任一 manual 可读非空含工具名；
 5. STATLAB_DESC_MODE 非法取值 stderr 中文告警并回退 full。
+捕获条件（meta 文件 tools_list_full_v1_1_0.meta.txt）：STATLAB_DESC_MODE 未设、
+captured_commit=f66970b、tool_count=27。
 """
 import asyncio
 import json
@@ -23,33 +30,10 @@ from mcp.server.mcpserver import MCPServer
 from statlab_mcp import _resources as R
 from statlab_mcp.server import _TOOL_MODULES, DESC_MODE, StatlabServer, bootstrap
 
-FIXTURE = ROOT / "tests" / "fixtures" / "tools_list_full_v1_0_3.json"
-# 已披露的路径前缀差异归一化；字面量拼接写法防"批量路径替换脚本"误伤本行
-_OLD_DOC_PREFIX = "docs" + "/"
-_NEW_DOC_PREFIX = ("statlab_mcp" + "/") + _OLD_DOC_PREFIX
-_NORM = (_NEW_DOC_PREFIX, _OLD_DOC_PREFIX)
-# 已登记的功能性 description 变化（v1.1.0 功能增量自然携带）：登记工具以「参数段精确
-# 快照」硬编码钉死（机械审计：与新值逐字一致，禁止悄悄漂移），其余 description 部分与
-# 未登记工具全部要求与基线完全一致。v1.1.0 P1-2 correlation_matrix 增 kendall 别名。
-_KNOWN_PARAM_BLOCKS = {
-    "correlation_matrix": (
-        '    file_path (str): 本地数据文件（csv/tsv/xlsx/json），仅接受本地路径\n'
-        '    method (str, "pearson"): pearson / spearman / kendall / kendalltau'
-        '（逐对取 scipy，\n'
-        '        返回对象取 .statistic/.pvalue；pandas corr 无 p 值故不用；kendall 为\n'
-        '        kendalltau 的官方别名 v1.1.0 起，两者结果完全相同）\n'
-        '    p_adjust (str, "fdr_bh"): none / bonferroni / fdr_bh；默认 BH-FDR 并标注；\n'
-        '        校正单元 = 实际可计算的上三角对数（常量列对 r/p=null 不参与校正）\n'
-        '        （statsmodels.multipletests）'),
-}
-# v1.1.0 登记的新增工具（基线为 v1.0.3，不含它们；其行为由专属测试组覆盖）
-_NEW_TOOLS_IN_V1_1_0 = {"power_analysis"}
-import re as _re
-
-
-def _extract_param_block(desc: str) -> str:
-    m = _re.search(r"参数:\n(.*?)\n\n", desc, flags=_re.S)
-    return m.group(1) if m else ""
+FIXTURE = ROOT / "tests" / "fixtures" / "tools_list_full_v1_1_0.json"
+# 第④类：v1.1.0 基线之后新增的工具（单向白名单——C1/C2/C11 各加一名；
+# 成员在其所属批次 inline 化完成后，schema/docstring 差异须落入①②③类）
+_ADDED_SINCE_V1_1_0: set[str] = set()
 
 
 def _serialize(server: MCPServer) -> bytes:
@@ -68,46 +52,53 @@ def _fresh_server() -> StatlabServer:
     return server
 
 
-def test_full_matches_v1_0_3_baseline_after_doc_path_normalization():
-    """默认 tools/list 对 v1.0.3 留档的机械审计：路径词归一化 + 参数段精确快照 +
-    新增工具显式登记；未登记的任何差异一律红。"""
+def _allowed_schema_diff(base_schema: dict, cur_schema: dict) -> bool:
+    """第②③类机判：properties 只允许新增 inline_data 且既有定义逐字不变；
+    required 只允许移除 file_path。其余任何 schema 变化非法。"""
+    bp = base_schema.get("properties", {})
+    cp = cur_schema.get("properties", {})
+    if not set(cp) >= set(bp):
+        return False                                  # 禁止删除既有属性
+    if set(cp) - set(bp) - {"inline_data"}:
+        return False                                  # 只允许新增 inline_data
+    for k in bp:
+        if cp.get(k) != bp[k]:
+            return False                              # 既有属性定义禁止漂移
+    br = set(base_schema.get("required", []))
+    cr = set(cur_schema.get("required", []))
+    return (br - cr) <= {"file_path"} and not (cr - br)
+
+
+def test_full_matches_v1_1_0_baseline_four_category_whitelist():
+    """默认 tools/list 对 v1.1.0 基线的机械审计：四类白名单逐工具逐属性枚举。"""
     assert DESC_MODE == "full", "测试进程默认必须为 full 模式"
     current = _serialize(_fresh_server())
-    baseline = FIXTURE.read_bytes()
+    base_map = {d["name"]: d for d in json.loads(FIXTURE.read_text(encoding="utf-8"))}
     cur_map = {d["name"]: d for d in json.loads(current.decode("utf-8"))}
-    base_map = {d["name"]: d for d in json.loads(baseline.decode("utf-8"))}
-    for name in _NEW_TOOLS_IN_V1_1_0:
-        assert name in cur_map, f"登记的新工具 {name} 未注册"
-        cur_map.pop(name)              # 新工具移出基线比对（专属测试组覆盖）
-    assert len(base_map) == 26 and len(cur_map) == 26
 
-    def scrub(desc: str, name: str) -> str:
-        """登记工具的参数段以精确快照单独断言，此处挖除后参与整体基线比对。"""
-        if name in _KNOWN_PARAM_BLOCKS:
-            block = _extract_param_block(desc)
-            return desc.replace(block, "<PARAM-BLOCK>")
-        return desc
+    # 第④类：新增工具=注册集−基线集，必须与登记集合完全一致（双向核对防漂移）
+    added_now = set(cur_map) - set(base_map)
+    assert added_now == _ADDED_SINCE_V1_1_0, \
+        f"新增工具与登记集合不符：实际 {sorted(added_now)} vs 登记 {sorted(_ADDED_SINCE_V1_1_0)}"
+    assert not (set(base_map) - set(cur_map)), "基线内工具不得消失"
 
     problems: list[str] = []
     for name in sorted(base_map):
         base = base_map[name]
         cur = cur_map[name]
-        old_d = base["description"].replace(*_NORM)
-        new_d = cur["description"].replace(*_NORM)
-        if name in _KNOWN_PARAM_BLOCKS:
-            # 1) 新参数段必须与硬编码快照逐字一致
-            actual_block = new_d and _extract_param_block(cur["description"])
-            expected_block = _KNOWN_PARAM_BLOCKS[name]
-            if actual_block.replace(*_NORM) != expected_block:
-                problems.append(f"{name}: 参数段漂移（期望精确快照）")
-        else:
-            pass
-        a = json.dumps({**cur, "description": scrub(new_d, name)},
-                       sort_keys=True, ensure_ascii=False)
-        b = json.dumps({**base, "description": scrub(old_d, name)},
-                       sort_keys=True, ensure_ascii=False)
-        if a != b:
-            problems.append(f"{name}: 与基线不一致且未登记")
+        if base["inputSchema"] != cur["inputSchema"] and \
+                not _allowed_schema_diff(base["inputSchema"], cur["inputSchema"]):
+            problems.append(f"{name}: inputSchema 存在④类之外的变化")
+        # 第①类：description 行级 diff，每条增删行必须提及 inline_data；
+        # 变化行数上限 24 防整段重写混过行级检查
+        old_lines = set(base["description"].splitlines())
+        new_lines = set(cur["description"].splitlines())
+        changed = old_lines ^ new_lines
+        bad = [ln for ln in changed if "inline_data" not in ln]
+        if changed and bad:
+            problems.append(f"{name}: description 变化行缺少 inline_data 说明特征：{bad[:3]}")
+        elif len(changed) > 24:
+            problems.append(f"{name}: description 变化行数 {len(changed)} 过大，疑似整段重写")
     assert not problems, "\n".join(problems)
 
 
