@@ -47,15 +47,14 @@ import numpy as np
 import pandas as pd
 
 from statlab_mcp.tools._common import (
-    resolve_data,
-    require_non_none,
     EC,
     DataLabError,
     _estimate_period,
     _prepare_series,
     err,
     ok,
-    read_table,
+    require_non_none,
+    resolve_data,
 )
 
 _MIN_N = 30                       # 回测最低有效样本（高于 forecast 的 MIN_N=15）
