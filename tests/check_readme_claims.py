@@ -59,15 +59,52 @@ def main() -> int:
 
     if len(server._TOOL_MODULES) != EXPECTED_TOOLS:
         errors.append(f"server 注册工具数 {len(server._TOOL_MODULES)} != 预期 {EXPECTED_TOOLS}")
-    # v1.1.0 P0-1：resources 声明核对——README 中 resources 数 = 工具数 + 1 的表述存在
-    if "27 个工具的完整使用手册" not in readme_text and "manual" in readme_text.lower():
-        pass                                            # 文案形式不钉死，核心见下条
+
+    # ---- P2-B ①：README 工具总数声明机制（防旧计数残留与假自洽）----
+    # 规则 A：README 中出现的每一处 "N 个工具/个真实统计工具/个确定性工具" 数字
+    #         必须全部等于注册数；规则 B：至少存在一处正确声明。
+    from statlab_mcp import _resources as R
+    tool_names = sorted(R.tool_public_fn(m).__name__ for m in server._TOOL_MODULES)
+    count_claims = [int(x) for x in re.findall(
+        r"(\d+)\s*个(?:真实统计工具|确定性工具|工具)", readme_text)]
+    bad_counts = sorted({n for n in count_claims if n != len(tool_names)})
+    if bad_counts:
+        errors.append(f"README 存在与实际不符的工具数声明 {bad_counts}"
+                      f"（实际 {len(tool_names)}）")
+    if len(tool_names) not in count_claims:
+        errors.append(f"README 缺少工具总数声明（应含 '{len(tool_names)} 个工具' 字样）")
+
+    # ---- P2-B ②：resources 宣称与实现一致（manual 映射覆盖全部工具，数量=工具数+1）----
+    doc_keys = set(R._TOOL_DOC.keys())
+    if doc_keys != set(tool_names):
+        missing = sorted(set(tool_names) - doc_keys)
+        extra = sorted(doc_keys - set(tool_names))
+        errors.append(f"manual 映射漂移：缺 {missing}，多 {extra}")
+    spec_path = ROOT / "statlab_mcp" / "docs" / "SPEC.md"
+    spec_text = spec_path.read_text(encoding="utf-8")
+    if "数量恒 = 注册工具数 + 1" not in spec_text:
+        errors.append("SPEC 第 10 节 resources 数量口径缺失（'数量恒 = 注册工具数 + 1'）")
+
+    # ---- P2-B ③：SPEC 错误码表 ↔ EC 常量集 双向一致（码只增不减的静态检查）----
+    from statlab_mcp.tools import _common as C
+    ec_values = sorted({v for k, v in vars(C.EC).items()
+                        if not k.startswith("_") and isinstance(v, str)})
+    if len(ec_values) != len(set(ec_values)):
+        errors.append("EC 常量存在重复码值")
+    spec_codes = sorted(set(re.findall(r"^\| (E\d{4}) \|", spec_text, flags=re.M)))
+    if spec_codes != ec_values:
+        only_spec = sorted(set(spec_codes) - set(ec_values))
+        only_ec = sorted(set(ec_values) - set(spec_codes))
+        errors.append(f"错误码表与代码不一致：仅 SPEC 有 {only_spec}，仅代码有 {only_ec}"
+                      "（码一经发布永久稳定、只增不减；删码/改语义即红）")
+
     if errors:
         print("[check_readme_claims] 漂移 detected:")
         for e in errors:
             print("  -", e)
         return 1
-    print(f"[check_readme_claims] OK: pytest={actual}，README 声明一致，工具数={EXPECTED_TOOLS}")
+    print(f"[check_readme_claims] OK: pytest={actual}，README 声明一致，工具数="
+          f"{EXPECTED_TOOLS}，resources={len(tool_names) + 1}，错误码 {len(ec_values)} 个双向一致")
     return 0
 
 
