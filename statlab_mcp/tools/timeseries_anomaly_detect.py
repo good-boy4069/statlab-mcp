@@ -18,6 +18,11 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/06_timeseries.md
 
 示例:
     anomaly_detect("samples/timeseries.csv", date_col="date", value_col="value")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 import math
 from typing import Any
@@ -34,7 +39,8 @@ from statlab_mcp.tools._common import (
     _prepare_series,
     err,
     ok,
-    read_table,
+    require_non_none,
+    resolve_data,
     save_plot,
 )
 
@@ -107,9 +113,12 @@ def _detect_rolling_zscore(yv: pd.Series, threshold: float) -> list[dict[str, An
     return out
 
 
-def anomaly_detect(file_path: str, date_col: str, value_col: str,
-                   method: str = "stl", threshold: float = 3.0) -> dict:
+def anomaly_detect(file_path: str | None = None, date_col: str | None = None, value_col: str | None = None,
+                   method: str = "stl", threshold: float = 3.0,
+                   inline_data: list | dict | None = None) -> dict:
     """时序异常点检测（STL 残差 / 差分 IQR / 滚动 z-score）+ 区间图。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(date_col=date_col, value_col=value_col)
     try:
         if method not in _METHODS:
             raise DataLabError("method 仅支持 stl/iqr/rolling_zscore", EC.PARAM)
@@ -117,7 +126,7 @@ def anomaly_detect(file_path: str, date_col: str, value_col: str,
                 or threshold <= 0 or not math.isfinite(threshold):
             raise DataLabError("threshold 必须 >0 的有限数", EC.PARAM)
         threshold = float(threshold)
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         y, meta = _prepare_series(df, date_col, value_col)
         n = int(y.size)
         if n < MIN_N:
@@ -195,6 +204,7 @@ def anomaly_detect(file_path: str, date_col: str, value_col: str,
                            "异常点仅报告不剔除"),
         }
         res = ok(result, summary)
+        res["data_source"] = data_source
         res["__image__"] = img
         return res
     except DataLabError as e:

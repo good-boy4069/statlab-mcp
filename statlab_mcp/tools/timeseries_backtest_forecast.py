@@ -31,6 +31,11 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/06_timeseries.md
     backtest_forecast("samples/clean.csv", "date", "score", horizon=3)
     backtest_forecast("samples/clean.csv", "date", "score",
                       horizon=2, windows=2, method="naive")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 from __future__ import annotations
 
@@ -42,6 +47,8 @@ import numpy as np
 import pandas as pd
 
 from statlab_mcp.tools._common import (
+    resolve_data,
+    require_non_none,
     EC,
     DataLabError,
     _estimate_period,
@@ -96,10 +103,13 @@ def _fit_predict_one(method: str, y_train: pd.Series, horizon: int,
     return np.asarray(fcst, dtype=float), info
 
 
-def backtest_forecast(file_path: str, date_col: str, value_col: str,
-                      horizon: int, windows: int = 3,
-                      method: str = "auto_arima") -> dict:
+def backtest_forecast(file_path: str | None = None, date_col: str | None = None,
+                      value_col: str | None = None, horizon: int | None = None,
+                      windows: int = 3, method: str = "auto_arima",
+                      inline_data: list | dict | None = None) -> dict:
     """滚动回测主入口：expanding window、从序列尾部向前切 windows 个验证窗。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(date_col=date_col, value_col=value_col, horizon=horizon)
     try:
         # ---- 参数合法化（D9 第一层：任何非法参数先于门槛报错）----
         if isinstance(horizon, bool) or not isinstance(horizon, int) or horizon < 1:
@@ -113,7 +123,7 @@ def backtest_forecast(file_path: str, date_col: str, value_col: str,
         if method not in _METHODS:
             raise DataLabError(f"method 仅支持 {'/'.join(_METHODS)}", EC.PARAM)
 
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         y_full, meta = _prepare_series(df, date_col, value_col)
         n = int(y_full.size)
 
@@ -244,7 +254,9 @@ def backtest_forecast(file_path: str, date_col: str, value_col: str,
             "prep_meta": {"freq": meta["freq"],
                           "interpolated": meta["interpolated"]},
         }
-        return ok(result, "；".join(parts))
+        _payload = ok(result, "；".join(parts))
+        _payload["data_source"] = data_source
+        return _payload
     except DataLabError as e:
         return err(e.code, str(e))
     except Exception:

@@ -1,6 +1,11 @@
 """plot_histogram —— 可视化组 · 直方图（工具 22，核心实现）。
 
 单列分布直方图，图上标 n/mean/std；分箱 = min(40, max(8, ceil(sqrt(n))))。
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 import math
 
@@ -13,15 +18,19 @@ from statlab_mcp.tools._common import (
     DataLabError,
     err,
     ok,
-    read_table,
+    require_non_none,
+    resolve_data,
     save_plot,
 )
 
 
-def plot_histogram(file_path: str, column: str) -> dict:
+def plot_histogram(file_path: str | None = None, column: str | None = None,
+                   inline_data: list | dict | None = None) -> dict:
     """单列直方图（图上标 n/mean/std）。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(column=column)
     try:
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         if column not in df.columns:
             raise DataLabError(f"缺少必需列: {column}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
         if not pd.api.types.is_numeric_dtype(df[column]):
@@ -48,6 +57,7 @@ def plot_histogram(file_path: str, column: str) -> dict:
         summary = (f"直方图已保存：{column}（n={n}，均值 {mean:.2f}，sd {std:.2f}，"
                    f"{bins} 箱" + (f"，缺失 {n_missing}" if n_missing else "") + "）")
         res = ok(result, summary)
+        res["data_source"] = data_source
         res["__image__"] = img
         return res
     except DataLabError as e:

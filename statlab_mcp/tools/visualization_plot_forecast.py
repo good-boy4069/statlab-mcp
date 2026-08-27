@@ -2,6 +2,11 @@
 
 原值折线 + 7 日移动平均线；**仅作图不预测**（预测见工具 17）。
 五项统一前置由 _common._prepare_series 承载（插值/聚合/时区均报告）。
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 
 from matplotlib import pyplot as plt
@@ -13,7 +18,8 @@ from statlab_mcp.tools._common import (
     _prepare_series,
     err,
     ok,
-    read_table,
+    require_non_none,
+    resolve_data,
     save_plot,
 )
 
@@ -21,10 +27,13 @@ MIN_N = 5
 MA_WINDOW = 7
 
 
-def plot_forecast(file_path: str, date_col: str, value_col: str) -> dict:
+def plot_forecast(file_path: str | None = None, date_col: str | None = None, value_col: str | None = None,
+                   inline_data: list | dict | None = None) -> dict:
     """时序折线图 + 7 日均线（仅作图，不预测）。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(date_col=date_col, value_col=value_col)
     try:
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         y, meta = _prepare_series(df, date_col, value_col)
         n = int(y.size)
         if n < MIN_N:
@@ -59,6 +68,7 @@ def plot_forecast(file_path: str, date_col: str, value_col: str) -> dict:
         if meta["utc_note"]:
             summary += f"；{meta['utc_note']}"
         res = ok(result, summary)
+        res["data_source"] = data_source
         res["__image__"] = img
         return res
     except DataLabError as e:

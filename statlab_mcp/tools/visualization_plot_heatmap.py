@@ -3,6 +3,11 @@
 全部数值列两两 Pearson 相关热力图（格内标 r；常量列对应 r=null）。
 矩阵用 pandas .corr()（与 correlation_matrix 的 scipy pearsonr 同公式），
 本工具不做 p 值与校正（与工具 4 明确分工）。
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 from typing import Any
 
@@ -16,17 +21,18 @@ from statlab_mcp.tools._common import (
     DataLabError,
     err,
     ok,
-    read_table,
+    resolve_data,
     save_plot,
 )
 
 MAX_COLS = 20
 
 
-def plot_heatmap(file_path: str) -> dict:
+def plot_heatmap(file_path: str | None = None,
+                   inline_data: list | dict | None = None) -> dict:
     """数值列相关热力图（格内标 r）。"""
     try:
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         excluded = [c for c in df.columns if c not in numeric_cols]
         if len(numeric_cols) < 2:
@@ -68,6 +74,7 @@ def plot_heatmap(file_path: str) -> dict:
         summary = (f"相关热力图已保存（{len(numeric_cols)} 个数值列，n={n}"
                    + (f"，已排除 {len(excluded)} 列非数值" if excluded else "") + "）")
         res = ok(result, summary)
+        res["data_source"] = data_source
         res["__image__"] = img
         return res
     except DataLabError as e:

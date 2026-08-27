@@ -2,6 +2,11 @@
 
 生成 x-y 散点图，图上标注 Pearson r 与样本量；缺失按成对剔除并报数。
 图协议走 _common.save_plot（附录 D）；返回顶层 __image__ 绝对路径。
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 
 import numpy as np
@@ -14,15 +19,19 @@ from statlab_mcp.tools._common import (
     DataLabError,
     err,
     ok,
-    read_table,
+    require_non_none,
+    resolve_data,
     save_plot,
 )
 
 
-def plot_scatter(file_path: str, x_col: str, y_col: str) -> dict:
+def plot_scatter(file_path: str | None = None, x_col: str | None = None, y_col: str | None = None,
+                   inline_data: list | dict | None = None) -> dict:
     """x-y 散点图（图上标 r 与 n）。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(x_col=x_col, y_col=y_col)
     try:
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         for c in (x_col, y_col):
             if c not in df.columns:
                 raise DataLabError(f"缺少必需列: {c}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
@@ -57,6 +66,7 @@ def plot_scatter(file_path: str, x_col: str, y_col: str) -> dict:
                    + (f"，成对剔除缺失 {dropped} 行" if dropped else "")
                    + "）；相关≠因果")
         res = ok(result, summary)
+        res["data_source"] = data_source
         res["__image__"] = img
         return res
     except DataLabError as e:

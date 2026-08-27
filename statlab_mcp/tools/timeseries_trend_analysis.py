@@ -18,6 +18,11 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/06_timeseries.md
 
 示例:
     trend_analysis("samples/timeseries.csv", date_col="date", value_col="value")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 import math
 
@@ -30,7 +35,8 @@ from statlab_mcp.tools._common import (
     _prepare_series,
     err,
     ok,
-    read_table,
+    require_non_none,
+    resolve_data,
 )
 
 _MIN_N = 8
@@ -63,13 +69,16 @@ def _theil_sen_slope(yv: np.ndarray) -> float:
     return float(np.median(slopes))
 
 
-def trend_analysis(file_path: str, date_col: str, value_col: str,
-                   method: str = "mann_kendall") -> dict:
+def trend_analysis(file_path: str | None = None, date_col: str | None = None, value_col: str | None = None,
+                   method: str = "mann_kendall",
+                   inline_data: list | dict | None = None) -> dict:
     """Mann-Kendall / Theil-Sen 趋势检验：tau、p、斜率与单调性结论。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(date_col=date_col, value_col=value_col)
     try:
         if method not in _METHODS:
             raise DataLabError("method 仅支持 mann_kendall/theil_sen", EC.PARAM)
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         y, meta = _prepare_series(df, date_col, value_col)
         # _prepare_series 的插值只填中间缺失，头部 NaN 保留（interpolate 无法回填）；
         # 必须 dropna 后检验，否则 kendalltau 遇 NaN 返回 (nan,nan) 被改写为无趋势（外部评审 S2）
@@ -125,7 +134,9 @@ def trend_analysis(file_path: str, date_col: str, value_col: str,
             "metadata": {k: v for k, v in meta.items() if k != "n_before_resample"},
             "conclusion": concl,
         }
-        return ok(result, summary)
+        _payload = ok(result, summary)
+        _payload["data_source"] = data_source
+        return _payload
     except DataLabError as e:
         return err(e.code, str(e))
     except Exception:

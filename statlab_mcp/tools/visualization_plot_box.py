@@ -2,6 +2,11 @@
 
 单列箱线图：图上标五数概括（min/q1/中位/q3/max）与 IQR 异常数（同 outlier_detect 口径，
 但仅单列、无异常点导出表——异常定位请用工具 5）。
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 
 import numpy as np
@@ -14,17 +19,21 @@ from statlab_mcp.tools._common import (
     DataLabError,
     err,
     ok,
-    read_table,
+    require_non_none,
+    resolve_data,
     save_plot,
 )
 
 MIN_N = 4
 
 
-def plot_box(file_path: str, column: str) -> dict:
+def plot_box(file_path: str | None = None, column: str | None = None,
+                   inline_data: list | dict | None = None) -> dict:
     """单列箱线图（图上标五数 + 异常数）。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(column=column)
     try:
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         if column not in df.columns:
             raise DataLabError(f"缺少必需列: {column}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
         if not pd.api.types.is_numeric_dtype(df[column]):
@@ -75,6 +84,7 @@ def plot_box(file_path: str, column: str) -> dict:
                    + f"，IQR 异常 {n_outliers} 个"
                    + (f"，缺失 {n_missing}" if n_missing else "") + "）")
         res = ok(result, summary)
+        res["data_source"] = data_source
         res["__image__"] = img
         return res
     except DataLabError as e:

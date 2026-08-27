@@ -16,6 +16,11 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/06_timeseries.md
 
 示例:
     seasonal_decompose("samples/timeseries.csv", date_col="date", value_col="value")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 
 import numpy as np
@@ -29,7 +34,8 @@ from statlab_mcp.tools._common import (
     _prepare_series,
     err,
     ok,
-    read_table,
+    require_non_none,
+    resolve_data,
     save_plot,
 )
 
@@ -37,9 +43,12 @@ MIN_N = 15
 _MODELS = {"additive", "multiplicative", "auto"}
 
 
-def seasonal_decompose(file_path: str, date_col: str, value_col: str,
-                       period: int | None = None, model: str = "auto") -> dict:
+def seasonal_decompose(file_path: str | None = None, date_col: str | None = None, value_col: str | None = None,
+                       period: int | None = None, model: str = "auto",
+                   inline_data: list | dict | None = None) -> dict:
     """时间序列分解：趋势 + 季节 + 残差（含周期自动估计与 4 子图）。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(date_col=date_col, value_col=value_col)
     try:
         if model not in _MODELS:
             raise DataLabError("model 仅支持 additive/multiplicative/auto", EC.PARAM)
@@ -47,7 +56,7 @@ def seasonal_decompose(file_path: str, date_col: str, value_col: str,
             if isinstance(period, bool) or not isinstance(period, (int, np.integer)):
                 raise DataLabError("period 必须是整数", EC.PARAM)
             period = int(period)
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         y, meta = _prepare_series(df, date_col, value_col)
         n = int(y.size)
         if n < MIN_N:
@@ -137,6 +146,7 @@ def seasonal_decompose(file_path: str, date_col: str, value_col: str,
                            f"残差 std {components['resid']['std']:.2f}"),
         }
         res = ok(result, summary)
+        res["data_source"] = data_source
         res["__image__"] = img
         return res
     except DataLabError as e:
