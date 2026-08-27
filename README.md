@@ -201,7 +201,7 @@ MCP 客户端里把 command 配成 docker 的用法（如 `docker run --rm -i st
 ```
 - 测试数据由 `tests/make_fixtures.py` 固定 seed 生成并入库；关键数字用独立第三方计算对照（statistics.mean / 手算期望值表），禁止循环论证
 - 验收流程（2026-08-26 起为 AI 代做模式）：pytest 全绿 + 两套数据实跑核对（真实 stdout 全部留档在验收记录）→ commit + PROGRESS 登记；使用者保留随时抽检权
-- 质量基线：全量 pytest 绿（当前 **389 个 pytest**）、工具模块覆盖率 ≥80%（本地实测 ~90% 区间）、ruff 全量通过、stdio 协议冒烟 ALL-STDIO-OK
+- 质量基线：全量 pytest 绿（当前 **389 个 pytest**）、工具模块覆盖率 ≥80%（本地实测 ~90% 区间）、ruff 通过（工具与测试目录，CI 口径）、stdio 协议冒烟 ALL-STDIO-OK
 
 ## 技术注记（mcp 2.x）
 

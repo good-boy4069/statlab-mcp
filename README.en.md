@@ -252,7 +252,7 @@ like `-v D:\data:/data`.
   are checked against independent references (statistics.mean / hand-computed expectation tables) —
   circular self-validation is banned
 - Quality bar: full pytest green (**currently 389 tests**), tool-module coverage ≥80% (~90% locally
-  measured), ruff clean, stdio protocol smoke ALL-STDIO-OK
+  measured), ruff clean on tool & test dirs (CI scope), stdio protocol smoke ALL-STDIO-OK
 
 ## Technical notes (mcp 2.x)
 

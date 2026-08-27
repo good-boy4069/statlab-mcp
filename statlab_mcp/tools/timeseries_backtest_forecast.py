@@ -157,15 +157,22 @@ def backtest_forecast(file_path: str | None = None, date_col: str | None = None,
         any_zero_window = False
         truncated = False
 
-        # 原始观测序列（红队 P1-1 防泄漏）：验证窗真值只从这里取。与
-        # _prepare_series 的聚合口径一致（同刻求和、min_count=1），无效日期与
-        # 缺值行不构成观测；y_full 为全量插值序列，其验证段缺口点是"由未来
-        # 观测构造的插值"，直接取用违反 R2-F02 防泄漏钉死条款。
+        # 原始观测序列（红队 P1-1 防泄漏）：验证窗真值只从这里取。聚合口径与
+        # _prepare_series 严格对齐（复审 N1）：剔除无效日期后判 has_duplicates，
+        # 有重复 → 与之相同的按天 resample sum(min_count=1)（日 00:00 桶）；
+        # 无重复 → 同刻合并（通常恒等，保留原时刻）。缺值行不构成观测。
+        # y_full 为全量插值序列，其验证段缺口点是"由未来观测构造的插值"，
+        # 直接取用违反 R2-F02 防泄漏钉死条款。
         _rd = pd.to_datetime(df[date_col], errors="coerce", utc=True)
         _rv = df[value_col].to_numpy(dtype=float)
-        _mobs = _rd.notna() & ~np.isnan(_rv)
-        raw_obs = pd.Series(_rv[_mobs], index=_rd[_mobs]) \
-            .groupby(level=0).sum(min_count=1).sort_index()
+        _keep = _rd.notna()
+        _s = pd.Series(_rv[_keep], index=_rd[_keep]).sort_index()
+        if _s.index.has_duplicates:
+            # sum 结合律：先同刻合并再按天 = 直接按天；桶对齐 _prepare_series 的 resample("D")
+            raw_obs = _s.groupby(level=0).sum(min_count=1) \
+                .resample("D").sum(min_count=1).sort_index()
+        else:
+            raw_obs = _s.groupby(level=0).sum(min_count=1).sort_index()
 
         for i in range(windows):                     # i=0 为最早窗
             val_start = n - (windows - i) * horizon  # 验证段起点（含）
@@ -192,16 +199,26 @@ def backtest_forecast(file_path: str | None = None, date_col: str | None = None,
             try:
                 pred, info = _fit_predict_one(method, y_hist, h_use, use_period)
             except Exception as exc:                 # 单窗失败不拖垮整体汇总
-                window_records.append({"index": i, "train_end": str(y_hist.index[-1]),
+                window_records.append({"index": i,
+                                       "train_end": y_hist.index[-1].strftime("%Y-%m-%d %H:%M:%S"),
                                        "error": f"{type(exc).__name__}"})
                 continue
             if not obs_valid.any():
                 window_records.append({
-                    "index": i, "train_end": str(y_hist.index[-1]),
+                    "index": i,
+                    "train_end": y_hist.index[-1].strftime("%Y-%m-%d %H:%M:%S"),
                     "error": "验证窗无原始观测真值（全部为补齐/插值点）"})
                 continue
             actual_v = actual[obs_valid]
             pred_v = np.asarray(pred, dtype=float)[:h_use][obs_valid]
+            if not np.isfinite(pred_v).all():
+                # 复审 N4：pred 含 NaN（训练段尾点缺失+naive 等）与 actual 全缺
+                # 对称处理——归 error 路径，绝不静默产出 nan 指标污染汇总
+                window_records.append({
+                    "index": i,
+                    "train_end": y_hist.index[-1].strftime("%Y-%m-%d %H:%M:%S"),
+                    "error": "预测含非有限值（训练段尾部缺失等，两端缺失保留承诺所致）"})
+                continue
             abs_err = np.abs(actual_v - pred_v)
             mae = float(np.mean(abs_err))
             rmse = float(np.sqrt(np.mean((actual_v - pred_v) ** 2)))
@@ -212,7 +229,8 @@ def backtest_forecast(file_path: str | None = None, date_col: str | None = None,
             if mape is None:
                 any_zero_window = True
             window_records.append({
-                "index": i, "train_end": str(y_hist.index[-1]),
+                "index": i,
+                "train_end": y_hist.index[-1].strftime("%Y-%m-%d %H:%M:%S"),
                 "pred": [float(v) for v in pred_v],
                 "actual": [float(v) for v in actual_v],
                 "abs_err": [round(float(v), 6) for v in abs_err],
@@ -226,7 +244,11 @@ def backtest_forecast(file_path: str | None = None, date_col: str | None = None,
 
         usable = [w for w in window_records if "error" not in w]
         if not usable:
-            raise DataLabError("所有回测窗口均拟合失败（详见服务端日志）", EC.CALC)
+            # 复审 N3：如实区分失败原因并附窗口明细（不再一律"拟合失败"误导）
+            reasons = "；".join(dict.fromkeys(
+                f"窗{w['index']}: {w['error']}" for w in window_records
+                if "error" in w))
+            raise DataLabError(f"所有回测窗口均未产出有效指标（{reasons}）", EC.CALC)
         detail_count = sum(len(w.get("abs_err", [])) for w in usable)
         if detail_count > _DETAIL_CAP:
             # 截断最旧窗直至明细 <= 上限（汇总指标从不截断，R2-F10）；
