@@ -24,3 +24,6 @@ PROGRESS.md
 dist/
 build/
 *.egg-info/
+
+# dep_matrix CI 生成物（scripts/gen_lower_constraints.py 产物，每次由 CI 现算，不入库 D13）
+constraints-lower.txt

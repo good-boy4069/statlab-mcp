@@ -101,6 +101,11 @@ requirements.txt 为**开发/CI 锁定权威**（可复现性承诺）；pyproje
 requirements 为 pip freeze 全量锁定，含 mcp 包传递引入的 Web 组件（starlette/uvicorn/PyJWT 等）：
 纯 stdio 服务并不使用它们，保留仅为依赖树可复现（知情披露；若需最小攻击面可自行裁剪为
 requirements.min）。
+**下限矩阵验证（v1.2.0 T5 起）**：dep_matrix CI 工作流以 `scripts/gen_lower_constraints.py`
+从 dependencies 现场生成 `pkg==下限` 约束文件（fail-loud，拒绝无下限条目；产物不入库），
+按 `pip install . -c constraints-lower.txt` 安装后跑全量测试与 stdio 冒烟——验证
+「下限组合仍可安装、可运行」。该矩阵只覆盖**直接依赖下限**（如实命名，非全传递依赖组合）；
+BLAS 线程数与锁定权威同约定置 1。
 
 ## 9. 错误码表（v1.1.0 新增；一经发布永久稳定，只增不改不复用）
 

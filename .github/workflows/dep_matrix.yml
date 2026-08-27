@@ -1,0 +1,62 @@
+name: dep-matrix (direct lower bounds)
+
+# v1.2.0 T5：直接依赖下限矩阵（如实命名——只验证 pyproject 声明的直接依赖下限，
+# 不覆盖全部传递依赖组合）。
+# 目的：锁定权威（requirements.txt）之外的「下限组合仍可安装、可运行」证据。
+# 每周一跑一次 + 手动触发 + release 发布触发；产物 constraints-lower.txt 由
+# scripts/gen_lower_constraints.py 现场生成（不入库，D13）。
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'   # 每周一 03:00 UTC
+  release:
+    types: [published]
+
+jobs:
+  lower-bounds:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONUTF8: "1"
+      # BLAS 单线程：与 T2 时序工具的确定性约定一致（OMP/MKL/OPENBLAS 同步置 1）
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 生成直接依赖下限约束文件（fail-loud）
+        run: python scripts/gen_lower_constraints.py
+
+      - name: 上传约束文件 artifact（留证）
+        uses: actions/upload-artifact@v4
+        with:
+          name: constraints-lower
+          path: constraints-lower.txt
+
+      - name: 按下限组合安装（pip install . -c constraints-lower.txt）
+        run: |
+          python -m pip install -U pip
+          python -m pip install . -c constraints-lower.txt --timeout 120
+          python -m pip install pytest --timeout 120   # 测试依赖不入包，CI 现装
+
+      - name: 单元测试（主组，排除 lower_bound_compat 容差组）
+        run: python -m pytest tests/ -q -m "not lower_bound_compat"
+
+      - name: 单元测试（lower_bound_compat 容差组）
+        run: python -m pytest tests/ -q -m "lower_bound_compat"
+
+      - name: stdio 协议冒烟
+        run: python tests/smoke_stdio.py
+
+      - name: Job summary
+        if: always()
+        shell: bash
+        run: |
+          echo "## statlab-mcp 直接依赖下限矩阵" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 范围：pyproject 直接依赖下限（constraints-lower.txt，见 artifact）" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 步骤：下限安装 → pytest 主组 → pytest 容差组 → stdio 冒烟" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 说明：非全传递依赖矩阵；锁定权威见 requirements.txt" >> "$GITHUB_STEP_SUMMARY"
