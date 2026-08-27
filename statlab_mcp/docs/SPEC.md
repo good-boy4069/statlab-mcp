@@ -50,9 +50,15 @@
 ## 5. 图片输出协议（唯一约定，禁止偏离）
 
 1. 所有图片存 `reports/plots/YYYYmmdd/`（按日期归档），文件名 = `工具名_<主列名或all>_YYYYmmdd_HHMMSS_fff.png`（多列图用 all，毫秒时间戳防覆盖、防堆积）；
-2. 返回 JSON 的 `__image__` 字段 = 图片绝对路径字符串，禁止 base64（防撑爆上下文）；
-3. 统一封装 save_plot(fig, name)：matplotlib.use("Agg") 必须在 import pyplot 之前；中文字体 Microsoft YaHei/SimHei + unicode_minus=False（字体缺失时降级英文并在图内注明）；dpi=150，bbox_inches="tight"；
-4. agent 看图：DeepSeek Harness 用 read_image 工具，Claude Code 用 Read 工具读 `__image__` 路径。
+2. **STATLAB_IMAGE_MODE 双轨（v1.1.0 起，进程启动时读取一次；非法取值 stderr 中文告警并回退默认 `path`）**：
+   - **path（默认）**：返回 JSON 的 `__image__` 字段 = 图片绝对路径字符串，禁止 base64（防撑爆上下文）；与 v1.0.3 行为逐字段一致；
+   - **content**：工具返回内容块列表 `[ImageContent(mimeType="image/png", data=<PNG base64>), TextContent(JSON)]`；TextContent 的 JSON 与 path 模式完全相同、**惟去掉 `__image__` 键**；`structuredContent` 同时为去掉该键后的完整 `{status, result, summary}` 结构（对第 6 节"禁止删改"条款的唯一显式豁免）；
+   - **大图防护（钉死）**：content 模式下单张 PNG > 2.0MB 自动回退 path 形态，`summary` 末尾追加"（图片较大已回退路径模式）"，并向 stderr 记录一条 INFO 日志；
+   - **风险提示（强制披露）**：content 模式图片以 base64 进入客户端上下文，存在上下文膨胀风险，仅建议支持图片渲染的交互式客户端启用；headless/自动化流水线请保持默认 path；
+3. 统一封装 save_plot(fig, name)：matplotlib.use("Agg") 必须在 import pyplot 之前；中文字体 Microsoft YaHei/SimHei + unicode_minus=False（字体缺失时降级英文并在图内注明）；dpi=150，bbox_inches="tight"；两种模式的图片文件本体完全相同（确定性渲染，字节级一致可复算）；
+4. agent 看图：DeepSeek Harness 用 read_image 工具，Claude Code 用 Read 工具读 `__image__` 路径；content 模式由客户端直接渲染 ImageContent。
+
+> 注：v1.1.0 迭代任务原文中本节被引用为"SPEC 第 4 节"，对应现行编号即本节（图片输出协议），实质口径以本节为准。
 
 ## 6. auto_analysis 协议（编排层）
 

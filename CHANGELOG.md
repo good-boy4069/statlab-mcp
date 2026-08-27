@@ -4,6 +4,25 @@
 
 ## [Unreleased] - v1.1.0（开发中）
 
+### P0-3 图片返回双轨（ImageContent + `__image__`）
+- **STATLAB_IMAGE_MODE 双轨开关**（进程启动解析一次；非法取值 stderr 中文告警回退默认 `path`）：
+  `path`（默认）与 v1.0.3 行为逐字段一致（`__image__` 路径，禁 base64）；
+  `content` 返回内容块列表 `[ImageContent(mimeType="image/png", data=<PNG base64>), TextContent(JSON)]`，
+  TextContent JSON 与 path 模式完全相同、惟去掉 `__image__` 键；`structuredContent`
+  同时为去键后的完整 `{status, result, summary}`（对"禁止删改现有返回结构"的唯一显式豁免，
+  其余任何模式任何字段不适用）。
+- **大图防护（钉死）**：content 模式单张 PNG > 2.0MB 自动回退 path 形态，
+  summary 末尾追加"（图片较大已回退路径模式）"，stderr 记录一条 INFO 日志。
+- **实现位置**：`statlab_mcp/_imaging.py` + StatlabServer.call_tool 成功路径统一改写——
+  26 个工具模块零改动，仅带图成功结果被改写，错误/无图结果原样透传；风险提示
+  （base64 进客户端上下文有膨胀风险，仅建议交互式客户端启用）强制写入 SPEC 第 5 节
+  （任务原文引用的"SPEC 第 4 节"按现行编号即本节，已在 SPEC 注明映射关系）。
+- 验收测试 `tests/test_image_modes.py`（7 用例）：块结构/惟去一键/structuredContent 同构、
+  ImageContent base64 解码字节 == 源 PNG 字节逐字节一致、大图回退+INFO 日志、
+  无图结果零透传感知、确定性（同输入两次绘图 PNG 字节级一致）、真实 stdio **双子进程**
+  （env 启动语义）path 默认行为 + content 标准 MCP 客户端可解析。
+- README 测试计数 275 → 282。
+
 ### P0-1 MCP resources 能力 + description 双轨模式（默认零变化）
 - **resources 静态枚举**（不用 resource templates）：`statlab://spec` = SPEC.md 全文；
   每工具 `statlab://tools/<工具名>/manual` = 模块 docstring 全文 + 设计文档对应小节全文

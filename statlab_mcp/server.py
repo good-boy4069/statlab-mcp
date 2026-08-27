@@ -18,7 +18,7 @@ from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
 from mcp_types import CallToolResult, TextContent  # mcp 2.x：类型定义在 mcp_types 包
 from pydantic import ValidationError
 
-from statlab_mcp import _resources
+from statlab_mcp import _imaging, _resources
 from statlab_mcp.tools import (
     _common,  # 导入即执行 seed(42)/Agg/字体/日志配置；EC 错误码常量亦经此引用
 )
@@ -72,7 +72,7 @@ class StatlabServer(MCPServer):
 
     async def call_tool(self, name, arguments, context=None):
         try:
-            return await super().call_tool(name, arguments, context)
+            result = await super().call_tool(name, arguments, context)
         except ToolError as e:
             # 与 SDK _handle_call_tool 的分类逻辑对齐：仅普通 ToolError（且根因是参数
             # ValidationError）属于"参数校验失败"；UnexpectedToolError（工具内部意外
@@ -83,6 +83,11 @@ class StatlabServer(MCPServer):
                     content=[TextContent(type="text", text=_PARAM_HINT_JSON)],
                     is_error=True)
             raise
+        if IMAGE_MODE == "content":
+            # v1.1.0 P0-3 图片双轨（SPEC 第 5 节）：仅带图成功结果被改写为内容块列表，
+            # 其余结果原样透传；默认 path 模式完全不介入。
+            result = _imaging.rewrite_for_content_mode(result)
+        return result
 
     def add_tool(self, fn, name=None, **kwargs):
         if DESC_MODE == "slim" and kwargs.get("description"):
@@ -93,8 +98,9 @@ class StatlabServer(MCPServer):
 
 mcp = StatlabServer("statlab-mcp")
 
-# 进程启动解析一次（stderr 中文告警后回退 full 由 _resources.resolve_desc_mode 负责）
+# 进程启动解析一次（stderr 中文告警后回退默认值由 _resources/_imaging 负责）
 DESC_MODE = _resources.resolve_desc_mode()
+IMAGE_MODE = _imaging.resolve_image_mode()
 
 
 def bootstrap(mcp_server: MCPServer) -> None:
