@@ -26,8 +26,7 @@ from statlab_mcp.server import _TOOL_MODULES
 CSV = str(ROOT / "samples" / "clean.csv")
 SHAPE_FIXTURE = ROOT / "tests" / "fixtures" / "inline_schema_shape.json"
 
-INLINE_DOC_TOOLS = 28          # 26 既有文件型 + impute_missing + backtest_forecast
-OPTIONAL_SOURCE_TOOLS = {"analysis_plan"}              # T4 后并入（data_source 三态）
+INLINE_DOC_TOOLS = 29          # 26 文件型 + impute + backtest + analysis_plan(T4, require_input=False)
 NO_SOURCE_TOOLS = {"power_analysis"}                   # 纯参数型，永不适用
 
 
@@ -43,9 +42,9 @@ def test_adoption_signature_scan():
     assert len(with_inline) == INLINE_DOC_TOOLS, \
         f"inline 化工具数 {len(with_inline)} != {INLINE_DOC_TOOLS}: {sorted(with_inline)}"
     assert not (with_inline & NO_SOURCE_TOOLS), "纯参数型工具被误 inline 化"
-    # 其余注册工具：可选源（analysis_plan）或纯参数（power_analysis）
+    # 其余注册工具：仅纯参数型（power_analysis）；文件型与可选源均已 inline 化
     others = set(fns) - with_inline
-    assert others <= OPTIONAL_SOURCE_TOOLS | NO_SOURCE_TOOLS, \
+    assert others == NO_SOURCE_TOOLS, \
         f"存在未按规约登记的工具：{sorted(others)}"
 
 
