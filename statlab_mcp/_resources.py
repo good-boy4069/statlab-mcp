@@ -94,6 +94,7 @@ _TOOL_DOC: dict[str, str] = {
     "pca_analysis": "05_modeling.md",
     "feature_importance": "05_modeling.md",
     "time_series_forecast": "06_timeseries.md",
+    "backtest_forecast": "06_timeseries.md",
     "seasonal_decompose": "06_timeseries.md",
     "trend_analysis": "06_timeseries.md",
     "anomaly_detect": "06_timeseries.md",

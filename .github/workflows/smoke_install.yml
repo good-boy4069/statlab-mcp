@@ -68,7 +68,7 @@ jobs:
                   tools = await s.list_tools()
                   names = sorted(t.name for t in tools.tools)
                   # ② 工具数 = 27
-                  assert len(names) == 28, f"tool count {len(names)} != 28 (v1.2.0 T1 impute_missing)"
+                  assert len(names) == 29, f"tool count {len(names)} != 29 (v1.2.0 T1+T2)"
                   # ③ statlab://spec 与 ≥2 个 manual 可读非空（P0-1 打包闭环）
                   res_list = await s.list_resources()
                   uris = [str(x.uri) for x in res_list.resources] \

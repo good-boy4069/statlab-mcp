@@ -62,3 +62,6 @@ ignore = ["BLE001", "DTZ005", "RUF001", "RUF002", "RUF003", "E402"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "lower_bound_compat: T5 下限兼容矩阵容差断言组（对锁定参考常量 rel<=1e-6；主矩阵同跑天然绿，dep_matrix job 以 -m 专选复核）",
+]

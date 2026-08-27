@@ -1,5 +1,5 @@
 # 时序组 · 接口设计文档（整组交付）
-> **工具索引**（v1.1.0 起 statlab://tools/<名>/manual 取本文件对应小节，锚点=一级标题行“# 工具 N：<函数名>(”）：time_series_forecast（17）｜seasonal_decompose（18）｜trend_analysis（19）｜anomaly_detect（20）
+> **工具索引**（v1.1.0 起 statlab://tools/<名>/manual 取本文件对应小节，锚点=一级标题行“# 工具 N：<函数名>(”）：time_series_forecast（17）｜seasonal_decompose（18）｜trend_analysis（19）｜anomaly_detect（20）｜backtest_forecast（工具29，v1.2.0）
 
 > 交付物：time_series_forecast / seasonal_decompose / trend_analysis / anomaly_detect。
 > 规格 17-20 均为【简化】实现：只做"能出真实数字的最小可靠版本"，每个工具注明略过内容。
@@ -280,3 +280,39 @@
    缺失显式插值并报告、时区统一 UTC、非法日期行剔除计数——全部在 summary 里明示。
 3. **同一文件跑两次一样吗？** 一样。auto_arima 传 random_state=42（定阶搜索确定性）、FFT/插值/
    STL 均无随机性；仅"大样本斜率抽样"用固定 seed 且注明。
+
+
+---
+
+# 工具 29：backtest_forecast(file_path, date_col, value_col, horizon, windows=3, method="auto_arima")【v1.2.0 新增】
+
+forecast 可信度自评：滚动回测 + MAE/RMSE/MAPE。
+
+## 防泄漏（钉死，本节核心）
+- **逐窗独立**：每窗只喂 [0, train_end) 历史重新走 _prepare_series+_estimate_period——
+  验证窗不含任何由未来观测构造的插值点（R2-F02 真值泄漏防治：线性插值用两侧邻近点，
+  全量预处理会让验证段插值点被未来真值污染，系统性低估误差）；
+- period_full_est 仅用于门槛判定；seasonal_naive/auto_arima 均在窗内估周期/拟合；
+- period > 窗内训练段长 → 退化 naive 且 period_used_fallback=true（t-m 越界防护）。
+
+## 门槛链（D9 顺序）
+参数合法（E1001：bool/枚举/windows∈[1,10]/horizon≥1）→ n>=30（E1010）
+→ n>=h*(w+1) 且 train_min=n-w*h >= max(15, 2*period)（E1010+调参建议）
+→ horizon<=n*50%（E1001，forecast 同口径半句继承）→ n<=100000（E1005 防大表卡顿）。
+门槛判定用的 period 取全量估计一次；逐窗周期在窗内重估。
+
+## 指标与体积
+MAPE = mean(|a-f|/|a|)，非对称（低估罚更重），未采用 sMAPE（定义声明防后续误"修正"）；
+真值 |a|<=1e-12 的窗 MAPE=null+zero_note，汇总仅聚非 null 窗（epsilon 判据非 ==0）。
+RMSE 汇总 = 窗 RMSE 平方均值再开方（窗粒度聚合，与 MAE 同构件），design 注明以防歧义。
+明细总量 >10000 点截断最旧窗 + truncated=true（汇总永不截断，R2-F10）。
+单窗 auto_arima 失败记 error 继续、n_windows_failed 计数；全败 → E9999。
+
+## 双轨确定性
+锁定环境（requirements 锁 + 单线程 OMP/MKL/OPENBLAS=1）同输入两次逐字节一致；
+下限矩阵容差断言 rel<=1e-6 以 pytest marker `lower_bound_compat` 隔离（注册于 pyproject；
+主矩阵不设全局 deselect——排除将使主矩阵永久失去容差保护）。
+
+## 手算锚（tests/test_backtest_forecast.py）
+naive 分支 40 点已知序列 h=1 w=2 expanding 逐窗纸面推导。
+提示词原示例 [1..10] 与 n>=30 互斥已被 D9 裁决替换（修订原因记录于测试注释）。
