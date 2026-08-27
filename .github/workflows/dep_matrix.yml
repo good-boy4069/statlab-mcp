@@ -47,9 +47,11 @@ jobs:
         run: python -m pytest tests/ -q -m "not lower_bound_compat"
 
       - name: 单元测试（lower_bound_compat 容差组）
+        if: always()   # 红队建议：主组失败仍跑容差组，多收集下限环境证据
         run: python -m pytest tests/ -q -m "lower_bound_compat"
 
       - name: stdio 协议冒烟
+        if: always()
         run: python tests/smoke_stdio.py
 
       - name: Job summary

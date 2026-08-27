@@ -54,9 +54,9 @@ def logistic_regression(file_path: str | None = None, target: str | None = None,
                         class_weight: str = "balanced",
                    inline_data: list | dict | None = None) -> dict:
     """二分类逻辑回归：类别分布/acc/混淆矩阵/AUC-CI/OR 与 p。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(target=target, features=features)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(target=target, features=features)
         if not (0 < test_size < 1):
             raise DataLabError("test_size 必须在 (0,1) 之间", EC.PARAM)
         if class_weight not in ("balanced", "none"):
@@ -75,7 +75,6 @@ def logistic_regression(file_path: str | None = None, target: str | None = None,
                 raise DataLabError(f"特征 {f} 不是数值列（本工具不做 one-hot）", EC.COLUMN_TYPE)
 
         m = df[[target, *features]].dropna()
-        len(m)
         labels = m[target].dropna()
         uniq = sorted(labels.unique().tolist())
         if len(uniq) < 2:

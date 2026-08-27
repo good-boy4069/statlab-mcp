@@ -50,9 +50,9 @@ def linear_regression(file_path: str | None = None, target: str | None = None, f
                       add_constant: bool = True, alpha: float = 0.05,
                    inline_data: list | dict | None = None) -> dict:
     """OLS 线性回归：系数表、整体拟合、VIF、残差诊断与图。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(target=target, features=features)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(target=target, features=features)
         if not (0 < alpha < 1):
             raise DataLabError("alpha 必须在 (0,1) 之间", EC.PARAM)
         if not isinstance(features, list) or not features:

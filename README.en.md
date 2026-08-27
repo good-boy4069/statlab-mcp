@@ -82,7 +82,7 @@ one-sentence conclusion and `result` carries the complete structured data, e.g.:
 3. **Pinned, recomputable conventions**: q1/q3 = linear interpolation (same convention as Excel
    QUARTILE.INC), skew/kurtosis = scipy Fisher definitions, std = ddof=1 (Excel STDEV.S) — documented,
    then verified against hand-computed formulas and independent standard-library references
-   (**388 pytest tests**; CI re-checks that number automatically — drift turns the build red)
+   (**389 pytest tests**; CI re-checks that number automatically — drift turns the build red)
 4. **Chinese-first pipeline**: Chinese column names, automatic GBK encoding fallback, Chinese-font charts
    (graceful English fallback + explicit note when fonts are missing), Chinese error messages with fixes
 5. **Hardened safety**: local files only; UNC/NUL paths rejected; no network uploads; triple guard at
@@ -251,7 +251,7 @@ like `-v D:\data:/data`.
 - Test fixtures are generated deterministically by `tests/make_fixtures.py` and committed; key numbers
   are checked against independent references (statistics.mean / hand-computed expectation tables) —
   circular self-validation is banned
-- Quality bar: full pytest green (**currently 388 tests**), tool-module coverage ≥80% (~90% locally
+- Quality bar: full pytest green (**currently 389 tests**), tool-module coverage ≥80% (~90% locally
   measured), ruff clean, stdio protocol smoke ALL-STDIO-OK
 
 ## Technical notes (mcp 2.x)

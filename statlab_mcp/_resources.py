@@ -167,6 +167,25 @@ def register_resources(mcp_server: Any, modules: list[ModuleType]) -> int:
     return count
 
 
+def _runtime_required_names(fn: Callable[..., Any]) -> set[str]:
+    """扫描工具源码中 require_non_none(k=v) 的参数名（D17 运行期必填集合）。
+
+    红队 P1-4：签名 default=None 的参数可能被 require_non_none 运行期强校验，
+    仅凭签名会把必填参数标注为"可选，默认 None"，误导 agent 省略参数。
+    """
+    try:
+        src = inspect.getsource(fn)
+    except (OSError, TypeError):
+        return set()
+    names: set[str] = set()
+    for m in re.finditer(r"require_non_none\(([^)]*)\)", src):
+        for kw in m.group(1).split(","):
+            kw = kw.strip()
+            if "=" in kw:
+                names.add(kw.split("=", 1)[0].strip())
+    return names
+
+
 def make_slim_description(fn: Callable[..., Any], full_doc: str) -> str:
     """构造 slim 版 description：一句话摘要 + 每参数名称/类型/必填性/取值约束。
 
@@ -189,6 +208,7 @@ def make_slim_description(fn: Callable[..., Any], full_doc: str) -> str:
         sig = inspect.signature(fn)
     except (TypeError, ValueError):          # C/内建无签名时兜底只给摘要
         sig = None
+    runtime_req = _runtime_required_names(fn) if sig else set()
     out = [summary, "", "## 参数"]
     if sig:
         for pname, param in sig.parameters.items():
@@ -196,7 +216,12 @@ def make_slim_description(fn: Callable[..., Any], full_doc: str) -> str:
             anno = ptype or (str(param.annotation) if param.annotation is not
                              inspect.Parameter.empty else "Any")
             required = param.default is inspect.Parameter.empty
-            req_txt = "必填" if required else f"可选，默认 {param.default!r}"
+            if pname in runtime_req:
+                req_txt = "必填（漏传将被拒绝）"
+            elif required:
+                req_txt = "必填"
+            else:
+                req_txt = f"可选，默认 {param.default!r}"
             out.append(f"- {pname} ({anno})｜{req_txt}" + (f"｜{pdesc}" if pdesc else ""))
     out.append("")
     out.append(f"完整说明书见 resource: statlab://tools/{fn.__name__}/manual "

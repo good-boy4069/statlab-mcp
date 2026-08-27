@@ -30,9 +30,9 @@ MIN_N = 4
 def plot_box(file_path: str | None = None, column: str | None = None,
                    inline_data: list | dict | None = None) -> dict:
     """单列箱线图（图上标五数 + 异常数）。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(column=column)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(column=column)
         df, data_source = resolve_data(file_path, inline_data)
         if column not in df.columns:
             raise DataLabError(f"缺少必需列: {column}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)

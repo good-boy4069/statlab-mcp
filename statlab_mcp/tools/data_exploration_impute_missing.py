@@ -73,6 +73,7 @@ _FORMULA_PREFIX = re.compile(r"^[=+\-@]")
 def _escape_csv_cell(v: Any) -> Any:
     """CSV 写出防 Excel 公式注入 + 控制字符清洗（SPEC 第 11 节第 5 条）。"""
     if isinstance(v, str):
+        v = v.lstrip("\t\r")     # 红队 P2-8：前导 Tab/CR 同样构成公式注入前缀
         v = _CTRL_CHARS.sub("", v)
         if _FORMULA_PREFIX.match(v):
             v = "'" + v
@@ -178,6 +179,14 @@ def impute_missing(file_path: str | None = None,
                 entry["value_or_direction"] = float(value)
 
             actual_filled = before_isna - int(out_df[col].isna().sum())
+            if actual_filled == 0 and before_isna > 0:
+                # 红队 P2-6：ffill/bfill 的缺失全在序列头/尾（无前值/后值可填充）
+                # 时归 skipped 并如实注明——原实现落入"数据无任何缺失值"E1012，
+                # 与事实相悖误导 agent 判定数据健康
+                pos, neighbor = (("头部", "前") if strategy == "ffill"
+                                 else ("尾部", "后"))
+                _skip(f"缺失均位于序列{pos}，无{neighbor}值可填充（策略={strategy}）")
+                continue
             entry["filled"] = actual_filled
             entry["residual_missing"] = int(out_df[col].isna().sum())
             total_filled += actual_filled
@@ -197,7 +206,7 @@ def impute_missing(file_path: str | None = None,
         day_dir = IMPUTED_DIR / now.strftime("%Y%m%d")
         day_dir.mkdir(parents=True, exist_ok=True)
         _cleanup_old_dirs(IMPUTED_DIR)
-        stem = _safe_name(Path(str(file_path)).stem)
+        stem = _safe_name(Path(file_path).stem) if file_path else "inline"
         out_path = day_dir / f"impute_missing_{stem}_{strategy}_{ts}.csv"
         escaped = out_df.map(_escape_csv_cell)
         escaped.to_csv(out_path, index=False, encoding="utf-8-sig")

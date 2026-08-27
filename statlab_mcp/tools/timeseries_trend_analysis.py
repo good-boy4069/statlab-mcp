@@ -74,9 +74,9 @@ def trend_analysis(file_path: str | None = None, date_col: str | None = None, va
                    method: str = "mann_kendall",
                    inline_data: list | dict | None = None) -> dict:
     """Mann-Kendall / Theil-Sen 趋势检验：tau、p、斜率与单调性结论。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(date_col=date_col, value_col=value_col)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(date_col=date_col, value_col=value_col)
         if method not in _METHODS:
             raise DataLabError("method 仅支持 mann_kendall/theil_sen", EC.PARAM)
         df, data_source = resolve_data(file_path, inline_data)

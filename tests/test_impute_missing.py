@@ -87,7 +87,7 @@ def test_inf_excluded_from_mean_not_missing(tmp_path):
     p = _mk(pd.DataFrame({"v": [1.0, 2.0, np.inf]}), tmp_path)
     r = impute_missing(file_path=p, strategy="mean")
     assert r["error_code"] == "E1012" and "数据无任何缺失值" in r["message"], r
-    assert not Path(r.get("__output__", "")).exists() if "__output__" in r else True
+    assert "__output__" not in r, r   # 红队 P2-2 收紧：错误分支绝不携带输出文件
 
 
 def test_mean_hand_computed_with_inf_column(tmp_path):
@@ -142,7 +142,7 @@ def test_param_errors_are_typed_codes(tmp_path):
         ({"file_path": p, "strategy": "constant", "value": True}, ("E1001",)),
         ({"file_path": p, "strategy": "mean", "value": 3.0}, ("E1001",)),  # value 错位携带
         ({"file_path": p, "columns": []}, ("E1001",)),
-        ({"file_path": p, "columns": ["nope"]}, ("E1008", "E1004")),
+        ({"file_path": p, "columns": ["nope"]}, ("E1008",)),   # 红队 P2-2：单一错误码
     ]
     for kw, allowed in cases:
         r = impute_missing(**kw)
@@ -161,7 +161,7 @@ def test_output_file_contract(tmp_path):
     assert Path(op).exists() and Path(op).is_absolute()
     assert TS_SEG.search(op), op                          # 文件名含毫秒时间戳段
     assert re.search(r"impute_missing_t_median_\d{8}_\d{6}_\d{3}\.csv$", op.replace("\\", "/"))
-    assert str(tmp_path.name)[:10] and "\\reports\\imputed\\" in op.replace("/", "\\")
+    assert "\\reports\\imputed\\" in op.replace("/", "\\")   # 红队 P2-2：删恒真前半断言
     raw = Path(op).read_bytes()
     assert raw[:3] == b"\xef\xbb\xbf"                     # utf-8-sig BOM
     txt = raw.decode("utf-8-sig")

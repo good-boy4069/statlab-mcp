@@ -41,9 +41,9 @@ def feature_importance(file_path: str | None = None, target: str | None = None, 
                        n_repeats: int = 10,
                    inline_data: list | dict | None = None) -> dict:
     """随机森林特征重要性（permutation / impurity 二选一）。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(target=target)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(target=target)
         if method not in ("permutation", "impurity"):
             raise DataLabError("method 仅支持 permutation/impurity", EC.PARAM)
         if isinstance(n_estimators, bool) or not isinstance(n_estimators, (int, np.integer)) \

@@ -60,9 +60,9 @@ def _to_categories(s: pd.Series, name: str) -> Any:
 def chi_square_test(file_path: str | None = None, col_a: str | None = None, col_b: str | None = None,
                    inline_data: list | dict | None = None) -> dict:
     """两列类别关联检验（卡方 / Fisher 精确 + Cramér's V）。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(col_a=col_a, col_b=col_b)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(col_a=col_a, col_b=col_b)
         df, data_source = resolve_data(file_path, inline_data)
         for c in (col_a, col_b):
             if c not in df.columns:

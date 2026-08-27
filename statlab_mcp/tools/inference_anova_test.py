@@ -96,9 +96,9 @@ def anova_test(file_path: str | None = None, group_col: str | None = None,
     # statsmodels 三个子模块延迟导入（P1-1）：主函数唯一入口、各分支共享此作用域
     from statsmodels.stats.multicomp import pairwise_tukeyhsd
     from statsmodels.stats.oneway import anova_oneway
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(group_col=group_col, value_col=value_col)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(group_col=group_col, value_col=value_col)
         if not (0 < alpha < 1):
             raise DataLabError("alpha 必须在 (0,1) 之间", EC.PARAM)
         df_all, data_source = resolve_data(file_path, inline_data)

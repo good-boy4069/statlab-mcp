@@ -102,7 +102,7 @@ def _detect_iqr(yv: pd.Series, threshold: float) -> list[dict[str, Any]]:
 
 
 def _detect_rolling_zscore(yv: pd.Series, threshold: float) -> list[dict[str, Any]]:
-    """滚动 z-score 法异常检测：窗口均值/标准差（ddof=1）对差分序列标准化。"""
+    """滚动 z-score 法异常检测：对**原序列**做窗口均值/标准差（ddof=1）标准化。"""
     mu = yv.rolling(_WINDOW, min_periods=3).mean()
     sd = yv.rolling(_WINDOW, min_periods=3).std(ddof=1)
     z = (yv - mu) / sd.replace(0, np.nan)
@@ -120,9 +120,9 @@ def anomaly_detect(file_path: str | None = None, date_col: str | None = None, va
                    method: str = "stl", threshold: float = 3.0,
                    inline_data: list | dict | None = None) -> dict:
     """时序异常点检测（STL 残差 / 差分 IQR / 滚动 z-score）+ 区间图。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(date_col=date_col, value_col=value_col)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(date_col=date_col, value_col=value_col)
         if method not in _METHODS:
             raise DataLabError("method 仅支持 stl/iqr/rolling_zscore", EC.PARAM)
         if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) \

@@ -40,7 +40,6 @@ inline 数据:
 from __future__ import annotations
 
 import math
-import os
 from typing import Any
 
 import numpy as np
@@ -64,9 +63,8 @@ _EPS_ZERO = 1e-12                 # MAPE 分母零判据（R2-F11：显式 epsil
 
 _METHODS = ("auto_arima", "naive", "seasonal_naive")
 
-# 锁定环境逐字节断言的前提：线程内积归约顺序固定（R2-F13）；导入期设置一次
-for _v in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
-    os.environ.setdefault(_v, "1")
+# BLAS 单线程默认已前移至 statlab_mcp/__init__.py（红队 P2-12：此处设置晚于
+# numpy 导入，OpenBLAS/MKL 已初始化，setdefault 不再生效）
 
 
 def _mape(pred: np.ndarray, actual: np.ndarray) -> float | None:
@@ -107,9 +105,9 @@ def backtest_forecast(file_path: str | None = None, date_col: str | None = None,
                       windows: int = 3, method: str = "auto_arima",
                       inline_data: list | dict | None = None) -> dict:
     """滚动回测主入口：expanding window、从序列尾部向前切 windows 个验证窗。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(date_col=date_col, value_col=value_col, horizon=horizon)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(date_col=date_col, value_col=value_col, horizon=horizon)
         # ---- 参数合法化（D9 第一层：任何非法参数先于门槛报错）----
         if isinstance(horizon, bool) or not isinstance(horizon, int) or horizon < 1:
             raise DataLabError("horizon 必须是 >=1 的整数", EC.PARAM)
@@ -159,6 +157,16 @@ def backtest_forecast(file_path: str | None = None, date_col: str | None = None,
         any_zero_window = False
         truncated = False
 
+        # 原始观测序列（红队 P1-1 防泄漏）：验证窗真值只从这里取。与
+        # _prepare_series 的聚合口径一致（同刻求和、min_count=1），无效日期与
+        # 缺值行不构成观测；y_full 为全量插值序列，其验证段缺口点是"由未来
+        # 观测构造的插值"，直接取用违反 R2-F02 防泄漏钉死条款。
+        _rd = pd.to_datetime(df[date_col], errors="coerce", utc=True)
+        _rv = df[value_col].to_numpy(dtype=float)
+        _mobs = _rd.notna() & ~np.isnan(_rv)
+        raw_obs = pd.Series(_rv[_mobs], index=_rd[_mobs]) \
+            .groupby(level=0).sum(min_count=1).sort_index()
+
         for i in range(windows):                     # i=0 为最早窗
             val_start = n - (windows - i) * horizon  # 验证段起点（含）
             train_end = val_start                    # 训练段 = [0, val_start)
@@ -173,17 +181,31 @@ def backtest_forecast(file_path: str | None = None, date_col: str | None = None,
             use_period = p_full if (p_full is not None and p_full > 1) else None
             y_val = y_full.iloc[val_start:val_start + horizon]
             h_use = min(horizon, int(y_val.size))
+            # 验证窗 actual 只认原始观测：无观测的时间点（asfreq 补齐/插值点）
+            # 置 NaN 逐窗计数披露（n_actual_dropped），不进入任何指标
+            m_obs = (raw_obs.index > y_hist.index[-1]) & (raw_obs.index <= y_val.index[-1])
+            obs_win = raw_obs.loc[m_obs]
+            actual = np.array([obs_win.get(t, np.nan) for t in y_val.index],
+                              dtype=float)
+            obs_valid = ~np.isnan(actual)
+            n_dropped = int((~obs_valid).sum())
             try:
                 pred, info = _fit_predict_one(method, y_hist, h_use, use_period)
             except Exception as exc:                 # 单窗失败不拖垮整体汇总
                 window_records.append({"index": i, "train_end": str(y_hist.index[-1]),
                                        "error": f"{type(exc).__name__}"})
                 continue
-            actual = y_val.to_numpy(dtype=float)[:h_use]
-            abs_err = np.abs(actual - pred)
+            if not obs_valid.any():
+                window_records.append({
+                    "index": i, "train_end": str(y_hist.index[-1]),
+                    "error": "验证窗无原始观测真值（全部为补齐/插值点）"})
+                continue
+            actual_v = actual[obs_valid]
+            pred_v = np.asarray(pred, dtype=float)[:h_use][obs_valid]
+            abs_err = np.abs(actual_v - pred_v)
             mae = float(np.mean(abs_err))
-            rmse = float(np.sqrt(np.mean((actual - pred) ** 2)))
-            mape = _mape(pred, actual)
+            rmse = float(np.sqrt(np.mean((actual_v - pred_v) ** 2)))
+            mape = _mape(pred_v, actual_v)
             maes.append(mae)
             rmses.append(rmse)
             mapes.append(mape)
@@ -191,9 +213,10 @@ def backtest_forecast(file_path: str | None = None, date_col: str | None = None,
                 any_zero_window = True
             window_records.append({
                 "index": i, "train_end": str(y_hist.index[-1]),
-                "pred": [float(v) for v in pred],
-                "actual": [float(v) for v in actual],
+                "pred": [float(v) for v in pred_v],
+                "actual": [float(v) for v in actual_v],
                 "abs_err": [round(float(v), 6) for v in abs_err],
+                **({"n_actual_dropped": n_dropped} if n_dropped else {}),
                 "mae": mae, "rmse": rmse, "mape": mape,
                 **({"period_used": info["period_used"]}
                    if "period_used" in info else {}),
@@ -206,7 +229,9 @@ def backtest_forecast(file_path: str | None = None, date_col: str | None = None,
             raise DataLabError("所有回测窗口均拟合失败（详见服务端日志）", EC.CALC)
         detail_count = sum(len(w.get("abs_err", [])) for w in usable)
         if detail_count > _DETAIL_CAP:
-            # 截断最旧窗直至明细 <= 上限（汇总指标从不截断，R2-F10）
+            # 截断最旧窗直至明细 <= 上限（汇总指标从不截断，R2-F10）；
+            # 红队 P2-4：单窗明细自身超限（如 windows=1, horizon=12000）时原实现
+            # "首个超限窗整窗保留"会突破上限——对保留窗再做窗内截断（保最新点）
             keep_from = len(window_records) - 1
             kept = 0
             for k in range(len(window_records) - 1, -1, -1):
@@ -217,6 +242,14 @@ def backtest_forecast(file_path: str | None = None, date_col: str | None = None,
                 else:
                     break
             window_records = window_records[keep_from:]
+            total_kept = sum(len(w.get("abs_err", [])) for w in window_records)
+            if total_kept > _DETAIL_CAP and window_records \
+                    and "abs_err" in window_records[0]:
+                room = _DETAIL_CAP - (total_kept - len(window_records[0]["abs_err"]))
+                room = max(room, 0)
+                w0 = window_records[0]
+                for key in ("pred", "actual", "abs_err"):
+                    w0[key] = w0[key][-room:] if room else []
             truncated = True
 
         summary_metrics = {

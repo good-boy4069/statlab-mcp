@@ -46,7 +46,7 @@ include = ["statlab_mcp*"]
 include-package-data = true
 
 [tool.setuptools.package-data]
-statlab_mcp = ["statlab_mcp/docs/*.md", "statlab_mcp/docs/design/*.md"]
+statlab_mcp = ["docs/*.md", "docs/design/*.md"]   # 红队 P2-3：package-data 相对包根解析
 
 [tool.ruff]
 line-length = 120

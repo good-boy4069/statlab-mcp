@@ -53,24 +53,6 @@ def _fresh_server() -> StatlabServer:
     return server
 
 
-def _is_file_path_became_optional(base_f: dict, cur_f: dict) -> bool:
-    """白名单③细化：file_path 由必填 {type:string} 变为可选
-    （anyOf[string,null] + default:null + title 不变）。该变化是 T3 二选一协议
-    的机械结果（v1.2.0 已披露），除此之外任何字段漂移仍非法。"""
-    if cur_f.get("title") != base_f.get("title"):
-        return False
-    if base_f.get("type") != "string":
-        return False
-    any_of = cur_f.get("anyOf")
-    if not isinstance(any_of, list):
-        return False
-    types = sorted(t.get("type", "?") for t in any_of)
-    if types != ["null", "string"]:
-        return False
-    return cur_f.get("default", "__missing__") is None and \
-        set(cur_f.keys()) - {"anyOf", "default", "title"} == set()
-
-
 def _prop_became_optional(base_f: dict, cur_f: dict) -> bool:
     """白名单③细化（D17）：原 required 属性变为可选的合法形态——
     anyOf[原type, null] + default:null + title/其余键不变。
@@ -91,12 +73,14 @@ def _prop_became_optional(base_f: dict, cur_f: dict) -> bool:
 
 
 def _allowed_schema_diff(base_schema: dict, cur_schema: dict) -> bool:
-    """第②③类机判（v1.2.0 D17 连锁修订版）：
+    """第②③类机判（v1.2.0 D17 连锁修订版 + C13b 红队收紧）：
 
-    - properties 只允许新增 inline_data；既有属性中：
-      * 原 required 属性 → 允许变为可选（anyOf[原type,null]+default:null，
-        Python 参数语法连锁的机械结果，D17）；
-      * 原 optional 属性 → 定义逐字不变；
+    - properties 只允许新增 inline_data（且其定义必须符合三粗类型形态，
+      防"新增合法键后偷改定义"绕过——红队实测 type:string 曾被放行）；
+    - 既有属性中**仅基线 required 集合内的属性**允许变为可选
+      （anyOf[原type,null]+default:null，D17 机械结果；红队 P1-2：原 optional
+      属性如 alpha{default:0.05} 被改成 anyOf+default:null 必须拒绝）；
+    - 原 optional 属性 → 定义逐字不变；
     - required 数组必须**清空**（T3 连锁 optional 化；运行期由 require_non_none
       等价强校验，SPEC §12.6）。
     其余任何 schema 变化非法。
@@ -105,13 +89,24 @@ def _allowed_schema_diff(base_schema: dict, cur_schema: dict) -> bool:
     cp = cur_schema.get("properties", {})
     if not set(cp) >= set(bp):
         return False                                  # 禁止删除既有属性
-    if set(cp) - set(bp) - {"inline_data"}:
+    added = set(cp) - set(bp)
+    if added - {"inline_data"}:
         return False                                  # 只允许新增 inline_data
+    # 新增 inline_data 的定义守护：三粗类型 anyOf[array,null,object] 或单 type
+    for k in added:
+        c = cp[k]
+        if "anyOf" in c:
+            kinds = sorted(x.get("type", "?") for x in c["anyOf"])
+            if kinds != ["array", "null", "object"]:
+                return False
+        elif c.get("type") not in ("array", "object", "null"):
+            return False
+    base_required = set(base_schema.get("required", []))
     for k in bp:
         if cp.get(k) == bp[k]:
             continue                                  # 原 optional 属性零漂移
-        if _prop_became_optional(bp[k], cp.get(k, {})):
-            continue                                  # 原 required 属性的可选化
+        if k in base_required and _prop_became_optional(bp[k], cp.get(k, {})):
+            continue                                  # 仅原 required 属性允许可选化
         return False                                  # 其它一切漂移非法
     cr_raw = cur_schema.get("required", [])
     return not (set(cr_raw) if cr_raw else set())     # required 全集清空
@@ -149,8 +144,7 @@ def test_full_matches_v1_1_0_baseline_four_category_whitelist():
         new_lines = set(cur["description"].splitlines())
         removed = old_lines - new_lines
         added = new_lines - old_lines
-        if name in _ADDED_SINCE_V1_1_0:
-            continue                                     # ④类成员不参与三类比对
+        # ④类新增工具不在此循环内（循环范围为基线工具集），天然不参与三类比对
         if removed:
             problems.append(f"{name}: description 出现删除行 {list(removed)[:3]}")
         if not removed and added and added != EXPECTED_INLINE_DOC_ADDED:

@@ -85,3 +85,24 @@ def test_normal_call_unaffected():
             assert obj["status"] == "ok", text
 
     _run(main())
+
+
+def test_missing_required_param_maps_to_e1001():
+    """C13b 红队 P0-1 守护：D17 optional 化后漏传必填参数必须走 E1001 中文协议。
+
+    require_non_none 现位于 try: 内（工具统一错误包装生效）；此用例经完整
+    stdio 链路断言返回体（此前守护全部直接函数调用，恰好绕过该路径）。
+    """
+
+    async def main():
+        async with stdio_client(_params()) as (read, write), \
+                ClientSession(read, write) as session:
+            await session.initialize()
+            # hypothesis_test 漏传 column（原 schema required，D17 后运行期强校验）
+            text = await _call(session, "hypothesis_test", {"alpha": 0.05})
+            obj = json.loads(text)
+            assert obj["status"] == "error", text
+            assert obj["error_code"] == "E1001", text
+            assert "缺少必需参数" in obj["message"] and "column" in obj["message"], text
+
+    _run(main())

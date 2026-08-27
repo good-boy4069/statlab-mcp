@@ -76,9 +76,7 @@ def test_stdio_roundtrip_four_calls():
                      "rows": [[88.0, 5000.0], [95.0, 8000.0], [72.0, 4000.0]]}
             for tool in ("describe_statistics", "correlation_matrix"):
                 for label, payload in (("records", records), ("split", split)):
-                    args = {"inline_data": payload}
-                    if tool == "correlation_matrix":
-                        args.pop("income", None)
+                    args = {"inline_data": payload}   # correlation_matrix 需 score+income 两列
                     res = await s.call_tool(tool, args)
                     obj = json.loads(res.content[0].text)
                     assert obj["status"] == "ok", (tool, label, obj)

@@ -271,7 +271,12 @@ def _file_cache_put(path: str, df: pd.DataFrame) -> None:
                     _CACHE_MAX_MEM // 1024 // 1024)
         return
     key = _cheap_key(path)
-    digest = _sha256_of_file(path)                    # 锁外计算，缩短临界区
+    try:
+        digest = _sha256_of_file(path)                # 锁外计算，缩短临界区
+    except OSError:
+        # 竞态窗口（红队 P2-2）：解析成功后文件消失——缓存写入尽力而为，
+        # 静默放弃与 _file_cache_get 的 OSError 防护对称，不影响本次返回
+        return
     with _cache_lock:
         _cache_cheap.pop(key, None)                   # 同键覆盖为最新引用
         while len(_cache_cheap) >= _CACHE_MAX_ENTRIES or \
@@ -365,7 +370,10 @@ def resolve_data(file_path: str | None, inline_data: Any,
     返回 (DataFrame, data_source)，data_source ∈ {"file", "inline"}；
     analysis_plan 等可选源工具传 require_input=False：双缺返回 (空 DataFrame, "none")。
     """
-    has_file = file_path is not None and str(file_path).strip() != ""
+    # 红队 P1-1（C13b）：空串/空白 file_path 不算"无来源"——它必须沿文件通道
+    # 走 read_table→_norm_path 报 E1002"文件路径不能为空"（v1.0.3 旧场景文案
+    # 与错误码红线），而非被吞成 E1001"缺少数据来源"
+    has_file = file_path is not None
     has_inline = inline_data is not None
     if has_file and has_inline:
         raise DataLabError("file_path 与 inline_data 只能提供其一，请选择一种数据来源",
@@ -434,6 +442,11 @@ def normalize_inline(inline_data: Any) -> pd.DataFrame:
         if not isinstance(header_raw, list) or \
                 not all(isinstance(h, str) for h in header_raw):
             raise DataLabError("inline split 形态的 header 必须为字符串数组", EC.PARAM)
+        if len(set(header_raw)) != len(header_raw):
+            dup = sorted({h for h in header_raw if header_raw.count(h) > 1})
+            raise DataLabError(
+                f"inline split 形态 header 存在重复列名：{dup}；"
+                "请改用唯一列名（与文件通道重复列名处理口径对齐）", EC.PARAM)
         if not isinstance(raw_rows, list):
             raise DataLabError("inline split 形态的 rows 必须为数组", EC.PARAM)
         for row in raw_rows:
@@ -441,6 +454,11 @@ def normalize_inline(inline_data: Any) -> pd.DataFrame:
                 raise DataLabError(
                     "split 形态每行长度必须等于 header 长度"
                     f"（期望 {len(header_raw)} 个值）", EC.PARAM)
+        # 行数上限先行（P2-5：先拒绝后拷贝，防御纵深）
+        if len(raw_rows) > _INLINE_MAX_ROWS:
+            raise DataLabError(
+                f"inline 数据 {len(raw_rows)} 行超过 {_INLINE_MAX_ROWS} 行上限；"
+                "请落盘后改用 file_path", EC.SCALE)
         header = list(header_raw)
         rows_raw = [list(r) for r in raw_rows]
     elif isinstance(inline_data, list):
@@ -539,8 +557,8 @@ def to_jsonable(obj: Any) -> Any:
     np.ndarray/Series→list；dict 非 str 键→str；其余未知类型→str。
     禁止 NaN/Infinity 字面量出现在 JSON 中。
     """
-    if obj is None or obj is pd.NA:
-        return None
+    if obj is None or obj is pd.NA or obj is pd.NaT:
+        return None                                  # 红队 P2-1：NaT 与 NA 同归 null
     if isinstance(obj, np.floating):  # np.floating 是 float 子类，必须最先处理
         v = float(obj)
         return None if (math.isnan(v) or math.isinf(v)) else v
@@ -638,19 +656,30 @@ def _prepare_series(df: pd.DataFrame, date_col: str, value_col: str) -> tuple:
     if not pd.api.types.is_numeric_dtype(df[value_col]):
         raise DataLabError(f"列 {value_col} 不是数值列，无法做时序分析", EC.COLUMN_TYPE)
 
-    dates = pd.to_datetime(df[date_col], errors="coerce")
+    # utc=True：混合时区输入在此统一 UTC（红队 P1-2：coerce 不覆盖 Mixed timezones
+    # ValueError，原实现会冒泡 E9999）；单一 tz-aware 序列语义不变
+    dates = pd.to_datetime(df[date_col], errors="coerce", utc=True)
     invalid = int(dates.isna().sum())
     keep = dates.notna()
     if int(keep.sum()) == 0:
         raise DataLabError("日期列无法解析", EC.INSUFFICIENT)
+    # sort_index：乱序/倒序输入先排序（红队 P1-1：乱序会让 infer_freq/跨度检查
+    # 产生病态负步长，误报 E1005"日期跨度过大"）
     s = pd.Series(df.loc[keep, value_col].to_numpy(dtype=float),
-                  index=dates[keep])
+                  index=dates[keep]).sort_index()
 
-    # 时区统一（混合时区或 tz-aware 一律 UTC）
+    # 时区统一：utc=True 使 naive / tz-aware / 混合时区一律落 UTC（红队 P1-2：
+    # 混合时区此前 coerce 不覆盖 Mixed timezones ValueError，会冒泡 E9999，
+    # "混合时区统一 UTC"承诺未兑现——现兑现）。注记仅在原始数据自带时区时出现
+    # （naive 输入不产生 summary 尾巴，输出逐字节不变；抽样 3 个，漏标方向保守）
     utc_note = None
-    if getattr(s.index, "tz", None) is not None:
-        s.index = s.index.tz_convert("UTC")
-        utc_note = "时区已统一为 UTC"
+    for _v in df.loc[keep, date_col].head(3):
+        if isinstance(_v, str) and re.search(r"(?:[+-]\d{2}:?\d{2}|Z)\s*$", _v):
+            utc_note = "时区已统一为 UTC"
+            break
+        if getattr(_v, "tzinfo", None) is not None:
+            utc_note = "时区已统一为 UTC"
+            break
 
     # 重复时间戳 -> 按天求和聚合（规则固定为 sum）
     merged = 0
@@ -662,7 +691,9 @@ def _prepare_series(df: pd.DataFrame, date_col: str, value_col: str) -> tuple:
         intraday = bool(np.any(np.asarray(s.index.hour) > 0)
                         or np.any(np.asarray(s.index.minute) > 0)
                         or np.any(np.asarray(s.index.second) > 0))
-        s = s.resample("D").sum()
+        # min_count=1：全缺失日保持 NaN 而非 0（红队 P1-5：sum 的 skipna 语义会把
+        # 全 NaN 组写成 0.0，静默伪造观测值；NaN 走既有插值/披露路径）
+        s = s.resample("D").sum(min_count=1)
         merged = orig - int(s.size)
         if intraday:
             dup_note = ("原始数据为日内频率（含时分秒），因存在重复时间戳，"
@@ -734,8 +765,9 @@ def _cleanup_old_dirs(base_dir: Path, keep_days: int = 30) -> None:
                 continue
             if (today - day).days > keep_days:
                 shutil.rmtree(d, ignore_errors=True)
-    except OSError:
-        pass
+    except OSError as e:
+        # 清理为尽力而为（红队 P2-6）：失败留痕不静默，便于发现产物目录堆积
+        logger.warning("30 天归档目录清理失败（不影响本次输出）：%s", e)
 
 
 def save_plot(fig: Any, name: str) -> str:

@@ -41,9 +41,9 @@ def confidence_interval(file_path: str | None = None, column: str | None = None,
                         method: str = "mean_t",
                    inline_data: list | dict | None = None) -> dict:
     """均值（t 分布）或中位数（bootstrap）的置信区间。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(column=column)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(column=column)
         if method not in _METHODS:
             raise DataLabError("method 仅支持 mean_t/bootstrap_median", EC.PARAM)
         if not (0 < confidence < 1):

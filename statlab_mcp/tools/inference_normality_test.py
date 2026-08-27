@@ -44,9 +44,9 @@ def _fmt_p(p: float) -> str:
 def normality_test(file_path: str | None = None, column: str | None = None, method: str = "auto",
                    inline_data: list | dict | None = None) -> dict:
     """正态性检验（Shapiro-Wilk / D'Agostino-Pearson），输出统计量、p、偏度、峰度。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(column=column)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(column=column)
         if method not in _METHODS:
             raise DataLabError("method 仅支持 auto/shapiro/dagostino", EC.PARAM)
         df, data_source = resolve_data(file_path, inline_data)

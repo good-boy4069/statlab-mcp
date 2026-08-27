@@ -65,9 +65,9 @@ def effect_size(file_path: str | None = None, group_col: str | None = None, valu
                 method: str = "cohens_d", paired: bool = False,
                    inline_data: list | dict | None = None) -> dict:
     """两组差异的效应量（d/g/cliff_delta）+ 正态近似 95% CI + 经验阈值解释。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(group_col=group_col, value_col=value_col)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(group_col=group_col, value_col=value_col)
         if method not in _METHODS:
             raise DataLabError("method 仅支持 cohens_d/hedges_g/cliff_delta", EC.PARAM)
         df, data_source = resolve_data(file_path, inline_data)

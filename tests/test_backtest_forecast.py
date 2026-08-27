@@ -143,10 +143,23 @@ def test_windows_and_bool_param_errors(tmp_path):
         assert r["error_code"] == "E1001", (kw, r)
 
 
-def test_scale_cap_100k():
-    r = bt(file_path="nonexistent-needs-file.csv", date_col="date", value_col="v",
-                      horizon=1)   # 走 E1003 先行确认读表闸门
-    assert r["error_code"] in ("E1003", "E1012")
+def test_scale_cap_100k(tmp_path):
+    """n>100000 → E1005（红队 P2-1 收紧：原用例名不副实，仅覆盖 E1003 读表闸门）。
+
+    构造 100_001 个有效点（period_est=None 使周期门槛不先触发），n<=100000
+    判定在门槛链末位，真实走到并返回 E1005。"""
+    import numpy as np
+    n = 100_001
+    vals = np.arange(n, dtype=float) % 7.0          # 确定性、有波动
+    p = tmp_path / "big.csv"
+    with open(p, "w", encoding="utf-8") as f:
+        f.write("date,v\n")
+        base = np.datetime64("2020-01-01", "D")
+        for i in range(n):
+            f.write(f"{str(base + np.timedelta64(i, 'D'))[:10]},{float(vals[i])}\n")
+    r = bt(file_path=str(p), date_col="date", value_col="v", horizon=1)
+    assert r["error_code"] == "E1005", r
+    assert "100000" in r["message"], r
 
 
 # ---------------- auto_arima 双轨 ----------------

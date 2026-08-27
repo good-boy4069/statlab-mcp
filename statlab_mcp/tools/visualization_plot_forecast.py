@@ -30,9 +30,9 @@ MA_WINDOW = 7
 def plot_forecast(file_path: str | None = None, date_col: str | None = None, value_col: str | None = None,
                    inline_data: list | dict | None = None) -> dict:
     """时序折线图 + 7 日均线（仅作图，不预测）。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(date_col=date_col, value_col=value_col)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(date_col=date_col, value_col=value_col)
         df, data_source = resolve_data(file_path, inline_data)
         y, meta = _prepare_series(df, date_col, value_col)
         n = int(y.size)

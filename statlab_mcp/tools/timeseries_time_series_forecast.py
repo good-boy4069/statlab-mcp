@@ -48,9 +48,9 @@ def time_series_forecast(file_path: str | None = None, date_col: str | None = No
                          horizon: int | None = None,
                    inline_data: list | dict | None = None) -> dict:
     """ARIMA/SARIMA 自动定阶预测：预测值 + 95% CI + 图。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(date_col=date_col, value_col=value_col, horizon=horizon)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(date_col=date_col, value_col=value_col, horizon=horizon)
         if isinstance(horizon, bool) or not isinstance(horizon, (int, np.integer)) or horizon < 1:
             raise DataLabError("horizon 必须是 >=1 的整数", EC.PARAM)
         horizon = int(horizon)

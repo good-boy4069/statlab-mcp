@@ -9,10 +9,12 @@ r"""scripts/gen_lower_constraints.py —— 从 pyproject [project].dependencies
 - 输出按 pyproject 声明顺序写入仓库根 constraints-lower.txt（.gitignore 不入库，D13）。
 
 依赖：packaging（pip 环境自带，非项目三方依赖，不触碰 requirements.txt，铁律 8）。
-用法：python scripts/gen_lower_constraints.py
+用法：python scripts/gen_lower_constraints.py [输出路径]
+      （亦可用环境变量 STATLAB_CONSTRAINTS_OUT 覆盖输出位置；默认仓库根）
 """
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -65,8 +67,11 @@ def generate(out_path: Path | None = None, pyproject: Path | None = None) -> lis
 
 
 def main() -> int:
-    lines = generate()
-    print(f"[gen-lower] 写入 {OUT.name}：{len(lines)} 条直接依赖下限")
+    # 输出路径可用环境变量覆盖（测试隔离用；默认仓库根，CI 直接消费）
+    out = Path(sys.argv[1]) if len(sys.argv) > 1 else \
+        Path(os.environ.get("STATLAB_CONSTRAINTS_OUT") or OUT)
+    lines = generate(out_path=out)
+    print(f"[gen-lower] 写入 {out.name}：{len(lines)} 条直接依赖下限")
     for line in lines:
         print(f"  {line}")
     return 0

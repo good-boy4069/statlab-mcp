@@ -1,7 +1,8 @@
 r"""tests/test_analysis_plan.py —— v1.2.0 T4：工具 30 analysis_plan 验收。
 
-golden 用例的期望 intent/reason_code 由 KW_TABLE 常量程序化导入驱动——词表是
-输入规约而非被测库输出，不违反铁律 3（禁循环对照）。问题文案取自 design/11 词表。
+golden 用例的期望 intent/reason_code 为**手写硬编码**（取自 design/11 词表，
+比程序化导入 KW_TABLE 更严格——词表改错会被 golden 抓住）；KW_TABLE 常量
+导入另用于词表↔design 一致性核对。不违反铁律 3（禁循环对照）。
 """
 import json
 import sys
@@ -97,7 +98,7 @@ def test_structural_awareness_real_column_refs():
     assert res["intent"] == "two_groups" and res["data_aware"] is True
     params = next(e for e in res["tool_calls_plan"]
                   if e["tool"] == "hypothesis_test")["params"]
-    assert params["group_col"] == "category" and params["value_col"] == "score"
+    assert params["group_col"] == "category" and params["column"] == "score"
     assert not any("needs_column" in str(e.get("needs", "")) for e in res["tool_calls_plan"]
                    if e["tool"] == "hypothesis_test")
 

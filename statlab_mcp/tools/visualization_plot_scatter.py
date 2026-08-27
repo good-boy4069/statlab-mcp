@@ -28,9 +28,9 @@ from statlab_mcp.tools._common import (
 def plot_scatter(file_path: str | None = None, x_col: str | None = None, y_col: str | None = None,
                    inline_data: list | dict | None = None) -> dict:
     """x-y 散点图（图上标 r 与 n）。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(x_col=x_col, y_col=y_col)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(x_col=x_col, y_col=y_col)
         df, data_source = resolve_data(file_path, inline_data)
         for c in (x_col, y_col):
             if c not in df.columns:

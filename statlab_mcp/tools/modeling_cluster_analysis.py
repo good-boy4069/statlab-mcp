@@ -40,9 +40,9 @@ def _run_kmeans(Xs: np.ndarray, k: int | None = None):
 def cluster_analysis(file_path: str | None = None, k: int | None = None,
                    inline_data: list | dict | None = None) -> dict:
     """KMeans 聚类：反标准化质心 + 簇样本量 + 轮廓系数（含 k±1 对照）。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(k=k)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(k=k)
         if isinstance(k, bool) or not isinstance(k, (int, np.integer)):
             raise DataLabError("k 必须是整数", EC.PARAM)
         k = int(k)

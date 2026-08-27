@@ -42,9 +42,9 @@ from statlab_mcp.tools._common import (
 def pca_analysis(file_path: str | None = None, n_components: int | None = None,
                    inline_data: list | dict | None = None) -> dict:
     """PCA 降维：方差解释率、反标准化载荷矩阵与载荷图。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(n_components=n_components)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(n_components=n_components)
         if isinstance(n_components, bool) or not isinstance(n_components, (int, np.integer)):
             raise DataLabError("n_components 必须是整数", EC.PARAM)
         n_components = int(n_components)

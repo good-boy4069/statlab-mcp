@@ -84,9 +84,9 @@ def hypothesis_test(file_path: str | None = None, column: str | None = None, tes
                     alpha: float = 0.05,
                    inline_data: list | dict | None = None) -> dict:
     """单样本/独立/配对 t 检验：统计量、p、均值差、CI、效应量 d、固定结论文案。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(column=column)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(column=column)
         if test not in _TESTS:
             raise DataLabError(f"test 仅支持 {'/'.join(sorted(_TESTS))}", EC.PARAM)
         if alternative not in _ALTERNATIVES:

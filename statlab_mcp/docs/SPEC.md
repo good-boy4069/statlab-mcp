@@ -184,3 +184,15 @@ BLAS 线程数与锁定权威同约定置 1。
 - inline 数据不进 read_table 文件缓存（无路径可键控），每次调用重新构造，确定性不受影响；
 - 实现：`_common.resolve_data(file_path, inline_data, *, require_input=True)` 单点分派
   （返回 `(df, data_source)`），禁止各工具自行解析。
+
+### 12.6 D17 连锁 optional 化与运行期必填强校验（v1.2.0）
+- 28 个文件型工具的 `file_path` 全部 optional 化（`file_path=None`）以接纳 `inline_data`；
+  连锁后果：签名层面 `required` 集合清空，pydantic 不再拦截"漏传业务必填参数"；
+- 等价强校验：原 schema required 的参数由工具内 `require_non_none(k=v, ...)` 在
+  **运行期**逐一拒绝（`try:` 块内首行执行），漏传返回与 schema required 时代等价的
+  `{status:"error", error_code:"E1001", message:"缺少必需参数: <名>"}` 中文 JSON
+  ——经 MCP 通道与直接调用行为一致（C13b 红队 P0-1 修复后由 stdio 守护测试钉死）；
+- 无业务必填参数的工具（describe_statistics/data_type_check/missing_report/outlier_detect/
+  impute_missing/correlation_matrix/analysis_plan/power_analysis）无需强校验；
+- slim 描述（§10）按工具源码扫描 `require_non_none` 集合，将运行期必填参数如实标注
+  "必填（漏传将被拒绝）"，不以签名 default 误标"可选"。

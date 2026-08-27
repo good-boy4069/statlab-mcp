@@ -221,10 +221,21 @@ def analysis_plan(question: str, file_path: str | None = None,
                             and tool in ("hypothesis_test", "effect_size",
                                          "linear_regression", "feature_importance"):
                         if numeric:
-                            params.setdefault("value_col" if tool != "linear_regression"
-                                              else "target", numeric[0])
+                            # 红队 P1-2/P1-3：参数名按目标工具真实签名映射
+                            # （hypothesis_test=column；effect_size=value_col；
+                            #   linear_regression/feature_importance=target）
+                            val_key = {"hypothesis_test": "column",
+                                       "effect_size": "value_col",
+                                       "linear_regression": "target",
+                                       "feature_importance": "target"}[tool]
+                            params.setdefault(val_key, numeric[0])
                             if tool == "linear_regression":
-                                params["features"] = numeric[:3]
+                                # 红队 P1-4：features 不得包含 target 自身（伪回归）
+                                feats = [c for c in numeric[:4] if c != numeric[0]]
+                                if feats:
+                                    params["features"] = feats[:3]
+                                else:
+                                    needs_note = "needs_column:features"
                         else:
                             needs_note = "needs_column:value_col"
                     if intent == "pred_binary" and tool == "logistic_regression":
@@ -232,6 +243,10 @@ def analysis_plan(question: str, file_path: str | None = None,
                             params["features"] = numeric[:3]
                         else:
                             needs_note = "needs_column:features"
+                        # 红队 P1-4：目标列缺失时显式占位（此前静默缺 target，
+                        # 执行必报"缺少必需参数: target"且计划无提示）
+                        if not categorical:
+                            needs_note = "needs_column:target"
                 else:
                     needs_note = "file_path_or_inline"
                 # needs 占位接入计划条目（design/11：类型缺失 → needs_column，不编造列名）

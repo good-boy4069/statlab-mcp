@@ -47,9 +47,9 @@ def seasonal_decompose(file_path: str | None = None, date_col: str | None = None
                        period: int | None = None, model: str = "auto",
                    inline_data: list | dict | None = None) -> dict:
     """时间序列分解：趋势 + 季节 + 残差（含周期自动估计与 4 子图）。"""
-    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
-    require_non_none(date_col=date_col, value_col=value_col)
     try:
+        # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+        require_non_none(date_col=date_col, value_col=value_col)
         if model not in _MODELS:
             raise DataLabError("model 仅支持 additive/multiplicative/auto", EC.PARAM)
         if period is not None:

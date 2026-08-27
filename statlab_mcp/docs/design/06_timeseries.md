@@ -300,12 +300,19 @@ forecast 可信度自评：滚动回测 + MAE/RMSE/MAPE。
 → n>=h*(w+1) 且 train_min=n-w*h >= max(15, 2*period)（E1010+调参建议）
 → horizon<=n*50%（E1001，forecast 同口径半句继承）→ n<=100000（E1005 防大表卡顿）。
 门槛判定用的 period 取全量估计一次；逐窗周期在窗内重估。
+实现注记（红队 P2-10）：`horizon<=n*50%` 步为**死门槛**——w>=1 时 n>=h*(w+1)
+数学蕴含 h<=n/2，行为等价无独立校验代码；保留于文档以维持与 forecast 的口径
+对应关系，实际拒绝由第 2 步 E1010 承担（测试注释同步自洽）。
+防泄漏实现注记（红队 P1-1）：验证窗 actual 只认**原始观测**（同刻求和 min_count=1
+口径对齐 _prepare_series），无原始观测的时间点（asfreq 补齐/插值点）逐窗计数
+n_actual_dropped 披露且不进入任何指标——全量插值序列 y_full 仅用于门槛与时间轴。
 
 ## 指标与体积
 MAPE = mean(|a-f|/|a|)，非对称（低估罚更重），未采用 sMAPE（定义声明防后续误"修正"）；
 真值 |a|<=1e-12 的窗 MAPE=null+zero_note，汇总仅聚非 null 窗（epsilon 判据非 ==0）。
 RMSE 汇总 = 窗 RMSE 平方均值再开方（窗粒度聚合，与 MAE 同构件），design 注明以防歧义。
-明细总量 >10000 点截断最旧窗 + truncated=true（汇总永不截断，R2-F10）。
+明细总量 >10000 点截断最旧窗 + truncated=true（汇总永不截断，R2-F10）；
+单窗明细自身超限时对该窗窗内再截（保最新点）——上限恒成立（红队 P2-4）。
 单窗 auto_arima 失败记 error 继续、n_windows_failed 计数；全败 → E9999。
 
 ## 双轨确定性
