@@ -8,13 +8,15 @@ r"""scripts/gen_lower_constraints.py —— 从 pyproject [project].dependencies
 - 无唯一 `>=` 下限的条目一律 fail-loud（SystemExit 2，拒绝猜测）；
 - 输出按 pyproject 声明顺序写入仓库根 constraints-lower.txt（.gitignore 不入库，D13）。
 
-依赖：packaging（pip 环境自带，非项目三方依赖，不触碰 requirements.txt，铁律 8）。
+依赖：仅标准库（tomllib + re；CI 修复——packaging 在干净 setup-python 环境
+不可用，见 extract_lower 注记）。
 用法：python scripts/gen_lower_constraints.py [输出路径]
       （亦可用环境变量 STATLAB_CONSTRAINTS_OUT 覆盖输出位置；默认仓库根）
 """
 from __future__ import annotations
 
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -37,25 +39,27 @@ def load_dependencies(pyproject: Path | None = None) -> list[str]:
     return [str(d) for d in deps]
 
 
-def extract_lower(spec: str) -> tuple[str, str]:
-    """从单条 requirement 提取 (name, lower)；无唯一 `>=` 下限时 fail-loud。"""
-    from packaging.requirements import Requirement
-    from packaging.version import Version
+_REQ_PAT = re.compile(
+    r"^\s*(?P<name>[A-Za-z0-9][A-Za-z0-9._-]*)\s*"
+    r"(?P<extras>\[[^\]]*\])?\s*"
+    r">=\s*(?P<lower>[A-Za-z0-9.!+]+)\s*"
+    r"(?P<rest>,.*)?$")
 
-    try:
-        req = Requirement(spec)
-    except Exception as e:  # InvalidRequirement 等：逐字报错，不吞
-        print(f"[gen-lower] 无法解析规约 {spec!r}：{e}", file=sys.stderr)
-        raise SystemExit(2) from e
-    # packaging 新版迭代产生 Specifier 对象（.operator/.version），兼容旧版元组形态
-    lowers = [getattr(s, "version", None) or s[1]
-              for s in req.specifier
-              if (getattr(s, "operator", None) or s[0]) == ">="]
-    if len(lowers) != 1:
-        print(f"[gen-lower] {spec!r} 缺少唯一 >= 下限（拒绝猜测）", file=sys.stderr)
+
+def extract_lower(spec: str) -> tuple[str, str]:
+    """从单条 requirement 提取 (name, lower)；无唯一 `>=` 下限时 fail-loud。
+
+    标准库实现（CI 修复：packaging 并非 pip 环境必然可用——干净 setup-python
+    环境只有 pip 本体，其 vendored packaging 不对外暴露，首跑即 ModuleNotFoundError）。
+    只支持本项目声明格式 `name[extras]?>=lower(,<op>ver)*`，其余形态一律拒绝猜测。
+    """
+    m = _REQ_PAT.match(spec)
+    if not m:
+        print(f"[gen-lower] {spec!r} 缺少 'name>=下限' 形态（拒绝猜测）",
+              file=sys.stderr)
         raise SystemExit(2)
-    name = req.name.lower().replace("_", "-")
-    return name, str(Version(lowers[0]))
+    name = m.group("name").lower().replace("_", "-")
+    return name, m.group("lower")
 
 
 def generate(out_path: Path | None = None, pyproject: Path | None = None) -> list[str]:
