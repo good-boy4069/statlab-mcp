@@ -52,9 +52,28 @@ def _fresh_server() -> StatlabServer:
     return server
 
 
+def _is_file_path_became_optional(base_f: dict, cur_f: dict) -> bool:
+    """白名单③细化：file_path 由必填 {type:string} 变为可选
+    （anyOf[string,null] + default:null + title 不变）。该变化是 T3 二选一协议
+    的机械结果（v1.2.0 已披露），除此之外任何字段漂移仍非法。"""
+    if cur_f.get("title") != base_f.get("title"):
+        return False
+    if base_f.get("type") != "string":
+        return False
+    any_of = cur_f.get("anyOf")
+    if not isinstance(any_of, list):
+        return False
+    types = sorted(t.get("type", "?") for t in any_of)
+    if types != ["null", "string"]:
+        return False
+    return cur_f.get("default", "__missing__") is None and \
+        set(cur_f.keys()) - {"anyOf", "default", "title"} == set()
+
+
 def _allowed_schema_diff(base_schema: dict, cur_schema: dict) -> bool:
     """第②③类机判：properties 只允许新增 inline_data 且既有定义逐字不变；
-    required 只允许移除 file_path。其余任何 schema 变化非法。"""
+    required 只允许移除 file_path（其类型泛化为可 null 属③的机械组成，特判放行）。
+    其余任何 schema 变化非法。"""
     bp = base_schema.get("properties", {})
     cp = cur_schema.get("properties", {})
     if not set(cp) >= set(bp):
@@ -62,10 +81,15 @@ def _allowed_schema_diff(base_schema: dict, cur_schema: dict) -> bool:
     if set(cp) - set(bp) - {"inline_data"}:
         return False                                  # 只允许新增 inline_data
     for k in bp:
-        if cp.get(k) != bp[k]:
-            return False                              # 既有属性定义禁止漂移
+        if cp.get(k) == bp[k]:
+            continue
+        if k == "file_path" and bp[k].get("type") == "string" and \
+                _is_file_path_became_optional(bp[k], cp.get(k, {})):
+            continue                                  # ③ 的机械组成部分
+        return False                                  # 既有属性定义禁止漂移
     br = set(base_schema.get("required", []))
-    cr = set(cur_schema.get("required", []))
+    cr_raw = cur_schema.get("required", [])
+    cr = set(cr_raw) if cr_raw else set()
     return (br - cr) <= {"file_path"} and not (cr - br)
 
 
@@ -83,22 +107,31 @@ def test_full_matches_v1_1_0_baseline_four_category_whitelist():
     assert not (set(base_map) - set(cur_map)), "基线内工具不得消失"
 
     problems: list[str] = []
+    # 白名单①：description 的标准 inline 注入块（与 _t3_batch.DOC_BLOCK 同源钉死；
+    # 集合级精确匹配——多一行少一行、改一字都红）
+    EXPECTED_INLINE_DOC_ADDED = {
+        "inline 数据:",
+        "    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，",
+        '    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；',
+        "    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。",
+    }
     for name in sorted(base_map):
         base = base_map[name]
         cur = cur_map[name]
         if base["inputSchema"] != cur["inputSchema"] and \
                 not _allowed_schema_diff(base["inputSchema"], cur["inputSchema"]):
             problems.append(f"{name}: inputSchema 存在④类之外的变化")
-        # 第①类：description 行级 diff，每条增删行必须提及 inline_data；
-        # 变化行数上限 24 防整段重写混过行级检查
         old_lines = set(base["description"].splitlines())
         new_lines = set(cur["description"].splitlines())
-        changed = old_lines ^ new_lines
-        bad = [ln for ln in changed if "inline_data" not in ln]
-        if changed and bad:
-            problems.append(f"{name}: description 变化行缺少 inline_data 说明特征：{bad[:3]}")
-        elif len(changed) > 24:
-            problems.append(f"{name}: description 变化行数 {len(changed)} 过大，疑似整段重写")
+        removed = old_lines - new_lines
+        added = new_lines - old_lines
+        if name in _ADDED_SINCE_V1_1_0:
+            continue                                     # ④类成员不参与三类比对
+        if removed:
+            problems.append(f"{name}: description 出现删除行 {list(removed)[:3]}")
+        if not removed and added and added != EXPECTED_INLINE_DOC_ADDED:
+            extra = sorted(added - EXPECTED_INLINE_DOC_ADDED)
+            problems.append(f"{name}: description 新增行非标准 inline 注入块：{extra[:3]}")
     assert not problems, "\n".join(problems)
 
 

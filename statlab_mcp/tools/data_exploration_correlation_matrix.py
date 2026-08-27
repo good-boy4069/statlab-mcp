@@ -22,6 +22,11 @@ result: {method, n_pairs, p_adjust_method, excluded_columns,
 示例:
     correlation_matrix("samples/clean.csv")
     correlation_matrix("samples/clean.csv", method="spearman", p_adjust="none")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 from typing import Any
 
@@ -29,7 +34,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, resolve_data
 
 _METHODS = {"pearson": sps.pearsonr, "spearman": sps.spearmanr,
             "kendall": sps.kendalltau,          # v1.1.0 官方别名（SPEC 第 3 节）
@@ -44,14 +49,15 @@ def _fmt_p(p: float) -> str:
     return "<0.001" if p < 0.001 else f"{p:.4f}"
 
 
-def correlation_matrix(file_path: str, method: str = "pearson", p_adjust: str = "fdr_bh") -> dict:
+def correlation_matrix(file_path: str | None = None,
+                   inline_data: list | dict | None = None, method: str = "pearson", p_adjust: str = "fdr_bh") -> dict:
     """输出数值列两两相关矩阵 + 逐对 p 值（默认 fdr_bh 校正）+ 成对样本量。"""
     try:
         if method not in _METHODS:
             raise DataLabError(f"method 仅支持 {'/'.join(sorted(_METHODS))}", EC.PARAM)
         if p_adjust not in _P_ADJUST:
             raise DataLabError("p_adjust 仅支持 none/bonferroni/fdr_bh", EC.PARAM)
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
 
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         keep = [c for c in numeric_cols if df[c].notna().any()]   # 剔除全缺失数值列
@@ -154,7 +160,9 @@ def correlation_matrix(file_path: str, method: str = "pearson", p_adjust: str = 
             "p_value": pval,
             "n_pairwise": npw,
         }
-        return ok(result, summary)
+        _payload = ok(result, summary)
+        _payload["data_source"] = data_source
+        return _payload
     except DataLabError as e:
         return err(e.code, str(e))
     except Exception:

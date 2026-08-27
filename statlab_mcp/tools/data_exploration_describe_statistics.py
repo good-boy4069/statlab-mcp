@@ -26,6 +26,11 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/01_data_explorat
 
 示例:
     describe_statistics("samples/clean.csv")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 from typing import Any
 
@@ -33,7 +38,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, resolve_data
 
 MAX_NUMERIC_COLS = 200      # 防超大 JSON 输出（红队 B S3）
 
@@ -68,10 +73,11 @@ def _fmt(v: Any, nd: int = 2) -> str:
     return "无" if v is None else f"{v:.{nd}f}"
 
 
-def describe_statistics(file_path: str) -> dict:
+def describe_statistics(file_path: str | None = None,
+                   inline_data: list | dict | None = None) -> dict:
     """对数据文件的每一数值列输出描述统计（n/均值/中位数/标准差/分位数/偏度/峰度/缺失）。"""
     try:
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         n_rows = len(df)
         n_columns = int(df.shape[1])
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
@@ -125,7 +131,11 @@ def describe_statistics(file_path: str) -> dict:
             parts.append(f"非数值列 {len(non_numeric)} 个已忽略（{', '.join(non_numeric[:5])}）")
         summary = "；".join(parts) + "。"
 
-        return ok(result, summary)
+        _payload = ok(result, summary)
+
+        _payload["data_source"] = data_source
+
+        return _payload
     except DataLabError as e:
         return err(e.code, str(e))
     except Exception:  # 计算层兜底：中文报错

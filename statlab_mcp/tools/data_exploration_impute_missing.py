@@ -33,6 +33,11 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/01_data_explorat
     impute_missing("samples/dirty.csv")                     # 默认全部数值缺失列、均值
     impute_missing("samples/dirty.csv", columns=["score"], strategy="median")
     impute_missing("samples/dirty.csv", columns=["note"], strategy="constant", value=0)
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 from __future__ import annotations
 
@@ -53,7 +58,7 @@ from statlab_mcp.tools._common import (
     _safe_name,
     err,
     ok,
-    read_table,
+    resolve_data,
 )
 
 _STRATEGIES = ("mean", "median", "ffill", "bfill", "constant")
@@ -74,7 +79,8 @@ def _escape_csv_cell(v: Any) -> Any:
     return v
 
 
-def impute_missing(file_path: str, columns: list[str] | None = None,
+def impute_missing(file_path: str | None = None,
+                   inline_data: list | dict | None = None, columns: list[str] | None = None,
                    strategy: str = "mean",
                    value: float | None = None) -> dict:
     """确定性缺失值插补主入口。"""
@@ -93,7 +99,7 @@ def impute_missing(file_path: str, columns: list[str] | None = None,
                 "value 仅在 strategy=constant 时使用，请移除该参数或改用 constant",
                 EC.PARAM)
 
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
 
         # ---- 目标列解析 ----
         explicit = columns is not None
@@ -219,6 +225,7 @@ def impute_missing(file_path: str, columns: list[str] | None = None,
                   "total_filled": total_filled,
                   "output_dir": str(day_dir)}
         payload = ok(result, "；".join(parts))
+        payload["data_source"] = data_source
         payload["__output__"] = str(out_path)          # SPEC §11：顶层平级路径字段
         return payload
     except DataLabError as e:

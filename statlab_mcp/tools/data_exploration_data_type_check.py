@@ -27,6 +27,11 @@ category/text 处理）:
 
 示例:
     data_type_check("samples/dirty.csv")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 import warnings
 from typing import Any
@@ -34,7 +39,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, resolve_data
 
 _DATE_OK_RATIO = 0.95
 _NUM_OK_RATIO = 0.95
@@ -136,10 +141,11 @@ def _judge_object_col(s: pd.Series, n_rows: int) -> dict[str, Any]:
     return out
 
 
-def data_type_check(file_path: str) -> dict:
+def data_type_check(file_path: str | None = None,
+                   inline_data: list | dict | None = None) -> dict:
     """识别每列类型（numeric/integer/category/date/text/mixed/missing）并输出脏数据提示。"""
     try:
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         n_rows = len(df)
         columns = {}
         invalid_dates, mixed_cols, missing_cols = [], [], []
@@ -178,7 +184,9 @@ def data_type_check(file_path: str) -> dict:
                 "invalid_date_columns": invalid_dates,
             },
         }
-        return ok(result, "；".join(parts) + "。")
+        _payload = ok(result, "；".join(parts) + "。")
+        _payload["data_source"] = data_source
+        return _payload
     except DataLabError as e:
         return err(e.code, str(e))
     except Exception:

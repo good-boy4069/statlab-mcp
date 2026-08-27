@@ -17,6 +17,11 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/02_data_explorat
 
 示例:
     outlier_detect("samples/dirty.csv")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 from typing import Any
 
@@ -30,7 +35,7 @@ from statlab_mcp.tools._common import (
     DataLabError,
     err,
     ok,
-    read_table,
+    resolve_data,
     save_plot,
 )
 
@@ -94,12 +99,13 @@ def _plot_boxplot(df: pd.DataFrame, cols: list[str], columns: dict[str, Any]) ->
     return fig
 
 
-def outlier_detect(file_path: str, method: str = "iqr") -> dict:
+def outlier_detect(file_path: str | None = None,
+                   inline_data: list | dict | None = None, method: str = "iqr") -> dict:
     """按 IQR 规则检测各数值列异常值，输出位置/数值与箱线图（异常红色标注）。"""
     try:
         if method != "iqr":
             raise DataLabError("method 仅支持 iqr", EC.PARAM)
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         skipped = [c for c in df.columns if c not in numeric_cols]
         if not numeric_cols:
@@ -133,6 +139,7 @@ def outlier_detect(file_path: str, method: str = "iqr") -> dict:
             summary += "；样本不足 4 的列无法定义 IQR（bounds 为无）"
 
         res = ok(result, summary)
+        res["data_source"] = data_source
         res["__image__"] = image_path     # 顶层可选字段（红队裁决 3），与 result 平级
         return res
     except DataLabError as e:

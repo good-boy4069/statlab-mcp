@@ -19,19 +19,25 @@ patterns 最多 10 条，按缺失行数降序；无缺失时 patterns=[]。
 
 示例:
     missing_report("samples/dirty.csv")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 from typing import Any
 
-from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, resolve_data
 
 MAX_PATTERNS = 10
 HIGH_RATE = 0.2
 
 
-def missing_report(file_path: str) -> dict:
+def missing_report(file_path: str | None = None,
+                   inline_data: list | dict | None = None) -> dict:
     """输出各列缺失数量/缺失率与缺失模式（单列/成对/全缺失）。"""
     try:
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         n_rows = len(df)
         n_columns = int(df.shape[1])
         mask = df.isna()
@@ -87,7 +93,9 @@ def missing_report(file_path: str) -> dict:
             "rows_with_missing": rows_with_missing,
             "patterns": patterns,
         }
-        return ok(result, summary)
+        _payload = ok(result, summary)
+        _payload["data_source"] = data_source
+        return _payload
     except DataLabError as e:
         return err(e.code, str(e))
     except Exception:
