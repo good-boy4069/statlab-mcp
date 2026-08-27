@@ -70,5 +70,21 @@ Claude Code 工作目录即项目根，不需要 cwd 字段（如不在项目根
 - Claude Code：`Read` 工具读同一路径
 - 其余客户端：用各自的文件读取/图片查看能力读 `__image__` 路径
 
+## v1.1.0 客户端接入面变更（升级必读）
+
+1. **机器可读错误码**：失败返回新增 `error_code` 字段
+   （`{status:"error", error_code:"E****", message:"..."}`，码表见 SPEC 第 9 节）。
+   agent 可按码分支：E1001/E1008/E1009 → 改参数重试；E1005 → 缩减数据；
+   E1010/E1011 → 换方法或补数据。纯增量字段，旧客户端零影响。
+2. **resources 能力**：server 静态枚举 `statlab://spec`（协议全文）与
+   `statlab://tools/<工具名>/manual`（完整说明书），共 28 项。支持 resources 的客户端
+   直接读取；不支持的客户端行为不变（工具 docstring 仍是完整说明书）。
+3. **description 双轨开关**：环境变量 `STATLAB_DESC_MODE=full|slim`，默认 full 与
+   v1.0.3 一致；slim 时 tools/list 的 description 仅保留参数签名摘要，
+   完整说明书经 manual 资源获取。
+4. **图片双轨**：环境变量 `STATLAB_IMAGE_MODE=path|content`，默认 path（`__image__`
+   路径字段，与此前一致）；content 返回标准 MCP ImageContent 内容块（base64），
+   有上下文膨胀风险，仅建议支持图片渲染的交互式客户端启用（SPEC 第 5 节强制披露）。
+
 > 提示：<PROJECT_ROOT> 请替换为你的项目根绝对路径（本文件已脱敏，勿提交本机路径）。
 

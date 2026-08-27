@@ -4,6 +4,47 @@
 
 ## [Unreleased] - v1.1.0（开发中）
 
+### P2-A CI「PyPI 自安装冒烟」独立 workflow
+- 新增 `.github/workflows/smoke_install.yml`：`release published` 自动触发
+  （tag 去 `v` 前缀解析版本）+ `workflow_dispatch` 手动（必填 input `version`）；
+  Ubuntu + Python 3.12 干净 venv `pip install statlab-mcp==<版本>` 后，
+  以 **console script**（`statlab-mcp` 命令）拉起已安装包的 stdio server，
+  内联脚本断言：① initialize 成功且 serverInfo.version 匹配发布版本；
+  ② 工具数 = 27；③ statlab://spec 与 ≥2 个工具 manual 可读非空；
+  ④ describe_statistics 真实计算链路往返可解析。不阻塞现有四 job 测试矩阵。
+- workflow YAML 已本地解析验证（release/workflow_dispatch 触发器齐全）；
+  发布后实际跑绿的链接见 Release notes。
+
+### P2-B check_readme_claims 扩展（防漂移跟上新宣称）
+- 新增三项核对（任何一项漂移即 CI 红）：
+  ① README 工具总数声明机制——出现的每一处「N 个工具」数字必须全部等于注册数，
+  且至少一处正确声明；人为篡改演练确认改数即红（exit=1）、恢复绿；
+  ② resources 宣称与实现一致——manual 映射覆盖全部注册工具名双向核对 +
+  SPEC 第 10 节「数量恒 = 注册工具数 + 1」口径存在性检查；
+  ③ SPEC 第 9 节错误码表 ↔ `EC` 常量集**双向一致**静态检查
+  （码一经发布永久稳定、只增不减；删码/改语义即红）。当前 12 个码双向一致。
+- 输出行扩展为：pytest 数 / 工具数 / resources 数 / 错误码一致性的四合一结论。
+
+### 版本与工程面
+- pyproject version 1.0.3 → **1.1.0**；description 更新为 27 个纯计算统计工具。
+- 全仓旧计数/旧能力描述清零（design/08 决策树 27 口径、clients.md 增接入口变更节、
+  ROADMAP 决策记录中的历史 25→26 表述属历史事实按惯例保留原文）。
+
+### 升级指引（v1.0.3 → v1.1.0）
+1. **error_code 是纯增量**：失败返回多一个字段、message 文案逐字不变；
+   不做程序化分支的客户端无需任何改动即可安全升级。
+2. **三个环境变量开关默认值 = v1.0.3 行为**：`STATLAB_DESC_MODE=full`（默认，不变）、
+   `STATLAB_IMAGE_MODE=path`（默认，不变）；`STATLAB_NO_CACHE` 仅测试对照用
+   （取值 `1` 时绕过文件缓存直读），生产无需设置。非法取值一律启动时 stderr 中文
+   告警并回退默认值，不会改变行为。
+3. **uvx 缓存可能锁旧版**：`uvx statlab-mcp` 若命中本地缓存仍运行 v1.0.x，
+   请用 `uvx --refresh statlab-mcp`（或 `--reinstall`）刷新后再用新特性。
+4. **pip / venv 用户**：`pip install --upgrade statlab-mcp` 即可；
+   依赖锁定的生产环境建议先在预发验证 requirements 范围内的最新依赖组合。
+5. **resources 是新增能力**：支持 resources/list 的客户端可读取 spec 与 manual；
+   不支持的客户端完全不受影响。description 双轨同理——不开 `STATLAB_DESC_MODE`
+   即保持原样。
+
 ### P1-3 新工具 power_analysis（工具 27：功效分析/样本量计算）
 - **三场景 × 三模式**：scenario = one_sample_t / two_sample_t / two_proportions；
   模式决策表按任务书钉死——只给效应侧 → solve_n；只给 n → detect_effect；
