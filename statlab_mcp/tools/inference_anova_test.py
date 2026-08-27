@@ -30,7 +30,7 @@ from statsmodels.stats.libqsturng import qsturng
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from statsmodels.stats.oneway import anova_oneway
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 SHAPIRO_MIN_N, SHAPIRO_MAX_N = 3, 5000
 MAX_GROUPS = 20
@@ -87,22 +87,22 @@ def anova_test(file_path: str, group_col: str, value_col: str, alpha: float = 0.
     """多组均值比较（ANOVA / Welch ANOVA + Tukey / Games-Howell 事后）。"""
     try:
         if not (0 < alpha < 1):
-            raise DataLabError("alpha 必须在 (0,1) 之间")
+            raise DataLabError("alpha 必须在 (0,1) 之间", EC.PARAM)
         df_all = read_table(file_path)
         if value_col not in df_all.columns:
-            raise DataLabError(f"缺少必需列: {value_col}；实际列: {list(df_all.columns)}")
+            raise DataLabError(f"缺少必需列: {value_col}；实际列: {list(df_all.columns)}", EC.COLUMN_MISSING)
         if group_col not in df_all.columns:
-            raise DataLabError(f"缺少必需列: {group_col}；实际列: {list(df_all.columns)}")
+            raise DataLabError(f"缺少必需列: {group_col}；实际列: {list(df_all.columns)}", EC.COLUMN_MISSING)
         if not pd.api.types.is_numeric_dtype(df_all[value_col]):
-            raise DataLabError(f"列 {value_col} 不是数值列，无法做方差分析")
+            raise DataLabError(f"列 {value_col} 不是数值列，无法做方差分析", EC.COLUMN_TYPE)
         if df_all[group_col].notna().sum() == 0:
-            raise DataLabError(f"列 {group_col} 无有效数据")
+            raise DataLabError(f"列 {group_col} 无有效数据", EC.INSUFFICIENT)
 
         keys = list(dict.fromkeys(df_all[group_col].dropna().values))
         if len(keys) < 2:
-            raise DataLabError("分组至少需要 2 组")
+            raise DataLabError("分组至少需要 2 组", EC.STRUCTURE)
         if len(keys) > MAX_GROUPS:
-            raise DataLabError(f"组数超过 {MAX_GROUPS}，请合并类别")
+            raise DataLabError(f"组数超过 {MAX_GROUPS}，请合并类别", EC.STRUCTURE)
 
         groups: dict[str, np.ndarray] = {}
         group_meta: dict[str, dict[str, Any]] = {}
@@ -111,7 +111,7 @@ def anova_test(file_path: str, group_col: str, value_col: str, alpha: float = 0.
             idx = df_all[group_col] == key
             vals = df_all.loc[idx, value_col].dropna().to_numpy(dtype=float)
             if vals.size < 2:
-                raise DataLabError(f"组 {key} 样本量不足 2")
+                raise DataLabError(f"组 {key} 样本量不足 2", EC.INSUFFICIENT)
             groups[key] = vals
             sets.append(vals)
             group_meta[key] = {"n": int(vals.size), "mean": float(vals.mean()),
@@ -197,9 +197,9 @@ def anova_test(file_path: str, group_col: str, value_col: str, alpha: float = 0.
         }
         return ok(result, summary)
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

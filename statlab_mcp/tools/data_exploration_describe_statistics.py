@@ -33,7 +33,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 MAX_NUMERIC_COLS = 200      # 防超大 JSON 输出（红队 B S3）
 
@@ -76,9 +76,9 @@ def describe_statistics(file_path: str) -> dict:
         n_columns = int(df.shape[1])
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         if not numeric_cols:
-            raise DataLabError("未找到数值列，无法计算描述统计")
+            raise DataLabError("未找到数值列，无法计算描述统计", EC.INSUFFICIENT)
         if len(numeric_cols) > MAX_NUMERIC_COLS:
-            raise DataLabError(f"数值列超过 {MAX_NUMERIC_COLS} 个，输出过大，请先挑选列")
+            raise DataLabError(f"数值列超过 {MAX_NUMERIC_COLS} 个，输出过大，请先挑选列", EC.SCALE)
 
         columns = {}
         fully_missing = []
@@ -127,9 +127,9 @@ def describe_statistics(file_path: str) -> dict:
 
         return ok(result, summary)
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:  # 计算层兜底：中文报错
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

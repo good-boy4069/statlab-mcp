@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 _TESTS = {"one_sample", "independent", "paired"}
 _ALTERNATIVES = {"two_sided", "less", "greater"}
@@ -77,26 +77,26 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
     """单样本/独立/配对 t 检验：统计量、p、均值差、CI、效应量 d、固定结论文案。"""
     try:
         if test not in _TESTS:
-            raise DataLabError(f"test 仅支持 {'/'.join(sorted(_TESTS))}")
+            raise DataLabError(f"test 仅支持 {'/'.join(sorted(_TESTS))}", EC.PARAM)
         if alternative not in _ALTERNATIVES:
-            raise DataLabError("alternative 仅支持 two_sided/less/greater")
+            raise DataLabError("alternative 仅支持 two_sided/less/greater", EC.PARAM)
         if not (0 < alpha < 1):
-            raise DataLabError("alpha 必须在 (0,1) 之间")
+            raise DataLabError("alpha 必须在 (0,1) 之间", EC.PARAM)
         if isinstance(mu0, bool) or not isinstance(mu0, (int, float, np.integer, np.floating)) \
                 or not np.isfinite(mu0):
-            raise DataLabError("mu0 必须是有限数值（拒绝 NaN/Inf）")   # Qoder 锐评 #1 防御补全
+            raise DataLabError("mu0 必须是有限数值（拒绝 NaN/Inf）", EC.PARAM)   # Qoder 锐评 #1 防御补全
         df_all = read_table(file_path)
         scipy_alt = "two-sided" if alternative == "two_sided" else alternative  # scipy 枚举用连字符
         if column not in df_all.columns:
-            raise DataLabError(f"缺少必需列: {column}；实际列: {list(df_all.columns)}")
+            raise DataLabError(f"缺少必需列: {column}；实际列: {list(df_all.columns)}", EC.COLUMN_MISSING)
         if not pd.api.types.is_numeric_dtype(df_all[column]):
-            raise DataLabError(f"列 {column} 不是数值列，无法做假设检验")
+            raise DataLabError(f"列 {column} 不是数值列，无法做假设检验", EC.COLUMN_TYPE)
         x = df_all[column].dropna().to_numpy(dtype=float)
 
         # ---- 三路数据准备 ----
         if test == "one_sample":
             if x.size < 2:
-                raise DataLabError(f"单样本至少需要 2 个有效值，当前 {x.size}")
+                raise DataLabError(f"单样本至少需要 2 个有效值，当前 {x.size}", EC.INSUFFICIENT)
             res = sps.ttest_1samp(x, mu0, alternative=scipy_alt)
             stat, p = float(res.statistic), float(res.pvalue)
             df = float(x.size - 1)
@@ -109,18 +109,18 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
             checks = {"data": _shapiro_check(x)}
         elif test == "independent":
             if group_col is None:
-                raise DataLabError("test=independent 时必须提供 group_col")
+                raise DataLabError("test=independent 时必须提供 group_col", EC.PARAM)
             if group_col not in df_all.columns:
-                raise DataLabError(f"缺少必需列: {group_col}；实际列: {list(df_all.columns)}")
+                raise DataLabError(f"缺少必需列: {group_col}；实际列: {list(df_all.columns)}", EC.COLUMN_MISSING)
             groups = df_all[group_col].dropna()
             keys = list(dict.fromkeys(groups.values))          # 保持出现顺序
             if len(keys) != 2:
-                raise DataLabError(f"分组列应有 2 组，当前 {len(keys)} 组；多组比较请使用 anova_test")
+                raise DataLabError(f"分组列应有 2 组，当前 {len(keys)} 组；多组比较请使用 anova_test", EC.STRUCTURE)
             g1, g2 = keys[0], keys[1]
             m1 = df_all.loc[groups.index[groups == g1], column].dropna().to_numpy(dtype=float)
             m2 = df_all.loc[groups.index[groups == g2], column].dropna().to_numpy(dtype=float)
             if m1.size < 2 or m2.size < 2:
-                raise DataLabError(f"组 {g1}(n={m1.size}) / {g2}(n={m2.size}) 样本量不足 2")
+                raise DataLabError(f"组 {g1}(n={m1.size}) / {g2}(n={m2.size}) 样本量不足 2", EC.INSUFFICIENT)
             res = sps.ttest_ind(m1, m2, equal_var=False, alternative=scipy_alt)
             stat, p = float(res.statistic), float(res.pvalue)
             mean1, mean2 = float(m1.mean()), float(m2.mean())
@@ -135,14 +135,14 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
             checks = {"group1": _shapiro_check(m1), "group2": _shapiro_check(m2)}
         else:  # paired
             if sample2_col is None:
-                raise DataLabError("test=paired 时必须提供 sample2_col")
+                raise DataLabError("test=paired 时必须提供 sample2_col", EC.PARAM)
             if sample2_col not in df_all.columns:
-                raise DataLabError(f"缺少必需列: {sample2_col}；实际列: {list(df_all.columns)}")
+                raise DataLabError(f"缺少必需列: {sample2_col}；实际列: {list(df_all.columns)}", EC.COLUMN_MISSING)
             if not pd.api.types.is_numeric_dtype(df_all[sample2_col]):
-                raise DataLabError(f"列 {sample2_col} 不是数值列，无法做假设检验")
+                raise DataLabError(f"列 {sample2_col} 不是数值列，无法做假设检验", EC.COLUMN_TYPE)
             m = df_all[[column, sample2_col]].dropna()
             if len(m) < 2:
-                raise DataLabError("配对后有效样本不足 2，无法检验")
+                raise DataLabError("配对后有效样本不足 2，无法检验", EC.INSUFFICIENT)
             xp = m[column].to_numpy(dtype=float)
             yp = m[sample2_col].to_numpy(dtype=float)
             res = sps.ttest_rel(xp, yp, alternative=scipy_alt)
@@ -152,7 +152,7 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
             mean_diff = float(diffs.mean())
             sd_diff = float(diffs.std(ddof=1))
             if sd_diff == 0:
-                raise DataLabError("配对差值无变异（所有差值相同），无法检验")
+                raise DataLabError("配对差值无变异（所有差值相同），无法检验", EC.STRUCTURE)
             se = sd_diff / np.sqrt(len(m))
             d = abs(mean_diff) / sd_diff
             out_mean = {"mean": None, "mean1": float(xp.mean()), "mean2": float(yp.mean())}
@@ -210,9 +210,9 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
                    f"相关≠因果")
         return ok(result, summary)
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

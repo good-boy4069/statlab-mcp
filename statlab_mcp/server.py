@@ -19,7 +19,7 @@ from mcp_types import CallToolResult, TextContent  # mcp 2.x：类型定义在 m
 from pydantic import ValidationError
 
 from statlab_mcp.tools import (
-    _common,  # noqa: F401  导入即执行 seed(42)/Agg/字体/日志配置
+    _common,  # 导入即执行 seed(42)/Agg/字体/日志配置；EC 错误码常量亦经此引用
 )
 from statlab_mcp.tools import data_exploration_correlation_matrix as _t4  # 工具 4
 from statlab_mcp.tools import data_exploration_data_type_check as _t2  # 工具 2
@@ -53,8 +53,11 @@ _TOOL_MODULES: list = [_t1, _t2, _t3, _t4, _t5, _t6, _t9, _t10, _t7, _t8, _t11,
                        _t12, _t13, _t14, _t15, _t16, _t17, _t18, _t19, _t20,
                        _t21, _t22, _t23, _t24, _t25, _t26]
 
+# 工具数：26（v1.0.3；v1.1.0 将为 27，随 P1-3 同步更新）
 _PARAM_HINT = "参数校验失败：请检查参数类型与取值范围（拒绝 NaN/Inf 等非法数值）"
-_PARAM_HINT_JSON = json.dumps({"status": "error", "message": _PARAM_HINT}, ensure_ascii=False)
+# v1.1.0：错误结构新增机器可读 error_code（E1001=参数校验失败，SPEC 第 9 节）
+_PARAM_HINT_JSON = json.dumps({"status": "error", "error_code": _common.EC.PARAM,
+                               "message": _PARAM_HINT}, ensure_ascii=False)
 
 
 class StatlabServer(MCPServer):

@@ -34,7 +34,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 _DATE_OK_RATIO = 0.95
 _NUM_OK_RATIO = 0.95
@@ -180,9 +180,9 @@ def data_type_check(file_path: str) -> dict:
         }
         return ok(result, "；".join(parts) + "。")
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

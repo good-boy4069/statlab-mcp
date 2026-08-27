@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 
 from statlab_mcp.tools._common import (
     CJK_FONT_OK,
+    EC,
     DataLabError,
     err,
     ok,
@@ -24,13 +25,13 @@ def plot_scatter(file_path: str, x_col: str, y_col: str) -> dict:
         df = read_table(file_path)
         for c in (x_col, y_col):
             if c not in df.columns:
-                raise DataLabError(f"缺少必需列: {c}；实际列: {list(df.columns)}")
+                raise DataLabError(f"缺少必需列: {c}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
             if not pd.api.types.is_numeric_dtype(df[c]):
-                raise DataLabError(f"列 {c} 不是数值列，无法画散点图")
+                raise DataLabError(f"列 {c} 不是数值列，无法画散点图", EC.COLUMN_TYPE)
         m = df[[x_col, y_col]].dropna()
         n = len(m)
         if n == 0:
-            raise DataLabError(f"列 {x_col}/{y_col} 无有效数据（成对剔除后为空）")
+            raise DataLabError(f"列 {x_col}/{y_col} 无有效数据（成对剔除后为空）", EC.INSUFFICIENT)
         dropped = int(len(df) - n)
         x, y = m[x_col].to_numpy(dtype=float), m[y_col].to_numpy(dtype=float)
 
@@ -59,9 +60,9 @@ def plot_scatter(file_path: str, x_col: str, y_col: str) -> dict:
         res["__image__"] = img
         return res
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

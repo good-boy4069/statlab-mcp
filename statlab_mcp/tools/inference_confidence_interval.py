@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 _METHODS = {"mean_t", "bootstrap_median"}
 N_BOOTSTRAP = 1000
@@ -37,18 +37,18 @@ def confidence_interval(file_path: str, column: str, confidence: float = 0.95,
     """均值（t 分布）或中位数（bootstrap）的置信区间。"""
     try:
         if method not in _METHODS:
-            raise DataLabError("method 仅支持 mean_t/bootstrap_median")
+            raise DataLabError("method 仅支持 mean_t/bootstrap_median", EC.PARAM)
         if not (0 < confidence < 1):
-            raise DataLabError("confidence 必须在 (0,1) 之间")
+            raise DataLabError("confidence 必须在 (0,1) 之间", EC.PARAM)
         df_all = read_table(file_path)
         if column not in df_all.columns:
-            raise DataLabError(f"缺少必需列: {column}；实际列: {list(df_all.columns)}")
+            raise DataLabError(f"缺少必需列: {column}；实际列: {list(df_all.columns)}", EC.COLUMN_MISSING)
         if not pd.api.types.is_numeric_dtype(df_all[column]):
-            raise DataLabError(f"列 {column} 不是数值列，无法计算置信区间")
+            raise DataLabError(f"列 {column} 不是数值列，无法计算置信区间", EC.COLUMN_TYPE)
         x = df_all[column].dropna().to_numpy(dtype=float)
         n = int(x.size)
         if n < 3:
-            raise DataLabError(f"至少需要 3 个有效值，当前 {n}")
+            raise DataLabError(f"至少需要 3 个有效值，当前 {n}", EC.INSUFFICIENT)
 
         alpha = 1 - confidence
         if method == "mean_t":
@@ -94,9 +94,9 @@ def confidence_interval(file_path: str, column: str, confidence: float = 0.95,
                    f"n={n}）{note}")
         return ok(result, summary)
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

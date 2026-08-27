@@ -12,6 +12,7 @@ from matplotlib import pyplot as plt
 
 from statlab_mcp.tools._common import (
     CJK_FONT_OK,
+    EC,
     DataLabError,
     err,
     ok,
@@ -29,9 +30,9 @@ def plot_heatmap(file_path: str) -> dict:
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         excluded = [c for c in df.columns if c not in numeric_cols]
         if len(numeric_cols) < 2:
-            raise DataLabError("至少需要 2 个数值列才能画相关热力图")
+            raise DataLabError("至少需要 2 个数值列才能画相关热力图", EC.INSUFFICIENT)
         if len(numeric_cols) > MAX_COLS:
-            raise DataLabError(f"数值列超过 {MAX_COLS} 个，相关矩阵过大，请先挑选列")
+            raise DataLabError(f"数值列超过 {MAX_COLS} 个，相关矩阵过大，请先挑选列", EC.SCALE)
 
         corr = df[numeric_cols].corr().to_numpy(dtype=float)
         n = len(df)
@@ -70,9 +71,9 @@ def plot_heatmap(file_path: str) -> dict:
         res["__image__"] = img
         return res
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

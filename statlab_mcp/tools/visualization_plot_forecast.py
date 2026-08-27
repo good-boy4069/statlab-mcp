@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 
 from statlab_mcp.tools._common import (
     CJK_FONT_OK,
+    EC,
     DataLabError,
     _prepare_series,
     err,
@@ -27,7 +28,7 @@ def plot_forecast(file_path: str, date_col: str, value_col: str) -> dict:
         y, meta = _prepare_series(df, date_col, value_col)
         n = int(y.size)
         if n < MIN_N:
-            raise DataLabError(f"样本过短（n={n}<{MIN_N}），无法作图")
+            raise DataLabError(f"样本过短（n={n}<{MIN_N}），无法作图", EC.INSUFFICIENT)
         ma = y.rolling(MA_WINDOW, min_periods=3).mean()
 
         fig, ax = plt.subplots(figsize=(9, 4.0))
@@ -61,9 +62,9 @@ def plot_forecast(file_path: str, date_col: str, value_col: str) -> dict:
         res["__image__"] = img
         return res
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

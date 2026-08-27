@@ -25,6 +25,7 @@ import numpy as np
 from scipy import stats as sps
 
 from statlab_mcp.tools._common import (
+    EC,
     DataLabError,
     _prepare_series,
     err,
@@ -67,7 +68,7 @@ def trend_analysis(file_path: str, date_col: str, value_col: str,
     """Mann-Kendall / Theil-Sen 趋势检验：tau、p、斜率与单调性结论。"""
     try:
         if method not in _METHODS:
-            raise DataLabError("method 仅支持 mann_kendall/theil_sen")
+            raise DataLabError("method 仅支持 mann_kendall/theil_sen", EC.PARAM)
         df = read_table(file_path)
         y, meta = _prepare_series(df, date_col, value_col)
         # _prepare_series 的插值只填中间缺失，头部 NaN 保留（interpolate 无法回填）；
@@ -78,7 +79,7 @@ def trend_analysis(file_path: str, date_col: str, value_col: str,
             y = y.dropna()
         n = int(y.size)
         if n < _MIN_N:
-            raise DataLabError(f"有效样本不足（n={n}<{_MIN_N}），趋势检验不可靠")
+            raise DataLabError(f"有效样本不足（n={n}<{_MIN_N}），趋势检验不可靠", EC.INSUFFICIENT)
         yv = y.to_numpy(dtype=float)
 
         tau, p = sps.kendalltau(yv, np.arange(n))       # MK：tau + 正态近似双侧 p
@@ -126,9 +127,9 @@ def trend_analysis(file_path: str, date_col: str, value_col: str,
         }
         return ok(result, summary)
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

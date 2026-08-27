@@ -26,6 +26,7 @@ from sklearn.preprocessing import StandardScaler
 
 from statlab_mcp.tools._common import (
     CJK_FONT_OK,
+    EC,
     DataLabError,
     err,
     ok,
@@ -38,13 +39,13 @@ def pca_analysis(file_path: str, n_components: int) -> dict:
     """PCA 降维：方差解释率、反标准化载荷矩阵与载荷图。"""
     try:
         if isinstance(n_components, bool) or not isinstance(n_components, (int, np.integer)):
-            raise DataLabError("n_components 必须是整数")
+            raise DataLabError("n_components 必须是整数", EC.PARAM)
         n_components = int(n_components)
         df = read_table(file_path)
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         excluded = [c for c in df.columns if c not in numeric_cols]
         if not numeric_cols:
-            raise DataLabError("未找到数值列，无法做主成分分析")
+            raise DataLabError("未找到数值列，无法做主成分分析", EC.INSUFFICIENT)
         n_raw = len(df)
         # 含 NaN 数值列须 listwise 剔除并报告（与 linear/logistic/cluster 对齐，
         # 否则 StandardScaler 抛 "Input contains NaN" 被通用 except 吞掉，外部评审 M3）
@@ -52,13 +53,13 @@ def pca_analysis(file_path: str, n_components: int) -> dict:
         n_samples = len(raw_df)
         dropped = n_raw - n_samples
         if n_samples == 0:
-            raise DataLabError("所有行的数值列均含缺失值，无法做主成分分析")
+            raise DataLabError("所有行的数值列均含缺失值，无法做主成分分析", EC.INSUFFICIENT)
         if n_samples < 2:
-            raise DataLabError(f"有效样本仅 {n_samples} 行（n<2），PCA 无意义，请补充数据")
+            raise DataLabError(f"有效样本仅 {n_samples} 行（n<2），PCA 无意义，请补充数据", EC.INSUFFICIENT)
         n_features = len(numeric_cols)
         k_max = min(n_samples, n_features)
         if not (1 <= n_components <= k_max):
-            raise DataLabError(f"n_components 必须在 1 到 min(样本,特征)={k_max} 之间")
+            raise DataLabError(f"n_components 必须在 1 到 min(样本,特征)={k_max} 之间", EC.PARAM)
 
         raw = raw_df.to_numpy(dtype=float)
         scaler = StandardScaler().fit(raw)
@@ -135,9 +136,9 @@ def pca_analysis(file_path: str, n_components: int) -> dict:
         res["__image__"] = img
         return res
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

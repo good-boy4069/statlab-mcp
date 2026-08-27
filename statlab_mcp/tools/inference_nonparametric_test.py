@@ -43,7 +43,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 _TESTS = {"wilcoxon", "mann_whitney", "kruskal_wallis"}
 _ALTERNATIVES = {"two_sided", "less", "greater"}
@@ -61,13 +61,13 @@ def _wilcoxon(column: str, sample2_col: str, df: pd.DataFrame,
     m = df[[column, sample2_col]].dropna()
     if len(m) < MIN_PAIRS:
         raise DataLabError(f"配对有效样本不足（n={len(m)}<{MIN_PAIRS}，剔除缺失后），"
-                           f"Wilcoxon 检验不可靠")
+                           f"Wilcoxon 检验不可靠", EC.INSUFFICIENT)
     x = m[column].to_numpy(dtype=float)
     y = m[sample2_col].to_numpy(dtype=float)
     diff = x - y
     n_eff = int(np.count_nonzero(diff != 0))
     if n_eff == 0:
-        raise DataLabError("配对差值全为 0（无变异），无法做 Wilcoxon 检验")
+        raise DataLabError("配对差值全为 0（无变异），无法做 Wilcoxon 检验", EC.STRUCTURE)
     scipy_alt = "two-sided" if alternative == "two_sided" else alternative  # scipy 枚举用连字符
     res = sps.wilcoxon(x, y, zero_method="wilcox", correction=False,
                        alternative=scipy_alt, method="auto")
@@ -91,13 +91,13 @@ def _mann_whitney(group_col: str, value_col: str, df: pd.DataFrame,
                   alternative: str, alpha: float) -> dict[str, Any]:
     keys = list(dict.fromkeys(df[group_col].dropna().values))
     if len(keys) != 2:
-        raise DataLabError(f"mann_whitney 需要恰好 2 组，当前 {len(keys)} 组；多组请用 kruskal_wallis")
+        raise DataLabError(f"mann_whitney 需要恰好 2 组，当前 {len(keys)} 组；多组请用 kruskal_wallis", EC.STRUCTURE)
     g1, g2 = keys[0], keys[1]
     x = df.loc[df[group_col] == g1, value_col].dropna().to_numpy(dtype=float)
     y = df.loc[df[group_col] == g2, value_col].dropna().to_numpy(dtype=float)
     if x.size < MIN_N_PER_GROUP or y.size < MIN_N_PER_GROUP:
         raise DataLabError(f"组 {g1}(n={x.size}) / {g2}(n={y.size}) 样本量不足 "
-                           f"{MIN_N_PER_GROUP}，无法做 Mann-Whitney 检验")
+                           f"{MIN_N_PER_GROUP}，无法做 Mann-Whitney 检验", EC.INSUFFICIENT)
     scipy_alt = "two-sided" if alternative == "two_sided" else alternative  # scipy 枚举用连字符
     res = sps.mannwhitneyu(x, y, use_continuity=True, alternative=scipy_alt, method="auto")
     u_stat, p = float(res.statistic), float(res.pvalue)
@@ -118,15 +118,15 @@ def _kruskal_wallis(group_col: str, value_col: str, df: pd.DataFrame,
                     alpha: float) -> dict[str, Any]:
     keys = list(dict.fromkeys(df[group_col].dropna().values))
     if len(keys) < 2:
-        raise DataLabError("kruskal_wallis 至少需要 2 组")
+        raise DataLabError("kruskal_wallis 至少需要 2 组", EC.STRUCTURE)
     if len(keys) > MAX_GROUPS:
-        raise DataLabError(f"组数超过 {MAX_GROUPS}，请合并类别")
+        raise DataLabError(f"组数超过 {MAX_GROUPS}，请合并类别", EC.STRUCTURE)
     groups: list[tuple[str, np.ndarray]] = []
     total = 0
     for key in keys:
         vals = df.loc[df[group_col] == key, value_col].dropna().to_numpy(dtype=float)
         if vals.size < MIN_N_PER_GROUP:
-            raise DataLabError(f"组 {key} 样本量不足 {MIN_N_PER_GROUP}")
+            raise DataLabError(f"组 {key} 样本量不足 {MIN_N_PER_GROUP}", EC.INSUFFICIENT)
         groups.append((str(key), vals))
         total += int(vals.size)
     res = sps.kruskal(*[v for _, v in groups])
@@ -152,12 +152,12 @@ def nonparametric_test(file_path: str, test: str = "wilcoxon",
     """非参数检验（Wilcoxon 配对 / Mann-Whitney 两组 / Kruskal-Wallis 多组）。"""
     try:
         if test not in _TESTS:
-            raise DataLabError(f"test 仅支持 {'/'.join(sorted(_TESTS))}")
+            raise DataLabError(f"test 仅支持 {'/'.join(sorted(_TESTS))}", EC.PARAM)
         if alternative not in _ALTERNATIVES:
-            raise DataLabError("alternative 仅支持 two_sided/less/greater")
+            raise DataLabError("alternative 仅支持 two_sided/less/greater", EC.PARAM)
         if isinstance(alpha, bool) or not isinstance(alpha, (int, float, np.integer, np.floating)) \
                 or not math.isfinite(float(alpha)) or not (0 < alpha < 1):
-            raise DataLabError("alpha 必须在 (0,1) 之间且为有限数")
+            raise DataLabError("alpha 必须在 (0,1) 之间且为有限数", EC.PARAM)
         alpha = float(alpha)
 
         df = read_table(file_path)
@@ -165,20 +165,20 @@ def nonparametric_test(file_path: str, test: str = "wilcoxon",
             for c in (column, sample2_col):
                 if c is None or c not in df.columns:
                     raise DataLabError(f"test=wilcoxon 需要 column 与 sample2_col 两列；"
-                                       f"缺少列: {c}")
+                                       f"缺少列: {c}", EC.PARAM)
             if not pd.api.types.is_numeric_dtype(df[column]) \
                     or not pd.api.types.is_numeric_dtype(df[sample2_col]):
-                raise DataLabError("wilcoxon 的两列必须都是数值列")
+                raise DataLabError("wilcoxon 的两列必须都是数值列", EC.COLUMN_TYPE)
             out = _wilcoxon(column, sample2_col, df, alternative, alpha)
         else:
             for c in (group_col, value_col):
                 if c is None or c not in df.columns:
                     raise DataLabError(f"test={test} 需要 group_col 与 value_col 两列；"
-                                       f"缺少列: {c}")
+                                       f"缺少列: {c}", EC.PARAM)
             if not pd.api.types.is_numeric_dtype(df[value_col]):
-                raise DataLabError(f"列 {value_col} 不是数值列，无法做非参数检验")
+                raise DataLabError(f"列 {value_col} 不是数值列，无法做非参数检验", EC.COLUMN_TYPE)
             if df[group_col].notna().sum() == 0:
-                raise DataLabError(f"列 {group_col} 无有效数据")
+                raise DataLabError(f"列 {group_col} 无有效数据", EC.INSUFFICIENT)
             out = (_mann_whitney(group_col, value_col, df, alternative, alpha)
                    if test == "mann_whitney"
                    else _kruskal_wallis(group_col, value_col, df, alpha))
@@ -192,9 +192,9 @@ def nonparametric_test(file_path: str, test: str = "wilcoxon",
                   "note": "scipy 实现；参数化设置见设计文档 09"}
         return ok(result, summary)
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

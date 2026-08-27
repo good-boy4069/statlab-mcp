@@ -29,6 +29,7 @@ from statsmodels.tsa.seasonal import STL
 
 from statlab_mcp.tools._common import (
     CJK_FONT_OK,
+    EC,
     DataLabError,
     _estimate_period,
     _prepare_series,
@@ -111,19 +112,19 @@ def anomaly_detect(file_path: str, date_col: str, value_col: str,
     """时序异常点检测（STL 残差 / 差分 IQR / 滚动 z-score）+ 区间图。"""
     try:
         if method not in _METHODS:
-            raise DataLabError("method 仅支持 stl/iqr/rolling_zscore")
+            raise DataLabError("method 仅支持 stl/iqr/rolling_zscore", EC.PARAM)
         if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) \
                 or threshold <= 0 or not math.isfinite(threshold):
-            raise DataLabError("threshold 必须 >0 的有限数")
+            raise DataLabError("threshold 必须 >0 的有限数", EC.PARAM)
         threshold = float(threshold)
         df = read_table(file_path)
         y, meta = _prepare_series(df, date_col, value_col)
         n = int(y.size)
         if n < MIN_N:
-            raise DataLabError(f"样本过短（n={n}<{MIN_N}），时序分析不可靠")
+            raise DataLabError(f"样本过短（n={n}<{MIN_N}），时序分析不可靠", EC.INSUFFICIENT)
         yv = y.dropna()
         if int(yv.size) == 0:
-            raise DataLabError(f"列 {value_col} 无有效数据")
+            raise DataLabError(f"列 {value_col} 无有效数据", EC.INSUFFICIENT)
 
         if method == "stl":
             anomalies = _detect_stl(yv, threshold)
@@ -197,9 +198,9 @@ def anomaly_detect(file_path: str, date_col: str, value_col: str,
         res["__image__"] = img
         return res
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

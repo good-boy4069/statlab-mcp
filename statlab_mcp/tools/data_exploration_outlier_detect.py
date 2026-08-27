@@ -26,6 +26,7 @@ from matplotlib import pyplot as plt
 
 from statlab_mcp.tools._common import (
     CJK_FONT_OK,
+    EC,
     DataLabError,
     err,
     ok,
@@ -97,14 +98,14 @@ def outlier_detect(file_path: str, method: str = "iqr") -> dict:
     """按 IQR 规则检测各数值列异常值，输出位置/数值与箱线图（异常红色标注）。"""
     try:
         if method != "iqr":
-            raise DataLabError("method 仅支持 iqr")
+            raise DataLabError("method 仅支持 iqr", EC.PARAM)
         df = read_table(file_path)
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         skipped = [c for c in df.columns if c not in numeric_cols]
         if not numeric_cols:
-            raise DataLabError("至少需要 1 个数值列才能检测异常值")
+            raise DataLabError("至少需要 1 个数值列才能检测异常值", EC.INSUFFICIENT)
         if len(numeric_cols) > MAX_NUMERIC_COLS:
-            raise DataLabError(f"数值列超过 {MAX_NUMERIC_COLS} 个，箱线图过大，请先挑选列")
+            raise DataLabError(f"数值列超过 {MAX_NUMERIC_COLS} 个，箱线图过大，请先挑选列", EC.SCALE)
 
         columns = {c: _detect_col(df[c]) for c in numeric_cols}
         total = int(sum(d["n_outliers"] for d in columns.values()))
@@ -135,9 +136,9 @@ def outlier_detect(file_path: str, method: str = "iqr") -> dict:
         res["__image__"] = image_path     # 顶层可选字段（红队裁决 3），与 result 平级
         return res
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

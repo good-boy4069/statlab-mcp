@@ -2,6 +2,26 @@
 
 本项目遵循[语义化版本](https://semver.org/lang/zh-CN/)。所有重大变更均记录于此。
 
+## [Unreleased] - v1.1.0（开发中）
+
+### P0-2 机器可读错误码（向后兼容扩展）
+- **失败结构新增 `error_code` 字段**：`{status:"error", error_code:"<CODE>", message:"<中文>"}`；
+  既有 `message` 中文文案逐字不变。码格式 `E`+四位数字，码表钉入 SPEC 第 9 节
+  （E1001 参数 / E1002 路径 / E1003 文件缺失 / E1004 空或损坏 / E1005 规模超限 /
+  E1006 格式 / E1007 编码 / E1008 缺列 / E1009 列非数值 / E1010 样本量不足 /
+  E1011 分组配对结构非法 / E9999 计算兜底）；**码一经发布永久稳定、只增不改不复用**。
+- `err()` 的 `code` 参数设为必填（杜绝漏码）；`DataLabError(message, code)` 携带语义码，
+  全仓 172 处 raise 点逐条归类（含人工复核修正：Shapiro 样本上限归 E1005、
+  D'Agostino 下限归 E1010、期望频数过低与目标类别超限归 E1011、PCA 有效样本<2 归 E1010）；
+  pydantic 层参数校验失败由 `StatlabServer` 转换通路注入 `E1001`。
+- **被适配的既有断言清单（唯一一处键集合断言）**：
+  `tests/test_common.py::test_err_structure_no_result`——错误 dict 键集合
+  `["status", "message"]` → `["status", "error_code", "message"]`（并增补 error_code 值断言）。
+- 新增 `tests/test_error_codes.py`：14 用例逐码覆盖（每码 ≥1 条真实触发路径，
+  统一校验失败结构、无 result、JSON allow_nan=False 安全）；
+  `tests/test_protocol_errors.py` NaN 场景增补 stdio 协议通路 `error_code=="E1001"` 断言。
+- README 测试计数 252 → 266（check_readme_claims 当次提交同步核对通过）。
+
 ## [v1.0.3] - 2026-08-26
 
 ### 新增

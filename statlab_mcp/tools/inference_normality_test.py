@@ -23,7 +23,7 @@ docstring = agent 使用说明书，与 docs/design/03_inference_batch1.md 同�
 import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 _METHODS = {"auto", "shapiro", "dagostino"}
 SHAPIRO_MIN_N, SHAPIRO_MAX_N = 3, 5000
@@ -39,28 +39,28 @@ def normality_test(file_path: str, column: str, method: str = "auto") -> dict:
     """正态性检验（Shapiro-Wilk / D'Agostino-Pearson），输出统计量、p、偏度、峰度。"""
     try:
         if method not in _METHODS:
-            raise DataLabError("method 仅支持 auto/shapiro/dagostino")
+            raise DataLabError("method 仅支持 auto/shapiro/dagostino", EC.PARAM)
         df = read_table(file_path)
         if column not in df.columns:
-            raise DataLabError(f"缺少必需列: {column}；实际列: {list(df.columns)}")
+            raise DataLabError(f"缺少必需列: {column}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
         if not pd.api.types.is_numeric_dtype(df[column]):
-            raise DataLabError(f"列 {column} 不是数值列，无法做正态检验")
+            raise DataLabError(f"列 {column} 不是数值列，无法做正态检验", EC.COLUMN_TYPE)
         x = df[column].dropna().to_numpy(dtype=float)
         n = int(x.size)
         if n < SHAPIRO_MIN_N:
-            raise DataLabError(f"至少需要 3 个有效值，当前 {n}")
+            raise DataLabError(f"至少需要 3 个有效值，当前 {n}", EC.INSUFFICIENT)
         if float(x.std(ddof=1)) == 0:
-            raise DataLabError(f"列 {column} 为常数列（方差为 0），正态检验无意义")
+            raise DataLabError(f"列 {column} 为常数列（方差为 0），正态检验无意义", EC.STRUCTURE)
 
         method_used = "shapiro" if (method == "auto" and n <= SHAPIRO_MAX_N) else (
             "dagostino" if method == "auto" else method)
         if method_used == "shapiro" and n > SHAPIRO_MAX_N:
             raise DataLabError(f"样本量 {n} 超出 Shapiro 适用范围（3~5000），"
-                               f"请改用 method=dagostino 或抽样")
+                               f"请改用 method=dagostino 或抽样", EC.SCALE)
         if method_used == "dagostino" and n > DAGOSTINO_MAX_N:
-            raise DataLabError(f"样本过大（{n} 行），请随机抽样后重试")
+            raise DataLabError(f"样本过大（{n} 行），请随机抽样后重试", EC.SCALE)
         if method_used == "dagostino" and n < DAGOSTINO_MIN_N:
-            raise DataLabError(f"D'Agostino 检验要求样本量 >=8，当前 {n}，请用 method=shapiro")
+            raise DataLabError(f"D'Agostino 检验要求样本量 >=8，当前 {n}，请用 method=shapiro", EC.INSUFFICIENT)
 
         if method_used == "shapiro":
             stat, p = sps.shapiro(x)
@@ -86,9 +86,9 @@ def normality_test(file_path: str, column: str, method: str = "auto") -> dict:
                        f"偏度 {skew:.2f}、峰度 {kurtosis:.2f}，建议改用 nonparametric_test")
         return ok(result, summary)
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

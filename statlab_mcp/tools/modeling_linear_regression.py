@@ -30,6 +30,7 @@ from statsmodels.stats.stattools import durbin_watson
 
 from statlab_mcp.tools._common import (
     CJK_FONT_OK,
+    EC,
     DataLabError,
     err,
     ok,
@@ -47,19 +48,19 @@ def linear_regression(file_path: str, target: str, features: list[str],
     """OLS 线性回归：系数表、整体拟合、VIF、残差诊断与图。"""
     try:
         if not (0 < alpha < 1):
-            raise DataLabError("alpha 必须在 (0,1) 之间")
+            raise DataLabError("alpha 必须在 (0,1) 之间", EC.PARAM)
         if not isinstance(features, list) or not features:
-            raise DataLabError("features 至少需要 1 个特征")
+            raise DataLabError("features 至少需要 1 个特征", EC.PARAM)
         if len(set(features)) != len(features):
-            raise DataLabError("features 含重复项，请去重")
+            raise DataLabError("features 含重复项，请去重", EC.PARAM)
         df = read_table(file_path)
         if target not in df.columns:
-            raise DataLabError(f"缺少必需列: {target}；实际列: {list(df.columns)}")
+            raise DataLabError(f"缺少必需列: {target}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
         for f in features:
             if f not in df.columns:
-                raise DataLabError(f"缺少必需列: {f}；实际列: {list(df.columns)}")
+                raise DataLabError(f"缺少必需列: {f}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
         if not pd.api.types.is_numeric_dtype(df[target]):
-            raise DataLabError(f"列 {target} 不是数值列，无法做线性回归")
+            raise DataLabError(f"列 {target} 不是数值列，无法做线性回归", EC.COLUMN_TYPE)
 
         # ---- one-hot 类别特征 + 设计矩阵 ----
         dummy_mapping: dict[str, str] = {}
@@ -82,21 +83,21 @@ def linear_regression(file_path: str, target: str, features: list[str],
         dropped = int((~mask).sum())
         X, y = X_raw[mask].reset_index(drop=True), y[mask].reset_index(drop=True)
         if len(y) == 0:
-            raise DataLabError("剔除缺失后无有效样本")
+            raise DataLabError("剔除缺失后无有效样本", EC.INSUFFICIENT)
 
         # ---- 零方差列自动剔除 ----
         drop_zero = [c for c in X.columns if int(X[c].nunique()) <= 1]
         if drop_zero:
             X = X.drop(columns=drop_zero)
         if X.shape[1] == 0:
-            raise DataLabError("特征均为零方差列，无法建模")
+            raise DataLabError("特征均为零方差列，无法建模", EC.STRUCTURE)
 
         # ---- 截距与样本量门槛 ----
         Xd = sm_add_constant(X, has_constant="add") if add_constant else X
         n_cols = int(Xd.shape[1])
         n_rows = len(y)
         if n_rows <= n_cols + 2:
-            raise DataLabError(f"样本量不足（n={n_rows} ≤ 特征数+2={n_cols + 2}），无法稳定估计")
+            raise DataLabError(f"样本量不足（n={n_rows} ≤ 特征数+2={n_cols + 2}），无法稳定估计", EC.INSUFFICIENT)
 
         model = OLS(y, Xd).fit()
 
@@ -189,9 +190,9 @@ def linear_regression(file_path: str, target: str, features: list[str],
         res["__image__"] = img
         return res
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

@@ -27,7 +27,7 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.inspection import permutation_importance
 from sklearn.model_selection import train_test_split
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 MIN_N = 50
 MAX_CLASSES = 50
@@ -40,20 +40,20 @@ def feature_importance(file_path: str, target: str, method: str = "permutation",
     """随机森林特征重要性（permutation / impurity 二选一）。"""
     try:
         if method not in ("permutation", "impurity"):
-            raise DataLabError("method 仅支持 permutation/impurity")
+            raise DataLabError("method 仅支持 permutation/impurity", EC.PARAM)
         if isinstance(n_estimators, bool) or not isinstance(n_estimators, (int, np.integer)) \
                 or n_estimators < MIN_ESTIMATORS:
-            raise DataLabError(f"n_estimators 必须 >= {MIN_ESTIMATORS}")
+            raise DataLabError(f"n_estimators 必须 >= {MIN_ESTIMATORS}", EC.PARAM)
         if isinstance(n_repeats, bool) or not isinstance(n_repeats, (int, np.integer)) \
                 or n_repeats < 1:
-            raise DataLabError("n_repeats 必须 >=1")
+            raise DataLabError("n_repeats 必须 >=1", EC.PARAM)
         df = read_table(file_path)
         if target not in df.columns:
-            raise DataLabError(f"缺少必需列: {target}；实际列: {list(df.columns)}")
+            raise DataLabError(f"缺少必需列: {target}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
         y_all = df[target].dropna()
         n = int(y_all.size)
         if n < MIN_N:
-            raise DataLabError(f"样本量 n={n} 小于 50，特征重要性不稳定，请积累数据或抽样")
+            raise DataLabError(f"样本量 n={n} 小于 50，特征重要性不稳定，请积累数据或抽样", EC.INSUFFICIENT)
 
         # ---- 特征矩阵：数值直用 + 类别 one-hot ----
         dummy_mapping: dict[str, str] = {}
@@ -69,7 +69,7 @@ def feature_importance(file_path: str, target: str, method: str = "permutation",
                     dummy_mapping[col] = f"{c}={col[len(c) + 1:]}"
                 parts.append(dummies)
         if not parts:
-            raise DataLabError("目标列之外没有可用特征")
+            raise DataLabError("目标列之外没有可用特征", EC.COLUMN_MISSING)
         X_all = pd.concat(parts, axis=1)
         feature_names = list(X_all.columns)
         m = X_all.copy()
@@ -86,7 +86,7 @@ def feature_importance(file_path: str, target: str, method: str = "permutation",
         else:
             is_classification = False              # 连续数值 -> 回归
         if is_classification and int(y.nunique()) > MAX_CLASSES:
-            raise DataLabError(f"目标类别数 {int(y.nunique())} 超过 {MAX_CLASSES}，请先合并类别")
+            raise DataLabError(f"目标类别数 {int(y.nunique())} 超过 {MAX_CLASSES}，请先合并类别", EC.STRUCTURE)
 
         # ---- 划分（0.25 测试集）----
         X_tr, X_te, y_tr, y_te = train_test_split(
@@ -135,9 +135,9 @@ def feature_importance(file_path: str, target: str, method: str = "permutation",
         }
         return ok(result, summary)
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

@@ -23,7 +23,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 
 def _run_kmeans(Xs: np.ndarray, k: int):
@@ -36,13 +36,13 @@ def cluster_analysis(file_path: str, k: int) -> dict:
     """KMeans 聚类：反标准化质心 + 簇样本量 + 轮廓系数（含 k±1 对照）。"""
     try:
         if isinstance(k, bool) or not isinstance(k, (int, np.integer)):
-            raise DataLabError("k 必须是整数")
+            raise DataLabError("k 必须是整数", EC.PARAM)
         k = int(k)
         df = read_table(file_path)
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         excluded = [c for c in df.columns if c not in numeric_cols]
         if not numeric_cols:
-            raise DataLabError("未找到数值列，无法聚类")
+            raise DataLabError("未找到数值列，无法聚类", EC.INSUFFICIENT)
         n = len(df)
         # 含 NaN 数值列须 listwise 剔除并报告（与 linear/logistic 对齐；否则 KMeans 抛
         # "Input contains NaN" 被通用 except 吞成"计算失败"，外部评审 M3）
@@ -50,10 +50,10 @@ def cluster_analysis(file_path: str, k: int) -> dict:
         n_used = len(raw_df)
         dropped = n - n_used
         if n_used == 0:
-            raise DataLabError("所有行的数值列均含缺失值，无法聚类")
+            raise DataLabError("所有行的数值列均含缺失值，无法聚类", EC.INSUFFICIENT)
         if not (2 <= k <= n_used - 1):
             raise DataLabError(
-                f"k 必须在 2 到有效样本数-1 之间（剔除缺失后有效样本 N={n_used}）")
+                f"k 必须在 2 到有效样本数-1 之间（剔除缺失后有效样本 N={n_used}）", EC.PARAM)
 
         raw = raw_df.to_numpy(dtype=float)
         scaler = StandardScaler().fit(raw)
@@ -112,9 +112,9 @@ def cluster_analysis(file_path: str, k: int) -> dict:
         }
         return ok(result, summary)
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

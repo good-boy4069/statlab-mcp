@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 
 from statlab_mcp.tools._common import (
     CJK_FONT_OK,
+    EC,
     DataLabError,
     err,
     ok,
@@ -25,13 +26,13 @@ def plot_box(file_path: str, column: str) -> dict:
     try:
         df = read_table(file_path)
         if column not in df.columns:
-            raise DataLabError(f"缺少必需列: {column}；实际列: {list(df.columns)}")
+            raise DataLabError(f"缺少必需列: {column}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
         if not pd.api.types.is_numeric_dtype(df[column]):
-            raise DataLabError(f"列 {column} 不是数值列，无法画箱线图")
+            raise DataLabError(f"列 {column} 不是数值列，无法画箱线图", EC.COLUMN_TYPE)
         v = df[column].dropna()
         n = int(v.size)
         if n == 0:
-            raise DataLabError(f"列 {column} 无有效数据")
+            raise DataLabError(f"列 {column} 无有效数据", EC.INSUFFICIENT)
         n_missing = int(len(df) - n)
 
         q1 = float(v.quantile(0.25)) if n >= MIN_N else None
@@ -77,9 +78,9 @@ def plot_box(file_path: str, column: str) -> dict:
         res["__image__"] = img
         return res
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

@@ -24,6 +24,7 @@ from statsmodels.tsa.seasonal import seasonal_decompose as sm_decompose
 
 from statlab_mcp.tools._common import (
     CJK_FONT_OK,
+    EC,
     DataLabError,
     _estimate_period,
     _prepare_series,
@@ -42,27 +43,27 @@ def seasonal_decompose(file_path: str, date_col: str, value_col: str,
     """时间序列分解：趋势 + 季节 + 残差（含周期自动估计与 4 子图）。"""
     try:
         if model not in _MODELS:
-            raise DataLabError("model 仅支持 additive/multiplicative/auto")
+            raise DataLabError("model 仅支持 additive/multiplicative/auto", EC.PARAM)
         if period is not None:
             if isinstance(period, bool) or not isinstance(period, (int, np.integer)):
-                raise DataLabError("period 必须是整数")
+                raise DataLabError("period 必须是整数", EC.PARAM)
             period = int(period)
         df = read_table(file_path)
         y, meta = _prepare_series(df, date_col, value_col)
         n = int(y.size)
         if n < MIN_N:
-            raise DataLabError(f"样本过短（n={n}<{MIN_N}），时序分析不可靠")
+            raise DataLabError(f"样本过短（n={n}<{MIN_N}），时序分析不可靠", EC.INSUFFICIENT)
         yv = y.dropna()
 
         # ---- 周期决定 ----
         if period is None:
             period = _estimate_period(yv)
             if period is None:
-                raise DataLabError("无法估计周期，请显式指定 period")
+                raise DataLabError("无法估计周期，请显式指定 period", EC.INSUFFICIENT)
             period_note = f"周期由 FFT 自动估计 = {period}"
         else:
             if not (2 <= period <= n // 2):
-                raise DataLabError(f"period 必须在 2 到 n/2 之间（n/2={n // 2}）")
+                raise DataLabError(f"period 必须在 2 到 n/2 之间（n/2={n // 2}）", EC.PARAM)
             period_note = f"周期为指定值 {period}"
 
         # ---- 模型决定 ----
@@ -75,7 +76,7 @@ def seasonal_decompose(file_path: str, date_col: str, value_col: str,
         else:
             model_used = model
             if model_used == "multiplicative" and not all_positive:
-                raise DataLabError("乘法分解要求全正值，请改用 additive")
+                raise DataLabError("乘法分解要求全正值，请改用 additive", EC.STRUCTURE)
 
         # ---- 分解 ----
         result_decomp = sm_decompose(yv, model=model_used, period=period,
@@ -139,9 +140,9 @@ def seasonal_decompose(file_path: str, date_col: str, value_col: str,
         res["__image__"] = img
         return res
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

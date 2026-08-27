@@ -29,7 +29,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 _METHODS = {"cohens_d", "hedges_g", "cliff_delta"}
 Z_975 = 1.959963984540054
@@ -60,28 +60,28 @@ def effect_size(file_path: str, group_col: str, value_col: str,
     """两组差异的效应量（d/g/cliff_delta）+ 正态近似 95% CI + 经验阈值解释。"""
     try:
         if method not in _METHODS:
-            raise DataLabError("method 仅支持 cohens_d/hedges_g/cliff_delta")
+            raise DataLabError("method 仅支持 cohens_d/hedges_g/cliff_delta", EC.PARAM)
         df = read_table(file_path)
         for c in (group_col, value_col):
             if c not in df.columns:
-                raise DataLabError(f"缺少必需列: {c}；实际列: {list(df.columns)}")
+                raise DataLabError(f"缺少必需列: {c}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
         if not pd.api.types.is_numeric_dtype(df[value_col]):
-            raise DataLabError(f"列 {value_col} 不是数值列，无法计算效应量")
+            raise DataLabError(f"列 {value_col} 不是数值列，无法计算效应量", EC.COLUMN_TYPE)
         if df[group_col].notna().sum() == 0:
-            raise DataLabError(f"列 {group_col} 无有效数据")
+            raise DataLabError(f"列 {group_col} 无有效数据", EC.INSUFFICIENT)
 
         keys = list(dict.fromkeys(df[group_col].dropna().values))
         if len(keys) != 2:
-            raise DataLabError("effect_size 只支持恰好 2 组比较")
+            raise DataLabError("effect_size 只支持恰好 2 组比较", EC.STRUCTURE)
         g1, g2 = keys[0], keys[1]
         x = df.loc[df[group_col] == g1, value_col].dropna().to_numpy(dtype=float)
         y = df.loc[df[group_col] == g2, value_col].dropna().to_numpy(dtype=float)
         if x.size < 2 or y.size < 2:
-            raise DataLabError(f"组 {g1}(n={x.size}) / {g2}(n={y.size}) 样本量不足 2")
+            raise DataLabError(f"组 {g1}(n={x.size}) / {g2}(n={y.size}) 样本量不足 2", EC.INSUFFICIENT)
         if paired and method == "cliff_delta":
-            raise DataLabError("cliff_delta 暂不支持配对模式（简化实现）")
+            raise DataLabError("cliff_delta 暂不支持配对模式（简化实现）", EC.PARAM)
         if paired and x.size != y.size:
-            raise DataLabError("paired=True 要求两组样本数相等（按行序配对）")
+            raise DataLabError("paired=True 要求两组样本数相等（按行序配对）", EC.STRUCTURE)
 
         n1, n2 = int(x.size), int(y.size)
         mean1, mean2 = float(x.mean()), float(y.mean())
@@ -89,7 +89,7 @@ def effect_size(file_path: str, group_col: str, value_col: str,
             diffs = x - y
             sd_diff = float(diffs.std(ddof=1))
             if sd_diff == 0:
-                raise DataLabError("配对差值无变异（所有差值相同），无法计算效应量")
+                raise DataLabError("配对差值无变异（所有差值相同），无法计算效应量", EC.STRUCTURE)
             d = abs(float(diffs.mean())) / sd_diff
             se = float(np.sqrt(1.0 / n1 + d ** 2 / (2 * n1)))   # 配对近似
             threshold = D_THRESHOLDS
@@ -103,7 +103,7 @@ def effect_size(file_path: str, group_col: str, value_col: str,
                 pooled = float(np.sqrt(((n1 - 1) * float(x.var(ddof=1))
                                         + (n2 - 1) * float(y.var(ddof=1))) / (n1 + n2 - 2)))
                 if pooled == 0:
-                    raise DataLabError("两组合并方差为 0（全常量），无法计算效应量")
+                    raise DataLabError("两组合并方差为 0（全常量），无法计算效应量", EC.STRUCTURE)
                 d = abs(mean1 - mean2) / pooled
                 se = float(np.sqrt(1.0 / n1 + 1.0 / n2 + d ** 2 / (2 * (n1 + n2))))
                 threshold = D_THRESHOLDS
@@ -131,9 +131,9 @@ def effect_size(file_path: str, group_col: str, value_col: str,
                    f"{label}效应；{c0}")
         return ok(result, summary)
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

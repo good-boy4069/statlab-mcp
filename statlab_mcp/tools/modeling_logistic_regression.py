@@ -27,7 +27,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 from statsmodels.api import Logit, add_constant
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 ALPHA = 0.05
 
@@ -52,30 +52,30 @@ def logistic_regression(file_path: str, target: str, features: list[str],
     """二分类逻辑回归：类别分布/acc/混淆矩阵/AUC-CI/OR 与 p。"""
     try:
         if not (0 < test_size < 1):
-            raise DataLabError("test_size 必须在 (0,1) 之间")
+            raise DataLabError("test_size 必须在 (0,1) 之间", EC.PARAM)
         if class_weight not in ("balanced", "none"):
-            raise DataLabError("class_weight 仅支持 balanced/none")
+            raise DataLabError("class_weight 仅支持 balanced/none", EC.PARAM)
         if not isinstance(features, list) or not features:
-            raise DataLabError("features 至少需要 1 个特征")
+            raise DataLabError("features 至少需要 1 个特征", EC.PARAM)
         if len(set(features)) != len(features):
-            raise DataLabError("features 含重复项，请去重")
+            raise DataLabError("features 含重复项，请去重", EC.PARAM)
         df = read_table(file_path)
         if target not in df.columns:
-            raise DataLabError(f"缺少必需列: {target}；实际列: {list(df.columns)}")
+            raise DataLabError(f"缺少必需列: {target}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
         for f in features:
             if f not in df.columns:
-                raise DataLabError(f"缺少必需列: {f}；实际列: {list(df.columns)}")
+                raise DataLabError(f"缺少必需列: {f}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
             if not pd.api.types.is_numeric_dtype(df[f]):
-                raise DataLabError(f"特征 {f} 不是数值列（本工具不做 one-hot）")
+                raise DataLabError(f"特征 {f} 不是数值列（本工具不做 one-hot）", EC.COLUMN_TYPE)
 
         m = df[[target, *features]].dropna()
         len(m)
         labels = m[target].dropna()
         uniq = sorted(labels.unique().tolist())
         if len(uniq) < 2:
-            raise DataLabError("目标列只有 1 个类别，无法做二分类")
+            raise DataLabError("目标列只有 1 个类别，无法做二分类", EC.STRUCTURE)
         if len(uniq) > 2:
-            raise DataLabError(f"当前 {len(uniq)} 类，本工具仅支持二分类")
+            raise DataLabError(f"当前 {len(uniq)} 类，本工具仅支持二分类", EC.STRUCTURE)
         label_mapping = {str(uniq[0]): 0, str(uniq[1]): 1}
         y = m[target].map({uniq[0]: 0, uniq[1]: 1}).to_numpy(dtype=float)
         X = m[features].to_numpy(dtype=float)
@@ -85,11 +85,11 @@ def logistic_regression(file_path: str, target: str, features: list[str],
             X_tr, X_te, y_tr, y_te = train_test_split(
                 X, y, test_size=test_size, random_state=random_state, stratify=y)
         except ValueError:
-            raise DataLabError("类别样本过少，无法分层划分，请增大样本或合并类别") from None
+            raise DataLabError("类别样本过少，无法分层划分，请增大样本或合并类别", EC.INSUFFICIENT) from None
         n_tr0 = int(np.sum(y_tr == 0))
         n_tr1 = int(np.sum(y_tr == 1))
         if n_tr0 < 2 or n_tr1 < 2:
-            raise DataLabError("训练集某类别样本 <2，无法拟合")
+            raise DataLabError("训练集某类别样本 <2，无法拟合", EC.INSUFFICIENT)
 
         # ---- class_weight：少数类确定性复制（如实披露）----
         copied = 0
@@ -115,7 +115,7 @@ def logistic_regression(file_path: str, target: str, features: list[str],
             try:
                 res = model.fit(disp=False)
             except Exception:
-                raise DataLabError("Logit 拟合失败（可能存在完全共线特征）") from None
+                raise DataLabError("Logit 拟合失败（可能存在完全共线特征）", EC.CALC) from None
         conv_msg = None
         for w in wlist:
             text = str(w.message)
@@ -193,9 +193,9 @@ def logistic_regression(file_path: str, target: str, features: list[str],
         }
         return ok(result, summary)
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

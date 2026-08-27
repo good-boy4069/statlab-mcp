@@ -9,7 +9,7 @@
 ## 1. 统一返回协议
 
 - 成功：`{"status": "ok", "result": {...}, "summary": "一句话中文结论"}`
-- 失败：`{"status": "error", "message": "中文原因"}`（error 时禁止携带 result 字段）
+- 失败：`{"status": "error", "error_code": "<CODE>", "message": "中文原因"}`（v1.1.0 起新增机器可读 `error_code`，码表见第 9 节；error 时禁止携带 result 字段；message 文案自 v1.0.3 起保持不变，agent 程序化分支判断请依据 error_code）
 - 含图工具：顶层附加 `__image__` = 图片绝对路径字符串（与 status/result/summary 平级，不重复进 result，禁 base64）
 - result 内数值键一律存真实 float/int；"<0.001" 仅允许出现在 summary 文案
 - 数值类型：全部为 Python 原生类型（int/float/bool/str/None）；NaN/Infinity 一律输出 null；Timestamp 转字符串
@@ -80,3 +80,24 @@ requirements.txt 为**开发/CI 锁定权威**（可复现性承诺）；pyproje
 requirements 为 pip freeze 全量锁定，含 mcp 包传递引入的 Web 组件（starlette/uvicorn/PyJWT 等）：
 纯 stdio 服务并不使用它们，保留仅为依赖树可复现（知情披露；若需最小攻击面可自行裁剪为
 requirements.min）。
+
+## 9. 错误码表（v1.1.0 新增；一经发布永久稳定，只增不改不复用）
+
+格式 `E` + 四位数字。机器可读码供 agent 程序化决策：E1001/E1002/E1006/E1008/E1009 通常"改参数/改输入可重试"；E1003/E1004/E1007 通常需更换文件本身；E1005 需缩减数据规模或拆分；E1010/E1011 需换方法或补数据。语义变化只能新增码，禁止修改既有码语义或复用已废弃码。
+
+| 码 | 语义 | 典型触发场景 |
+|---|---|---|
+| E1001 | 参数校验失败 | 枚举值非法（method/test/alternative 等）、数值区间非法（alpha/confidence/threshold/k/horizon/n_components 等）、必填参数组合缺失、NaN/Inf 参数、pydantic schema 层拦截（StatlabServer 转换通路同返此码） |
+| E1002 | 路径非法 | 路径为空 / 含 NUL / UNC 网络路径 |
+| E1003 | 文件不存在或不可访问 | 路径无此文件 |
+| E1004 | 文件为空或无可读数据 | 0 字节 / 仅空行 / xlsx 损坏无法打开 |
+| E1005 | 文件/数据规模超限 | >50MB、预估 >200 万行、内存预估 >500MB、JSON>20MB 解析放大、xlsx zip 炸弹、日期跨度超限、样本量超出方法适用上限（如 Shapiro>5000）、数值列数超上限 |
+| E1006 | 文件格式不支持 | 扩展名不在 {csv,tsv,xlsx,json} 白名单、JSON 非表格结构 |
+| E1007 | 文件编码无法识别 | csv/tsv 双编码回退均失败、JSON 非 UTF-8 |
+| E1008 | 缺少必需列 | 指定列不存在于表中（含目标列之外特征全部不可用的场景） |
+| E1009 | 列非数值 | 列类型不符合工具要求（含两列配对均为非数值） |
+| E1010 | 样本量/有效值不足 | 有效值 < 方法下限（n<2/3、组内<2、<MIN_N）、剔除缺失后为空、全缺失列、无任何数值列、样本量低于方法下限（如 D'Agostino<8）、周期/频率不可估、时间戳不足 |
+| E1011 | 分组/配对结构非法 | 组数不符（≠2 组做两两检验、单类别、多类做二分类）、类别数超上限、配对差值无变异、常量列方差 0、零方差特征、配对两组样本数不等、乘法分解遇非正值 |
+| E9999 | 计算失败兜底 | 拟合不收敛/完全共线等运行期计算异常、未知解析异常兜底 |
+
+实现约定：码常量集中于 `statlab_mcp/tools/_common.py` 的 `EC` 类；业务错误以 `DataLabError(message, code)` 抛出、工具层统一 `err(e.code, str(e))` 返回；pydantic 层由 StatlabServer 转换通路注入 E1001。`tests/check_readme_claims.py` 扩展项静态核对"SPEC 本表 ↔ EC 类常量集"双向一致（见 P2-B）。

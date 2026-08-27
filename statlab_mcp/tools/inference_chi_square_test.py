@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 MAX_CATEGORIES = 50
 MAX_BINS = 8
@@ -44,7 +44,7 @@ def _to_categories(s: pd.Series, name: str) -> Any:
         if n_uniq <= 1:
             raise DataLabError(
                 f"数值列 {name} 只有 {n_uniq} 个不同值，无法做关联检验"
-                + ("（无有效数据）" if n_uniq == 0 else "（常量列无类别区分）"))
+                + ("（无有效数据）" if n_uniq == 0 else "（常量列无类别区分）"), EC.INSUFFICIENT)
         n_bins = min(MAX_BINS, max(2, n_uniq))
         cats = pd.cut(s, bins=n_bins, include_lowest=True).astype(str)
         return cats, f"数值列 {name} 已自动等宽分箱为 {n_bins} 箱"
@@ -57,21 +57,21 @@ def chi_square_test(file_path: str, col_a: str, col_b: str) -> dict:
         df = read_table(file_path)
         for c in (col_a, col_b):
             if c not in df.columns:
-                raise DataLabError(f"缺少必需列: {c}；实际列: {list(df.columns)}")
+                raise DataLabError(f"缺少必需列: {c}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
         sa, note_a = _to_categories(df[col_a].dropna(), col_a)
         sb, note_b = _to_categories(df[col_b].dropna(), col_b)
         if sa.size == 0:
-            raise DataLabError(f"列 {col_a} 无有效数据")
+            raise DataLabError(f"列 {col_a} 无有效数据", EC.INSUFFICIENT)
         if sb.size == 0:
-            raise DataLabError(f"列 {col_b} 无有效数据")
+            raise DataLabError(f"列 {col_b} 无有效数据", EC.INSUFFICIENT)
         if sa.nunique() < 2:
-            raise DataLabError(f"列 {col_a} 只有 1 个类别，无法做关联检验")
+            raise DataLabError(f"列 {col_a} 只有 1 个类别，无法做关联检验", EC.STRUCTURE)
         if sb.nunique() < 2:
-            raise DataLabError(f"列 {col_b} 只有 1 个类别，无法做关联检验")
+            raise DataLabError(f"列 {col_b} 只有 1 个类别，无法做关联检验", EC.STRUCTURE)
         if sa.nunique() > MAX_CATEGORIES:
-            raise DataLabError(f"列 {col_a} 类别超过 {MAX_CATEGORIES} 个，请先合并类别")
+            raise DataLabError(f"列 {col_a} 类别超过 {MAX_CATEGORIES} 个，请先合并类别", EC.STRUCTURE)
         if sb.nunique() > MAX_CATEGORIES:
-            raise DataLabError(f"列 {col_b} 类别超过 {MAX_CATEGORIES} 个，请先合并类别")
+            raise DataLabError(f"列 {col_b} 类别超过 {MAX_CATEGORIES} 个，请先合并类别", EC.STRUCTURE)
 
         # 两列对齐（同时非 NaN 的行）
         m = df[[col_a, col_b]].dropna()
@@ -89,7 +89,7 @@ def chi_square_test(file_path: str, col_a: str, col_b: str) -> dict:
             if obs.shape != (2, 2):
                 raise DataLabError(
                     "期望频数过低的单元格超过 20%，且非 2×2 表无法用 Fisher 精确检验，"
-                    "请合并类别后重试")
+                    "请合并类别后重试", EC.PARAM)
             or_val, p_val = sps.fisher_exact(obs, alternative="two-sided")
             test_used = "fisher_exact"
             statistic = float(or_val)
@@ -137,9 +137,9 @@ def chi_square_test(file_path: str, col_a: str, col_b: str) -> dict:
         }
         return ok(result, summary)
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

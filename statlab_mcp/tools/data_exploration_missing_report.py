@@ -22,7 +22,7 @@ patterns 最多 10 条，按缺失行数降序；无缺失时 patterns=[]。
 """
 from typing import Any
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 MAX_PATTERNS = 10
 HIGH_RATE = 0.2
@@ -89,9 +89,9 @@ def missing_report(file_path: str) -> dict:
         }
         return ok(result, summary)
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

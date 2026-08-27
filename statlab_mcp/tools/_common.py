@@ -66,18 +66,45 @@ _WIN_RESERVED = {"con", "prn", "aux", "nul"} | {f"com{i}" for i in range(1, 10)}
 
 
 class DataLabError(ValueError):
-    """工具层业务错误：message 为面向使用者的中文提示。"""
+    """工具层业务错误：message 为面向使用者的中文提示，code 为机器可读错误码（SPEC 第 9 节）。
+
+    code 一经发布永久稳定、只增不改不复用；DataLabError 单参构造时默认兜底码 E9999。
+    """
+
+    def __init__(self, message: str, code: str = "E9999") -> None:
+        super().__init__(message)
+        self.code = code
+
+
+class EC:
+    """错误码表（与 docs/SPEC.md 第 9 节一致，check_readme_claims 扩展项核对两边一致）。
+
+    码格式：E + 四位数字。语义详见 SPEC；此处仅集中定义，杜绝工具层散落字符串。
+    """
+
+    PARAM = "E1001"           # 参数校验失败（含 pydantic 层）
+    PATH = "E1002"            # 路径非法（空/UNC/含 NUL 等）
+    FILE_MISSING = "E1003"    # 文件不存在或不可访问
+    FILE_EMPTY = "E1004"      # 文件为空或无可读数据
+    SCALE = "E1005"           # 文件/数据规模超限（体积/行数/内存/日期跨度/JSON 放大/zip 炸弹）
+    FORMAT = "E1006"          # 文件格式不支持
+    ENCODING = "E1007"        # 文件编码无法识别
+    COLUMN_MISSING = "E1008"  # 缺少必需列
+    COLUMN_TYPE = "E1009"     # 列非数值（或列类型不符合工具要求）
+    INSUFFICIENT = "E1010"    # 样本量/有效值不足
+    STRUCTURE = "E1011"       # 分组/配对结构非法（组数不符、配对无变异等）
+    CALC = "E9999"            # 计算失败兜底
 
 
 def _norm_path(file_path: str) -> str:
     """规范化为绝对本地路径，拒绝 UNC/网络路径/空串/NUL（规范 5，红队 B/S5）。"""
     if not isinstance(file_path, str) or not file_path.strip():
-        raise DataLabError("文件路径不能为空")
+        raise DataLabError("文件路径不能为空", EC.PATH)
     if "\x00" in file_path:
-        raise DataLabError("文件路径含有非法字符（NUL）")
+        raise DataLabError("文件路径含有非法字符（NUL）", EC.PATH)
     p = os.path.normpath(file_path.strip().strip('"'))
     if p.startswith(UNC_PREFIXES):
-        raise DataLabError("仅接受本地文件路径，不支持网络路径（UNC）")
+        raise DataLabError("仅接受本地文件路径，不支持网络路径（UNC）", EC.PATH)
     return os.path.abspath(p)
 
 
@@ -90,12 +117,12 @@ def check_file(file_path: str) -> dict[str, Any]:
     """
     path = _norm_path(file_path)
     if not os.path.isfile(path):
-        raise DataLabError(f"文件不存在或不可访问: {os.path.basename(path)}")
+        raise DataLabError(f"文件不存在或不可访问: {os.path.basename(path)}", EC.FILE_MISSING)
     size = os.path.getsize(path)
     if size > MAX_FILE_BYTES:
         limit_mb = MAX_FILE_BYTES // 1024 // 1024
         raise DataLabError(
-            f"文件过大（{size / 1024 / 1024:.1f}MB），超过 {limit_mb}MB 上限，请拆分后重试")
+            f"文件过大（{size / 1024 / 1024:.1f}MB），超过 {limit_mb}MB 上限，请拆分后重试", EC.SCALE)
     ext = os.path.splitext(path)[1].lower().lstrip(".")   # 红队 A B2：重构时丢失的定义
     rows_est = None
     if ext == "xlsx":
@@ -105,35 +132,35 @@ def check_file(file_path: str) -> dict[str, Any]:
             with zipfile.ZipFile(path) as zf:
                 total_uncompressed = sum(i.file_size for i in zf.infolist())
             if total_uncompressed > MAX_MEM_BYTES:
-                raise DataLabError("Excel 解压后体积过大（疑似压缩炸弹），已拒绝")
+                raise DataLabError("Excel 解压后体积过大（疑似压缩炸弹），已拒绝", EC.SCALE)
         except DataLabError:
             raise
         except Exception:
-            raise DataLabError("Excel 文件损坏或无法打开，请另存为 .xlsx 后重试") from None
+            raise DataLabError("Excel 文件损坏或无法打开，请另存为 .xlsx 后重试", EC.FILE_EMPTY) from None
         try:
             from openpyxl import load_workbook
             wb = load_workbook(path, read_only=True)
             rows_est = wb.active.max_row
             wb.close()
         except Exception:
-            raise DataLabError("Excel 文件损坏或无法打开，请另存为 .xlsx 后重试") from None
+            raise DataLabError("Excel 文件损坏或无法打开，请另存为 .xlsx 后重试", EC.FILE_EMPTY) from None
         if rows_est is not None and rows_est > MAX_ROWS:
-            raise DataLabError(f"Excel 预估 {rows_est} 行，超过 200 万行上限，请抽样后重试")
+            raise DataLabError(f"Excel 预估 {rows_est} 行，超过 200 万行上限，请抽样后重试", EC.SCALE)
     elif size > WARN_FILE_BYTES:
         if ext in ("csv", "tsv"):
             with open(path, "rb") as f:
                 head = f.read(SAMPLE_BYTES)
             newlines = head.count(b"\n")
             if newlines == 0:
-                raise DataLabError("文件前 1MB 内无换行（疑似超长单行），已拒绝解析")
+                raise DataLabError("文件前 1MB 内无换行（疑似超长单行），已拒绝解析", EC.SCALE)
             rows_est = int(newlines * size / len(head))
             if rows_est > MAX_ROWS:
-                raise DataLabError(f"文件预估 {rows_est} 行，超过 200 万行上限，请抽样后重试")
+                raise DataLabError(f"文件预估 {rows_est} 行，超过 200 万行上限，请抽样后重试", EC.SCALE)
         elif ext == "json":
             # json 解析放大防护（红队 I2）：展开阶段内存可能数倍于字节数
             if size > JSON_MAX_BYTES:
                 raise DataLabError(f"JSON 文件超过 {JSON_MAX_BYTES // 1024 // 1024}MB，"
-                                   f"解析展开可能撑爆内存，请转存为 CSV 后重试")
+                                   f"解析展开可能撑爆内存，请转存为 CSV 后重试", EC.SCALE)
     return {"path": path, "size_bytes": size, "rows_estimated": rows_est}
 
 
@@ -150,7 +177,7 @@ def read_table(file_path: str) -> pd.DataFrame:
     path = info["path"]
     ext = os.path.splitext(path)[1].lower().lstrip(".")
     if ext not in ALLOWED_EXTS:
-        raise DataLabError(f"仅支持 {sorted(ALLOWED_EXTS)} 格式，当前为 {ext or '无扩展名'}，请转换后重试")
+        raise DataLabError(f"仅支持 {sorted(ALLOWED_EXTS)} 格式，当前为 {ext or '无扩展名'}，请转换后重试", EC.FORMAT)
     try:
         if ext in ("csv", "tsv"):
             sep = "\t" if ext == "tsv" else ","
@@ -184,27 +211,29 @@ def read_table(file_path: str) -> pd.DataFrame:
                 with open(path, encoding="utf-8-sig") as f:
                     raw = f.read()
             except UnicodeDecodeError:
-                raise DataLabError("JSON 文件编码无法识别（仅支持 UTF-8），请另存为 UTF-8 后重试") from None
+                raise DataLabError(
+                    "JSON 文件编码无法识别（仅支持 UTF-8），请另存为 UTF-8 后重试",
+                    EC.ENCODING) from None
             try:
                 df = pd.read_json(io.StringIO(raw))
             except ValueError:
-                raise DataLabError("JSON 文件不是表格结构（需记录数组或 records 形式）") from None
+                raise DataLabError("JSON 文件不是表格结构（需记录数组或 records 形式）", EC.FORMAT) from None
         else:  # xlsx
             df = pd.read_excel(path, sheet_name=0, engine="openpyxl")
     except DataLabError:
         raise
     except pd.errors.EmptyDataError:
-        raise DataLabError("文件为空或无可读数据") from None
+        raise DataLabError("文件为空或无可读数据", EC.FILE_EMPTY) from None
     except UnicodeDecodeError:
-        raise DataLabError("文件编码无法识别，请另存为 UTF-8 后重试") from None
+        raise DataLabError("文件编码无法识别，请另存为 UTF-8 后重试", EC.ENCODING) from None
     except Exception:
         logger.exception("read_table 解析失败（内部详情仅留 stderr，红队 I3）")
-        raise DataLabError("文件解析失败，请检查文件内容与格式") from None
+        raise DataLabError("文件解析失败，请检查文件内容与格式", EC.CALC) from None
     if df.empty:
-        raise DataLabError("文件为空或无可读数据")
+        raise DataLabError("文件为空或无可读数据", EC.FILE_EMPTY)
     mem = int(df.memory_usage(deep=True).sum())
     if mem > MAX_MEM_BYTES:
-        raise DataLabError(f"数据预估占用内存 {mem / 1024 / 1024:.1f}MB，超过 500MB 上限，请抽样后重试")
+        raise DataLabError(f"数据预估占用内存 {mem / 1024 / 1024:.1f}MB，超过 500MB 上限，请抽样后重试", EC.SCALE)
     return df
 
 
@@ -247,9 +276,13 @@ def ok(data: Any, summary: str) -> dict[str, Any]:
     return {"status": "ok", "result": to_jsonable(data), "summary": str(summary)}
 
 
-def err(message: str) -> dict[str, Any]:
-    """统一失败包装（规范 7.1）：error 时禁止携带 result 字段。"""
-    return {"status": "error", "message": str(message)}
+def err(code: str, message: str) -> dict[str, Any]:
+    """统一失败包装（规范 7.1，v1.1.0 起错误码必填）：error 时禁止携带 result 字段。
+
+    code 必填是为杜绝漏码；调用方优先透传 DataLabError.code（工具层模板 err(e.code, ...)），
+    计算兜底场景用 EC.CALC。
+    """
+    return {"status": "error", "error_code": str(code), "message": str(message)}
 
 
 def validate_columns(df: pd.DataFrame, required: Iterable[str]) -> None:
@@ -258,7 +291,9 @@ def validate_columns(df: pd.DataFrame, required: Iterable[str]) -> None:
         required = [required]
     missing = [c for c in required if c not in df.columns]
     if missing:
-        raise DataLabError(f"缺少必需列: {', '.join(missing)}；实际列: {list(df.columns)}")
+        raise DataLabError(
+            f"缺少必需列: {', '.join(missing)}；实际列: {list(df.columns)}",
+            EC.COLUMN_MISSING)
 
 
 def _estimate_period(y: pd.Series) -> int | None:
@@ -290,7 +325,7 @@ def _check_span_seconds(idx_min, idx_max, freq_seconds: float, what: str) -> Non
     if expected > MAX_ROWS:
         raise DataLabError(
             f"日期跨度过大（{what}将生成约 {expected} 个点，超过 {MAX_ROWS} 行上限），"
-            f"请拆分日期范围后重试")
+            f"请拆分日期范围后重试", EC.SCALE)
 
 
 def _prepare_series(df: pd.DataFrame, date_col: str, value_col: str) -> tuple:
@@ -302,17 +337,17 @@ def _prepare_series(df: pd.DataFrame, date_col: str, value_col: str) -> tuple:
     返回 (y: Series 索引=DatetimeIndex, meta: dict)。
     """
     if date_col not in df.columns:
-        raise DataLabError(f"缺少必需列: {date_col}；实际列: {list(df.columns)}")
+        raise DataLabError(f"缺少必需列: {date_col}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
     if value_col not in df.columns:
-        raise DataLabError(f"缺少必需列: {value_col}；实际列: {list(df.columns)}")
+        raise DataLabError(f"缺少必需列: {value_col}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
     if not pd.api.types.is_numeric_dtype(df[value_col]):
-        raise DataLabError(f"列 {value_col} 不是数值列，无法做时序分析")
+        raise DataLabError(f"列 {value_col} 不是数值列，无法做时序分析", EC.COLUMN_TYPE)
 
     dates = pd.to_datetime(df[date_col], errors="coerce")
     invalid = int(dates.isna().sum())
     keep = dates.notna()
     if int(keep.sum()) == 0:
-        raise DataLabError("日期列无法解析")
+        raise DataLabError("日期列无法解析", EC.INSUFFICIENT)
     s = pd.Series(df.loc[keep, value_col].to_numpy(dtype=float),
                   index=dates[keep])
 
@@ -343,7 +378,7 @@ def _prepare_series(df: pd.DataFrame, date_col: str, value_col: str) -> tuple:
     if freq is None:
         diffs = pd.Series(s.index).diff().dropna().dt.total_seconds()
         if diffs.size == 0:
-            raise DataLabError("时间戳不足，无法推断频率")
+            raise DataLabError("时间戳不足，无法推断频率", EC.INSUFFICIENT)
         med_s = float(np.median(diffs))                # 以秒计数，规避 ns/us 单位混淆
         freq_offset = pd.tseries.frequencies.to_offset(pd.Timedelta(seconds=med_s))
         freq = freq_offset.freqstr                     # 仅展示用

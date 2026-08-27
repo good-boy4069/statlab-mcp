@@ -52,6 +52,7 @@ def test_nan_alpha_maps_to_chinese_error():
             assert obj["status"] == "error", text
             assert "参数校验失败" in obj["message"]
             assert "NaN" in obj["message"]
+            assert obj["error_code"] == "E1001", text   # v1.1.0：pydantic 转换通路注入机器码
 
     _run(main())
 

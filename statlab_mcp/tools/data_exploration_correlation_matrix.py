@@ -29,7 +29,7 @@ import pandas as pd
 from scipy import stats as sps
 from statsmodels.stats.multitest import multipletests
 
-from statlab_mcp.tools._common import DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 _METHODS = {"pearson": sps.pearsonr, "spearman": sps.spearmanr, "kendalltau": sps.kendalltau}
 _P_ADJUST = {"none", "bonferroni", "fdr_bh"}
@@ -46,18 +46,18 @@ def correlation_matrix(file_path: str, method: str = "pearson", p_adjust: str = 
     """输出数值列两两相关矩阵 + 逐对 p 值（默认 fdr_bh 校正）+ 成对样本量。"""
     try:
         if method not in _METHODS:
-            raise DataLabError(f"method 仅支持 {'/'.join(sorted(_METHODS))}")
+            raise DataLabError(f"method 仅支持 {'/'.join(sorted(_METHODS))}", EC.PARAM)
         if p_adjust not in _P_ADJUST:
-            raise DataLabError("p_adjust 仅支持 none/bonferroni/fdr_bh")
+            raise DataLabError("p_adjust 仅支持 none/bonferroni/fdr_bh", EC.PARAM)
         df = read_table(file_path)
 
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         keep = [c for c in numeric_cols if df[c].notna().any()]   # 剔除全缺失数值列
         excluded = [c for c in df.columns if c not in keep]
         if len(keep) < 2:
-            raise DataLabError("至少需要 2 个数值列才能计算相关矩阵")
+            raise DataLabError("至少需要 2 个数值列才能计算相关矩阵", EC.INSUFFICIENT)
         if len(keep) > MAX_COLS:
-            raise DataLabError(f"数值列超过 {MAX_COLS} 个，相关矩阵过大，请先挑选列")
+            raise DataLabError(f"数值列超过 {MAX_COLS} 个，相关矩阵过大，请先挑选列", EC.SCALE)
 
         k = len(keep)
         pairs: list[tuple[int, int, Any, Any, int]] = []   # (i, j, stat, p, n)
@@ -153,9 +153,9 @@ def correlation_matrix(file_path: str, method: str = "pearson", p_adjust: str = 
         }
         return ok(result, summary)
     except DataLabError as e:
-        return err(str(e))
+        return err(e.code, str(e))
     except Exception:
-        return err("计算失败，请检查数据内容与参数设置（详见服务端日志）")
+        return err(EC.CALC, "计算失败，请检查数据内容与参数设置（详见服务端日志）")
 
 
 def register(mcp) -> None:

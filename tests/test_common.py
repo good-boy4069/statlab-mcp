@@ -151,9 +151,12 @@ def test_ok_structure_and_summary():
 
 
 def test_err_structure_no_result():
-    r = C.err("测试错误")
-    assert list(r.keys()) == ["status", "message"]
+    # v1.1.0：err() 新增必填 code 参数，错误 dict 为三层 {status, error_code, message}
+    # （CHANGELOG 已列本断言为"因新增 error_code 键被适配的既有断言"）
+    r = C.err(C.EC.CALC, "测试错误")
+    assert list(r.keys()) == ["status", "error_code", "message"]
     assert r["status"] == "error"
+    assert r["error_code"] == C.EC.CALC
     assert "result" not in r
 
 
