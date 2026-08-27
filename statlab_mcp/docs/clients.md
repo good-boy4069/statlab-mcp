@@ -3,6 +3,19 @@
 > 冒烟测试已验证的**唯一正确启动方式**（tests/smoke_stdio.py 实测结论，2026-08-26）：
 > 必须以 `-m statlab_mcp.server` 且工作目录 = 项目根启动，否则 `import statlab_mcp` 失败。
 
+## v1.2.0 接入口变更（升级客户端必读）
+- **工具数 27 → 30**：新增 `impute_missing`（缺失插补）/ `backtest_forecast`（回测）/
+  `analysis_plan`（分析计划）；`tools/list` 数量断言需同步（本项目 smoke_install 已升 30）；
+- **新参数 `inline_data`**：全部文件型工具支持内联小数据（records 数组或
+  `{"header","rows"}` 对象，与 `file_path` 二选一，双给 E1001）；不传即旧行为；
+- **返回体新增 `data_source`**：`"file"` / `"inline"`（analysis_plan 未给数据源时为
+  `null`），纯增量字段；
+- **`file_path` 变为可选（D17）**：漏传业务必填参数仍返回 E1001 中文 JSON
+  （`require_non_none` 运行期强校验，SPEC §12.6），stdio 链路有守护测试；
+- **`impute_missing` 结果落盘** `reports/imputed/YYYYmmdd/`（`__output__` 顶层字段），
+  目录可随时清理；输入文件绝不覆写。
+- 完整协议见 `statlab_mcp/docs/SPEC.md`（§12 inline 通道、§9 错误码表新增 E1012）。
+
 ## 通用启动参数（所有客户端共用）
 - command：`<PROJECT_ROOT>\.venv\Scripts\python.exe`（venv 解释器绝对路径）
 - args：`["-m", "statlab_mcp.server"]`

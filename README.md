@@ -15,13 +15,13 @@
 | 能力 | 说明 |
 |---|---|
 | **机器可读错误码** | 失败返回 `{status:"error", error_code:"E****", message}`，12 个码一经发布永久稳定（SPEC 第 9 节）；agent 按码决策"改参数重试 / 缩数据 / 换方法" |
-| **MCP resources** | `statlab://spec`（协议全文）+ 每工具一份 manual（docstring + 设计文档小节全文），随 PyPI 包分发，不依赖 cwd |
+| **MCP resources** | `statlab://spec`（协议全文）+ 每工具一份 manual（docstring + 设计文档小节全文），随 PyPI 包分发，不依赖 cwd（v1.2.0 起 30 份随工具数递增） |
 | **description 双轨** | `STATLAB_DESC_MODE=slim` 把 tools/list 描述瘦身为参数摘要（-53.8%），默认 full 零变化；完整说明书经 manual 获取 |
 | **图片双轨** | `STATLAB_IMAGE_MODE=content` 返回标准 ImageContent 内容块；默认 path（`__image__` 路径）零变化；单图 >2MB 自动回退防上下文爆炸 |
 | **功效分析 power_analysis** | 新工具：solve_n / detect_effect / verify 三模式，支持 t 系与两比例（Cohen's h），G*Power 对标数值锚定测试 |
 | **性能补课** | 冷启动延迟导入 -26%（三库不再预载）；read_table 两级键 LRU 文件缓存（SHA256 防伪造、8 条/500MB、线程安全），命中不改任何输出 |
 
-环境变量均默认零变化（详见 [SPEC 第 10 节与第 5 节](statlab_mcp/docs/SPEC.md)、[升级指引](CHANGELOG.md#unreleased---v110开发中)）。
+环境变量均默认零变化（详见 [SPEC 第 10 节与第 5 节](statlab_mcp/docs/SPEC.md)、[升级指引](CHANGELOG.md#110---2026-08-27)）。
 
 | CI | 文档 | PyPI |
 |---|---|---|

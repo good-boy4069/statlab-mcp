@@ -35,6 +35,8 @@ async def main() -> None:
                   f"{init.server_info.version}")  # 2.x 属性名 server_info
             tools = await session.list_tools()
             names = sorted(t.name for t in tools.tools)
+            assert len(names) == 30, \
+                f"工具数 {len(names)} != 30（v1.2.0：27+impute_missing+backtest_forecast+analysis_plan）"
             print(f"[SMOKE] tools({len(names)}): {names}")
 
             # ---- v1.1.0 P0-1：resources 能力冒烟（数量=工具数+1，spec/manual 可读）----

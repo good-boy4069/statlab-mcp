@@ -16,7 +16,7 @@
 | Capability | Description |
 |---|---|
 | **Machine-readable error codes** | Failures return `{status:"error", error_code:"E****", message}`; 12 codes, permanent once released (SPEC §9). Agents branch by code: "fix params and retry / shrink data / switch method" |
-| **MCP resources** | `statlab://spec` (full protocol text) + 27 per-tool manuals (module docstring + full design-doc section), shipped inside the PyPI package, cwd-independent |
+| **MCP resources** | `statlab://spec` (full protocol text) + 30 per-tool manuals (module docstring + full design-doc section; grows with tool count), shipped inside the PyPI package, cwd-independent |
 | **Description dual mode** | `STATLAB_DESC_MODE=slim` slims `tools/list` descriptions to parameter digests (-53.8%); default `full` is byte-for-byte unchanged; full manuals remain available via resources |
 | **Image dual mode** | `STATLAB_IMAGE_MODE=content` returns standard ImageContent blocks; default `path` (`__image__` file path) unchanged; single PNG >2MB auto-falls back to path to protect the context window |
 | **Power analysis tool** | New `power_analysis`: solve_n / detect_effect / verify modes for t-based scenarios and two proportions (Cohen's h), validated against G*Power reference values |
@@ -217,11 +217,11 @@ directory; ③ read the human-language Chinese `summary` first, then drill into 
 ## Docker (optional)
 
 ```bash
-docker build -t statlab-mcp:1.1.0 .
-docker run --rm -i statlab-mcp:1.1.0        # stdio uses stdin/stdout: -i is required
+docker build -t statlab-mcp:1.2.0 .
+docker run --rm -i statlab-mcp:1.2.0        # stdio uses stdin/stdout: -i is required
 ```
 
-In an MCP client configure the command as e.g. `docker run --rm -i statlab-mcp:1.1.0` plus a data mount
+In an MCP client configure the command as e.g. `docker run --rm -i statlab-mcp:1.2.0` plus a data mount
 like `-v D:\data:/data`.
 > Note: the image carries the scientific stack (~1–2GB); Noto CJK fonts are preinstalled with
 > `ENV PYTHONUTF8=1`, so Chinese JSON/charts work out of the box. Dockerfile lives at the repo root.

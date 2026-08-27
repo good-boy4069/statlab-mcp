@@ -35,6 +35,12 @@
 | `scenario` / `effect_size` | 分析场景选择 / 标准化效应量 Cohen's d | power_analysis |
 | `p1` / `p2` | 两个总体比例（成对提供） | power_analysis(two_proportions) |
 | `power_target` | 目标功效（求 n 模式） | power_analysis |
+| `inline_data` | 内联小数据（与 file_path 二选一，§12） | 全部文件型工具（v1.2.0 起 28 个） |
+| `question` | 自然语言分析问题 | analysis_plan |
+| `column_hints` | 列角色声明（数值/类别/日期，D18 白名单语义） | analysis_plan |
+| `horizon` | 预测/回测步数 | time_series_forecast / backtest_forecast |
+| `windows` / `method` | 回测窗口数 / 回测方法枚举 | backtest_forecast |
+| `strategy` / `value` | 插补策略枚举 / constant 策略填充值 | impute_missing |
 
 设计准则：同一语义永不换名；新工具按表选名；docstring 参数表即权威说明。
 
@@ -43,7 +49,11 @@
 - 分位数 = linear 插值（与 numpy.percentile 默认、Excel QUARTILE.INC 等价，非 QUARTILE.EXC）；验证示例 [1,2,3,4] → q1=1.75, q3=3.25
 - 偏度 = scipy.stats.skew(x, bias=False)（Fisher 样本偏度）；峰度 = scipy.stats.kurtosis(x, fisher=True, bias=False)（超额峰度，正态=0）
 - std 统一 ddof=1（同 Excel STDEV.S）
-- 边界行为统一口径：文件不存在 / 空文件（0B，"文件为空或无可读数据"）/ 仅表头 / 全缺失列 / 列含空单元格 / 列不存在 / 非数值列 / 重复列名 / 中文及含空格特殊字符列名 / 非法日期（如 2024-02-30）/ 极端值 / 常量列；n=1 时 std/q1/q3=None 不报错、n=0 报错
+- 边界行为统一口径：文件不存在 / 空文件（0B，"文件为空或无可读数据"）/ 仅表头 / 全缺失列 / 列含空单元格 / 列不存在 / 非数值列 / 重复列名 / 中文及含空格特殊字符列名 / 非法日期（如 2024-02-30）/ 极端值 / Inf（输出端 to_jsonable 统一转 null，输入端按各工具口径拒绝或排除并计数）/ 常量列；n=1 时 std/q1/q3=None 不报错、n=0 报错
+- backtest_forecast 口径（v1.2.0 钉死）：MAPE = mean(|a-f|/|a|)，真值 |a|≤1e-12 的窗
+  MAPE=null（epsilon 判据非 ==0），汇总仅聚非 null 窗；RMSE 汇总 = 窗 RMSE 平方均值
+  再开方；验证窗真值只认原始观测（同刻求和 min_count=1 口径），缺观测点计数披露
+  n_actual_dropped 不进指标；重复时间戳数据训练段按时间边界切分（点数口径与门槛链一致）
 - correlation_matrix 细节：p 值逐对取 scipy.stats.pearsonr；fdr_bh 用 statsmodels.stats.multitest.multipletests，校正单元 k=n(n-1)/2 上三角；常量列 r=None、p=None；数值列 >20 拒绝
 - correlation_matrix 秩相关（v1.1.0 钉死）：spearman = scipy.stats.spearmanr；kendall（官方别名）/kendalltau（历史枚举名，向后兼容保留）= scipy.stats.kendalltau，无并列小样本时 scipy method="auto" 给精确 p；多重比较校正（fdr_bh/bonferroni）与 pearson 分支完全同口径同代码路径；summary 注明所用方法与是否经 fdr_bh 校正（pearson 默认分支 summary 逐字节不变）
 

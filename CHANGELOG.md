@@ -2,7 +2,70 @@
 
 本项目遵循[语义化版本](https://semver.org/lang/zh-CN/)。所有重大变更均记录于此。
 
-## [Unreleased] - v1.1.0（开发中）
+## [1.2.0] - 2026-08-28
+
+### 新工具（27 → 30，全部第一层确定性计算，零 LLM）
+- **`impute_missing`（工具 28）**：五策略确定性插补（mean/median/ffill/bfill/constant）；
+  `E1012` 新码（"数据无可处理对象"，只增不改）；结果经 `__output__` 文件输出协议
+  落盘 `reports/imputed/YYYYmmdd/`（绝不覆写输入，30 天归档清理）；CSV 公式注入
+  防护（`='+'-'@` 前缀转义 + 前导 Tab/CR 剥离 + 控制字符清洗）。
+- **`backtest_forecast`（工具 29）**：滚动回测（naive/seasonal_naive/auto_arima），
+  MAE/RMSE/MAPE + 逐窗明细；**防泄漏钉死**——训练段逐窗按时间边界隔离重预处理，
+  验证窗真值只认原始观测（缺观测点 `n_actual_dropped` 披露，不用插值充数）；
+  重复时间戳按天聚合口径（手算锚测试锁定）；门槛链（n≥30 / n≥h(w+1) /
+  train_min≥max(15,2×period) / n≤100000）；MAPE 零真值 epsilon 判据；明细 10000 点
+  上限截断（汇总永不截断）；`lower_bound_compat` pytest marker 支持下限矩阵容差复核。
+- **`analysis_plan`（工具 30）**：自然语言问题 → 确定性分析计划（方案 B 规则引擎，
+  零 LLM）；12 意图 KW_TABLE 表序裁决 + fallback 只出概览三件套不猜方法；
+  计划参数名与目标工具真实签名一致（测试锁定）；结构感知真实列名引用（缺失走
+  `needs_column` 占位，不编造）；`column_hints` 白名单语义（D18）。
+
+### 新能力：inline 数据通道（28 个文件型工具，SPEC §12）
+- 全部文件型工具新增 `inline_data` 参数：records 数组或 `{"header","rows"}` 对象
+  两形态，与 `file_path` 二选一（双给 E1001）；五项规模上限（行 10000/列 200/
+  单元格 50000/载荷 16MB/单格 65536 字符）；返回顶层新增 `data_source` 来源标注
+  （"file"/"inline"，纯增量字段）。
+- **D17 连锁 optional 化 + 运行期等价强校验（SPEC §12.6）**：`file_path` optional 化
+  使签名 `required` 清空，原必填参数由 `require_non_none` 在 try 块内运行期拒绝，
+  漏传返回与 schema required 时代等价的 E1001 中文 JSON（stdio 全链路守护测试锁定）。
+
+### 工程与验证
+- **dep_matrix CI（直接依赖下限矩阵）**：`scripts/gen_lower_constraints.py` 从
+  pyproject 现场生成 `pkg==下限` 约束（fail-loud），`pip install . -c` 后跑全量
+  测试 + stdio 冒烟；每周一 + 手动 + release 触发。本地实测 11 直接依赖全部钉在
+  下限可安装可运行（pmdarima 2.1.1 × numpy 2.5.2 无互斥）。
+- **全库整洁度 pass**：34 处 docstring 补齐、normalize_inline 节段注释、死代码 0、
+  调试残留清理（零行为变化）。
+- **红队收敛循环（三轮审查 + 三轮修复，如实披露）**：三路并行审查（核心协议层/
+  v1.2.0 新代码/既有工具与 CI）发现 P0×1 + P1×10 + P2×20；修复轮 1 处理全部
+  （含 P0：`require_non_none` 曾在 try 外致漏传必填参数经 MCP 变英文 crash，20 处
+  迁移 + stdio 守护测试）；复审轮 2 验证 10/10 属实并揪出 1 个修复引入的回归
+  （raw_obs 聚合口径）→ 修复轮 2；复审轮 3 精读再揪 3 项残余（R-1 切窗口径错位
+  ——重复时间戳数据指标失真 6 倍的既有缺陷被暴露、R-2/R-3 对称性缺口）→ 修复轮 3
+  + 重复数据手算锚；复审轮 4 收敛判定。所有发现的"已查无发现"维度同步归档。
+
+### 版本与工程面
+- pyproject version 1.1.0 → **1.2.0**；description 更新为 30 个纯计算统计工具；
+  package-data glob 修正（docs/*.md 相对包根）；BLAS 单线程默认值前移
+  `statlab_mcp/__init__.py`（numpy 导入前生效）。
+- smoke_install 断言工具数 30；SPEC §2 命名表补 v1.2.0 新参数、§12.6 新增
+  D17 强校验契约；design/06 补防泄漏与明细截断实现注记、design/11（新）随工具 30。
+
+### 升级指引（v1.1.0 → v1.2.0）
+1. **`file_path` 调用方式运行期零变化**：所有既有调用（传路径）行为与文案不变；
+   `file_path` 变为可选仅是签名形态（D17），漏传业务必填参数照常 E1001 中文拒绝。
+2. **inline_data / data_source 是纯增量**：不传 `inline_data` 即旧行为；返回体多一个
+   `data_source` 字段，不做程序化分支的客户端无需改动。
+3. **三个新工具是纯增量**：`tools/list` 从 27 变 30；`STATLAB_DESC_MODE`/
+   `STATLAB_IMAGE_MODE` 等开关默认值零变化。
+4. **`impute_missing` 结果落盘 `reports/imputed/`**：与其他输出目录一样可随时清理，
+   计算不依赖；输入文件绝不覆写。
+5. **uvx 缓存可能锁旧版**：升级后请 `uvx --refresh statlab-mcp`；
+   pip 用户 `pip install --upgrade statlab-mcp` 即可。
+6. **错误码只增不改**：新增 E1012（数据无可处理对象）；既有 12 码语义与文案
+   逐字稳定。
+
+## [1.1.0] - 2026-08-27
 
 ### P2-A CI「PyPI 自安装冒烟」独立 workflow
 - 新增 `.github/workflows/smoke_install.yml`：`release published` 自动触发

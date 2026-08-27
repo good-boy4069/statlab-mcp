@@ -1,10 +1,14 @@
 # auto_analysis 方案设计（附录 A · 方案 A：client 侧工作流，默认）
 > **工具索引**：本文件为 auto_analysis 方案 A（client 侧工作流）文档，不注册 MCP 工具、无 manual 小节。
 > 「需要多少样本量/功效多大」类问题 → power_analysis（工具 27，v1.1.0 起；solve_n/detect_effect/verify 三模式，参数见 statlab_mcp/docs/design/10_power_analysis.md）。
+> 「帮我规划分析步骤」类问题 → **analysis_plan（工具 30，v1.2.0 起已实现）**：方案 B 确定性
+> 规则引擎，输入问题+数据源即产出 `{intent, chosen_methods, tool_calls_plan}` 计划
+> （词表/伪键/边界见 statlab_mcp/docs/design/11_analysis_plan.md）；本文件方案 A 仍是
+> client 侧工作流的完整决策树版本，两者互补。
 
 > 定位：编排层（第二层）。**不是 MCP 工具**，而是一份交付物：
 > ①《分析方法选择决策树》②《报告模板》③《示例 agent 提示词》。
-> 由外层 agent（Claude Code / Cursor / DSH 等）按决策树调用第一层 27 个工具、
+> 由外层 agent（Claude Code / Cursor / DSH 等）按决策树调用第一层 30 个工具、
 > 套模板生成报告。本方案不向 server 增加任何代码，零风险。
 
 ## 一、与方法选择决策树（外层 agent 的调用地图）
@@ -24,6 +28,8 @@
 | 预测是/否 | "能不能确定/会不会买" | logistic_regression（二分类） | AUC、OR |
 | 把人分几堆 | "分成几类人/分群" | cluster_analysis(k±1 对照) → pca_analysis | 轮廓、质心 |
 | 未来怎么走 | "下月/趋势/预测" | trend_analysis → seasonal_decompose → time_series_forecast | tau、斜率、预测 |
+| 预测可信吗 | "预测准不准/回测" | backtest_forecast（v1.2.0 工具 29：滚动回测，验证窗只认原始观测） | MAE、RMSE、MAPE |
+| 缺失想直接补 | "补齐缺失/插补后分析" | impute_missing（v1.2.0 工具 28：五策略，结果落 reports/imputed/，绝不覆写输入） | 补齐数、输出文件 |
 | 有没有异常 | "异常/突变/离群" | outlier_detect / anomaly_detect（时序） | 异常点+图 |
 
 **决策规则（agent 必须遵守）**：
