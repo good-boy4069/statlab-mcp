@@ -217,11 +217,14 @@ def analysis_plan(question: str, file_path: str | None = None,
                             params["group_col"] = categorical[0]
                         else:
                             needs_note = "needs_column:group_col"
-                    if intent == "one_group_mean" and tool == "effect_size" \
-                            and not categorical:
-                        # 复审 N5：one_group_mean 链的 effect_size 是组间效应量
-                        # 工具，缺分组列时显式占位（执行必 E1001 且计划无提示）
-                        needs_note = "needs_column:group_col"
+                    if intent == "one_group_mean" and tool == "effect_size":
+                        # 复审 N5/R-2：one_group_mean 链的 effect_size 是组间效应量
+                        # 工具——有类别列则对称填 group_col（执行时组数≠2 由
+                        # effect_size 结构化报 E1011），缺失则显式占位
+                        if categorical:
+                            params["group_col"] = categorical[0]
+                        else:
+                            needs_note = "needs_column:group_col"
                     if intent in ("two_groups", "one_group_mean", "pred_continuous") \
                             and tool in ("hypothesis_test", "effect_size",
                                          "linear_regression", "feature_importance"):

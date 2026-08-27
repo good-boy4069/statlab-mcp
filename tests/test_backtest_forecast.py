@@ -84,6 +84,34 @@ def test_naive_h3_w2_hand_computed(tmp_path):
     assert m["rmse"] == pytest.approx(math.sqrt(14 / 3))
 
 
+def test_naive_duplicate_timestamps_hand_computed(tmp_path):
+    """复审 R-1 行为锚：重复时间戳数据按天聚合口径回测。
+
+    40 天 × 每天 08:00 两条同刻读数（10+i 与 2.0）→ 日和 = 12+i（i=0..39），
+    聚合后 n=40 点、序列 [12..51]。h=1, w=2（naive），每窗验证窗=1 个点：
+    窗 0（最早）训练段 [12..49]（38 点，时间边界切分防摊薄）→ pred=49, actual=[50]；
+    窗 1 训练段 [12..50]（39 点）→ pred=50, actual=[51]。两窗 err=1 →
+    MAE=RMSE=1.0。修复前行数切分会把训练段摊薄一半，此锚必红。"""
+    import datetime as _dt
+    rows = ["date,v"]
+    d0 = _dt.date(2025, 1, 1)
+    for i in range(40):
+        d = d0 + _dt.timedelta(days=i)
+        rows.append(f"{d} 08:00:00,{10.0 + i}")
+        rows.append(f"{d} 08:00:00,2.0")
+    p = tmp_path / "dup_ts.csv"
+    p.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    res = _r(file_path=str(p), date_col="date", value_col="v",
+             horizon=1, windows=2, method="naive")["result"]
+    assert res["n_valid"] == 40, res                 # 聚合后 40 点（非 80 行）
+    w0, w1 = res["window_records"]                   # w0=最早窗（i=0），w1=最新窗
+    assert w0["pred"] == [49.0] and w0["actual"] == [50.0]
+    assert w1["pred"] == [50.0] and w1["actual"] == [51.0]
+    assert w0["abs_err"] == [1.0] and w1["abs_err"] == [1.0]
+    m = res["metrics"]
+    assert m["mae"] == pytest.approx(1.0) and m["rmse"] == pytest.approx(1.0)
+
+
 def test_seasonal_naive_perfect_period_zero_error_and_mape_null(tmp_path):
     df = pd.DataFrame({"date": pd.date_range("2025-01-01", periods=40, freq="D"),
                        "v": np.tile(np.arange(5.0), 8)})

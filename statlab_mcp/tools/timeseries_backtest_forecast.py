@@ -173,12 +173,19 @@ def backtest_forecast(file_path: str | None = None, date_col: str | None = None,
                 .resample("D").sum(min_count=1).sort_index()
         else:
             raw_obs = _s.groupby(level=0).sum(min_count=1).sort_index()
+        # 复审 R-3：非有限真值（±Inf 观测）不构成有效真值——聚合后置 NaN，
+        # 与缺观测同途走 n_actual_dropped 披露；判定输入（_keep）不动，
+        # 保持与 _prepare_series 的重复判定条件严格一致
+        raw_obs = raw_obs.replace([np.inf, -np.inf], np.nan)
 
         for i in range(windows):                     # i=0 为最早窗
-            val_start = n - (windows - i) * horizon  # 验证段起点（含）
-            train_end = val_start                    # 训练段 = [0, val_start)
-            # 防泄漏（R2-F02）：逐窗只喂训练段历史重新做前置处理
-            hist_df = df.iloc[:train_end].copy()
+            val_start = n - (windows - i) * horizon  # 验证段起点（含；点数口径）
+            # 防泄漏（R2-F02）+ 复审 R-1：逐窗训练段按**时间边界**取原始行——
+            # train_end/val_start 是聚合后序列（y_full）的点位置，重复时间戳数据
+            # 行数 > 点数，按行数切会把训练段摊薄（探针实测指标失真 6 倍）且门槛
+            # 承诺失效。改为"时刻严格早于验证窗首点"的原始行，聚合后唯一点数
+            # 恰为 val_start，与门槛链口径一致；防泄漏不破（行时刻 < 验证窗首点）。
+            hist_df = df[_rd < y_full.index[val_start]].copy()
             try:
                 y_hist, _meta_w = _prepare_series(hist_df, date_col, value_col)
             except DataLabError:
