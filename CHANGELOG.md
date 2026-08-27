@@ -4,6 +4,24 @@
 
 ## [Unreleased] - v1.1.0（开发中）
 
+### P1-2 correlation_matrix 秩相关钉死 + kendall 官方别名
+- **能力盘点（诚实披露）**：spearman / kendalltau 秩相关在 v1.0.x 已实现
+  （逐对 scipy.spearmanr / kendalltau、fdr_bh/bonferroni 校正同代码路径），
+  本版按迭代任务补齐其"协议与测试欠账"：
+  - 新增官方别名 `method="kendall"`（结果与 kendalltau 完全相同；历史枚举名
+    kendalltau 向后兼容保留，两者回显各自输入）；
+  - 手算对照测试补齐 4 例：Spearman ρ=0.5（Σd²=10 公式手算）、ρ=0.7（平均秩独立
+    实现）、Kendall τ=2/3（C=5/D=1 定义复算）且 p=1/3（n=4 精确分布 24 置换枚举）、
+    别名/历史枚举数值矩阵完全一致断言；
+  - 口径入 SPEC 第 3 节与 docs/design/02_data_exploration_batch2.md 参数表
+    （任务原文引用的"design/01"按工具实际所属文档映射为 design/02，已在文档注明）；
+  - summary 对非 pearson 分支注明方法与校正状态；**pearson 默认分支输出零变化**
+    （现有全部 pearson 断言未动仍绿）。
+- 基线对比机制升级：tools/list vs v1.0.3 留档新增「参数段精确快照」登记
+  （correlation_matrix method 枚举说明为已披露唯一差异，硬编码快照防漂移；
+  未登记工具一律要求与基线逐字一致）。
+- README 测试计数 289 → 293。
+
 ### P1-1 性能补课（冷启动延迟导入 + read_table 文件缓存）
 - **延迟导入（固定清单，不扩大）**：`pmdarima` / `sklearn` / `statsmodels` 三库改函数内
   导入；`_common.py` 模块级保留 numpy / pandas / matplotlib(Agg) / scipy（多数工具公共

@@ -28,6 +28,26 @@ FIXTURE = ROOT / "tests" / "fixtures" / "tools_list_full_v1_0_3.json"
 _OLD_DOC_PREFIX = "docs" + "/"
 _NEW_DOC_PREFIX = ("statlab_mcp" + "/") + _OLD_DOC_PREFIX
 _NORM = (_NEW_DOC_PREFIX, _OLD_DOC_PREFIX)
+# 已登记的功能性 description 变化（v1.1.0 功能增量自然携带）：登记工具以「参数段精确
+# 快照」硬编码钉死（机械审计：与新值逐字一致，禁止悄悄漂移），其余 description 部分与
+# 未登记工具全部要求与基线完全一致。v1.1.0 P1-2 correlation_matrix 增 kendall 别名。
+_KNOWN_PARAM_BLOCKS = {
+    "correlation_matrix": (
+        '    file_path (str): 本地数据文件（csv/tsv/xlsx/json），仅接受本地路径\n'
+        '    method (str, "pearson"): pearson / spearman / kendall / kendalltau'
+        '（逐对取 scipy，\n'
+        '        返回对象取 .statistic/.pvalue；pandas corr 无 p 值故不用；kendall 为\n'
+        '        kendalltau 的官方别名 v1.1.0 起，两者结果完全相同）\n'
+        '    p_adjust (str, "fdr_bh"): none / bonferroni / fdr_bh；默认 BH-FDR 并标注；\n'
+        '        校正单元 = 实际可计算的上三角对数（常量列对 r/p=null 不参与校正）\n'
+        '        （statsmodels.multipletests）'),
+}
+import re as _re
+
+
+def _extract_param_block(desc: str) -> str:
+    m = _re.search(r"参数:\n(.*?)\n\n", desc, flags=_re.S)
+    return m.group(1) if m else ""
 
 
 def _serialize(server: MCPServer) -> bytes:
@@ -47,20 +67,42 @@ def _fresh_server() -> StatlabServer:
 
 
 def test_full_matches_v1_0_3_baseline_after_doc_path_normalization():
+    """默认 tools/list 对 v1.0.3 留档的机械审计：路径词归一化 + 参数段精确快照。"""
     assert DESC_MODE == "full", "测试进程默认必须为 full 模式"
     current = _serialize(_fresh_server())
     baseline = FIXTURE.read_bytes()
-    cur_norm = json.loads(current.decode("utf-8"))
-    base_norm = json.loads(baseline.decode("utf-8"))
-    for item in cur_norm:
-        item["description"] = item["description"].replace(*_NORM)
-    for item in base_norm:
-        item["description"] = item["description"].replace(*_NORM)
-    blob_cur = json.dumps(cur_norm, ensure_ascii=False, sort_keys=True).encode("utf-8")
-    blob_base = json.dumps(base_norm, ensure_ascii=False, sort_keys=True).encode("utf-8")
-    assert len(base_norm) == 26 and len(cur_norm) == 26
-    # 差异必须仅限已披露路径词：归一化后逐字节一致
-    assert blob_cur == blob_base
+    cur_map = {d["name"]: d for d in json.loads(current.decode("utf-8"))}
+    base_map = {d["name"]: d for d in json.loads(baseline.decode("utf-8"))}
+    assert len(base_map) == 26 and len(cur_map) == 26
+
+    def scrub(desc: str, name: str) -> str:
+        """登记工具的参数段以精确快照单独断言，此处挖除后参与整体基线比对。"""
+        if name in _KNOWN_PARAM_BLOCKS:
+            block = _extract_param_block(desc)
+            return desc.replace(block, "<PARAM-BLOCK>")
+        return desc
+
+    problems: list[str] = []
+    for name in sorted(base_map):
+        base = base_map[name]
+        cur = cur_map[name]
+        old_d = base["description"].replace(*_NORM)
+        new_d = cur["description"].replace(*_NORM)
+        if name in _KNOWN_PARAM_BLOCKS:
+            # 1) 新参数段必须与硬编码快照逐字一致
+            actual_block = new_d and _extract_param_block(cur["description"])
+            expected_block = _KNOWN_PARAM_BLOCKS[name]
+            if actual_block.replace(*_NORM) != expected_block:
+                problems.append(f"{name}: 参数段漂移（期望精确快照）")
+        else:
+            pass
+        a = json.dumps({**cur, "description": scrub(new_d, name)},
+                       sort_keys=True, ensure_ascii=False)
+        b = json.dumps({**base, "description": scrub(old_d, name)},
+                       sort_keys=True, ensure_ascii=False)
+        if a != b:
+            problems.append(f"{name}: 与基线不一致且未登记")
+    assert not problems, "\n".join(problems)
 
 
 def test_slim_reduces_description_bytes_at_least_50pct():

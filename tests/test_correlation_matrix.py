@@ -170,3 +170,83 @@ def test_json_safe_and_deterministic():
     r2 = correlation_matrix(str(SAMPLES / "dirty.csv"))
     assert json.dumps(r1, sort_keys=True, ensure_ascii=False) == json.dumps(
         r2, sort_keys=True, ensure_ascii=False)
+
+
+# ---------------- 秩相关手算对照（v1.1.0 P1-2，可人工复核粒度） ----------------
+
+def _rank(vals: list) -> list:
+    """无并列数据的秩 = 顺序位；有并列用平均秩（scipy rankdata 同口径）。"""
+    order = sorted(range(len(vals)), key=lambda i: vals[i])
+    ranks = [0.0] * len(vals)
+    i = 0
+    while i < len(order):
+        j = i
+        while j + 1 < len(order) and vals[order[j + 1]] == vals[order[i]]:
+            j += 1
+        avg = (i + j) / 2 + 1
+        for k in range(i, j + 1):
+            ranks[order[k]] = avg
+        i = j + 1
+    return ranks
+
+
+def test_spearman_hand_computed_rho(tmp_path):
+    """spearman 手算对照：x=1..5, y=[1,3,5,2,4]。
+
+    秩(x)=[1,2,3,4,5]，秩(y)=同序 d=[0,-1,-2,2,1]，Σd²=10，
+    ρ = 1 − 6·Σd²/(n(n²−1)) = 1 − 60/120 = **+0.5**（Spearman 1904 公式，
+    与 G*Power 3.1 手册相关系数示例同一公式；期望值可用排序手工复核）。
+    """
+    p = tmp_path / "sp.csv"
+    pd.DataFrame({"x": [1, 2, 3, 4, 5], "y": [1, 3, 5, 2, 4]}).to_csv(p, index=False)
+    rx = correlation_matrix(str(p), method="spearman", p_adjust="none")
+    rho = rx["result"]["correlation"]["x"]["y"]
+    assert rho == pytest.approx(0.5)
+    pv = rx["result"]["p_value"]["x"]["y"]
+    assert pv is not None and 0 < pv <= 1
+    # summary 注明方法与未校正状态（P1-2 要求，仅限非 pearson 分支）
+    assert "spearman" in rx["summary"] and "未做多重比较校正" in rx["summary"]
+
+
+def test_kendall_alias_hand_computed_tau(tmp_path):
+    """kendall 别名手算对照：x=[1,2,3,4], y=[1,3,2,4]（G*Power 无对应档，按 Kendall 原始定义复算）。
+
+    一致对 C={(1,2),(1,3),(1,4),(2,4),(3,4)}=5，不一致对 {(2,3)}=1；
+    tau-a = (C−D)/(n(n−1)/2) = (5−1)/6 = **2/3**（无并列 ⇒ tau-b==tau-a）；
+    p：n=4 无并列时 scipy method="auto" 走精确分布——P(C≥5)=(1+3)/24=1/6，
+    双侧 2×1/6 = **1/3**（24 个等可能置换的精确枚举，可手工验证）。
+    """
+    p = tmp_path / "kd.csv"
+    pd.DataFrame({"x": [1, 2, 3, 4], "y": [1, 3, 2, 4]}).to_csv(p, index=False)
+    rk = correlation_matrix(str(p), method="kendall", p_adjust="none")
+    tau = rk["result"]["correlation"]["x"]["y"]
+    assert tau == pytest.approx(2 / 3)
+    assert rk["result"]["p_value"]["x"]["y"] == pytest.approx(1 / 3, rel=1e-9)
+    assert rk["result"]["method"] == "kendall"          # 回显调用别名
+
+
+def test_kendall_alias_matches_legacy_enum():
+    """kendall 与历史枚举 kendalltau 在同一数据上数值结果完全一致（向后兼容证明）。"""
+    r_alias = _call(SAMPLES / "clean.csv", method="kendall")
+    r_legacy = _call(SAMPLES / "clean.csv", method="kendalltau")
+    assert r_alias["result"]["method"] == "kendall"
+    assert r_legacy["result"]["method"] == "kendalltau"
+    assert json.dumps(r_alias["result"]["correlation"]) == \
+        json.dumps(r_legacy["result"]["correlation"])
+    assert json.dumps(r_alias["result"]["p_value"], sort_keys=True) == \
+        json.dumps(r_legacy["result"]["p_value"], sort_keys=True)
+
+
+def test_spearman_rank_formula_reference(tmp_path):
+    """测试内独立实现平均秩 + Spearman 公式作独立对照（不依赖 scipy 结果）。"""
+    xs, ys = [86, 97, 99, 100, 101], [88, 95, 99, 105, 98]
+    n = len(xs)
+    rx_, ry_ = _rank(xs), _rank(ys)
+    d2 = sum((a - b) ** 2 for a, b in zip(rx_, ry_, strict=False))
+    expected = 1 - 6 * d2 / (n * (n * n - 1))           # Σd²=6 → ρ=1−36/120=0.7
+    assert expected == pytest.approx(0.7)               # 手算锚点自身先自洽
+    p = tmp_path / "rf.csv"
+    pd.DataFrame({"x": xs, "y": ys}).to_csv(p, index=False)
+    got = correlation_matrix(str(p), method="spearman", p_adjust="none")["result"][
+        "correlation"]["x"]["y"]
+    assert got == pytest.approx(expected)

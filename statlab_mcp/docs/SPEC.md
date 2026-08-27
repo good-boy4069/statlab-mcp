@@ -38,6 +38,7 @@
 - std 统一 ddof=1（同 Excel STDEV.S）
 - 边界行为统一口径：文件不存在 / 空文件（0B，"文件为空或无可读数据"）/ 仅表头 / 全缺失列 / 列含空单元格 / 列不存在 / 非数值列 / 重复列名 / 中文及含空格特殊字符列名 / 非法日期（如 2024-02-30）/ 极端值 / 常量列；n=1 时 std/q1/q3=None 不报错、n=0 报错
 - correlation_matrix 细节：p 值逐对取 scipy.stats.pearsonr；fdr_bh 用 statsmodels.stats.multitest.multipletests，校正单元 k=n(n-1)/2 上三角；常量列 r=None、p=None；数值列 >20 拒绝
+- correlation_matrix 秩相关（v1.1.0 钉死）：spearman = scipy.stats.spearmanr；kendall（官方别名）/kendalltau（历史枚举名，向后兼容保留）= scipy.stats.kendalltau，无并列小样本时 scipy method="auto" 给精确 p；多重比较校正（fdr_bh/bonferroni）与 pearson 分支完全同口径同代码路径；summary 注明所用方法与是否经 fdr_bh 校正（pearson 默认分支 summary 逐字节不变）
 
 ## 4. 数据读取与安全（运行时行为契约）
 

@@ -23,12 +23,16 @@
 | 参数名 | 类型 | 默认值 | 校验规则 | 例子 |
 |---|---|---|---|---|
 | file_path | str | 必填 | 本地 csv/tsv/xlsx/json；拒绝 UNC/空串 | `"data/clean.csv"` |
-| method | str | "pearson" | ∈ {pearson, spearman, kendalltau}；非法值报中文错误 | `method="spearman"` |
+| method | str | "pearson" | ∈ {pearson, spearman, kendall, kendalltau}；kendall 为 kendalltau 官方别名（v1.1.0，结果完全相同）；非法值报中文错误 | `method="spearman"` |
 | p_adjust | str | "fdr_bh" | ∈ {none, bonferroni, fdr_bh}；非法值报中文错误 | `p_adjust="none"` |
 
 ## 统计口径（钉死）
 - 相关系数与 p 值**逐对**取自 scipy：`pearsonr` / `spearmanr` / `kendalltau`
-  （pandas corr 无 p 值；scipy≥1.9 返回对象，取 `.statistic` 与 `.pvalue`）
+  （pandas corr 无 p 值；scipy≥1.9 返回对象，取 `.statistic` 与 `.pvalue`）；
+  **秩相关分支（v1.1.0 钉死）**：spearman/kendall 的多重比较校正与 pearson 分支
+  完全同口径同代码路径；summary 注明所用方法名与是否经 fdr_bh 校正
+  （pearson 默认分支 summary 逐字节不变）；kendalltau 无并列小样本时 scipy
+  method="auto" 自动给精确 p
 - 每对用**成对完整样本**（该两列同时非 NaN 的行），样本量记入 n_pairwise
 - 多重比较校正用 `statsmodels.stats.multitest.multipletests(pvals, method=...)`：
   - fdr_bh → `method="fdr_bh"`，取 `pvals_corrected`；bonferroni → `method="bonferroni"`

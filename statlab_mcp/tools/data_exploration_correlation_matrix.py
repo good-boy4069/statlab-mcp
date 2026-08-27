@@ -4,8 +4,9 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/02_data_explorat
 
 参数:
     file_path (str): 本地数据文件（csv/tsv/xlsx/json），仅接受本地路径
-    method (str, "pearson"): pearson / spearman / kendalltau（逐对取 scipy，
-        返回对象取 .statistic/.pvalue；pandas corr 无 p 值故不用）
+    method (str, "pearson"): pearson / spearman / kendall / kendalltau（逐对取 scipy，
+        返回对象取 .statistic/.pvalue；pandas corr 无 p 值故不用；kendall 为
+        kendalltau 的官方别名 v1.1.0 起，两者结果完全相同）
     p_adjust (str, "fdr_bh"): none / bonferroni / fdr_bh；默认 BH-FDR 并标注；
         校正单元 = 实际可计算的上三角对数（常量列对 r/p=null 不参与校正）
         （statsmodels.multipletests）
@@ -30,7 +31,9 @@ from scipy import stats as sps
 
 from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
-_METHODS = {"pearson": sps.pearsonr, "spearman": sps.spearmanr, "kendalltau": sps.kendalltau}
+_METHODS = {"pearson": sps.pearsonr, "spearman": sps.spearmanr,
+            "kendall": sps.kendalltau,          # v1.1.0 官方别名（SPEC 第 3 节）
+            "kendalltau": sps.kendalltau}       # v1.0.3 起的历史枚举名，向后兼容保留
 _P_ADJUST = {"none", "bonferroni", "fdr_bh"}
 MAX_COLS = 20
 STRONG_R = 0.7
