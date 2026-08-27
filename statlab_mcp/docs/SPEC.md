@@ -119,6 +119,7 @@ requirements.min）。
 | E1009 | 列非数值 | 列类型不符合工具要求（含两列配对均为非数值） |
 | E1010 | 样本量/有效值不足 | 有效值 < 方法下限（n<2/3、组内<2、<MIN_N）、剔除缺失后为空、全缺失列、无任何数值列、样本量低于方法下限（如 D'Agostino<8）、周期/频率不可估、时间戳不足 |
 | E1011 | 分组/配对结构非法 | 组数不符（≠2 组做两两检验、单类别、多类做二分类）、类别数超上限、配对差值无变异、常量列方差 0、零方差特征、配对两组样本数不等、乘法分解遇非正值 |
+| E1012 | 数据无可处理对象（无须处理） | 输入健康但不存在工具所要求的可处理对象：impute_missing 三情形（全表无缺失 / 指定列均无缺失 / 缺失仅位于非数值列）。处置指引=无需任何修复动作，可直接进行其它分析；v1.2.0 起启用 |
 | E9999 | 计算失败兜底 | 拟合不收敛/完全共线等运行期计算异常、未知解析异常兜底 |
 
 实现约定：码常量集中于 `statlab_mcp/tools/_common.py` 的 `EC` 类；业务错误以 `DataLabError(message, code)` 抛出、工具层统一 `err(e.code, str(e))` 返回；pydantic 层由 StatlabServer 转换通路注入 E1001。`tests/check_readme_claims.py` 扩展项静态核对"SPEC 本表 ↔ EC 类常量集"双向一致（见 P2-B）。
@@ -129,3 +130,11 @@ requirements.min）。
 - 文档随包分发：docs/ 位于包内 statlab_mcp/docs/，运行期一律经 importlib.resources 定位，PyPI 安装、源码仓、任意 cwd 口径一致；工具→设计文档映射见 docs/design 各文档顶部「工具索引」行。
 - STATLAB_DESC_MODE 环境开关（进程启动时读取一次）：full（默认）= tools/list 的 description 为 docstring 全文，与 v1.0.3 一致；slim = 仅一句话功能摘要 + 每参数的名称/类型/必填性/取值约束原文（验收：总字节较 full 降 ≥50%，且任何参数名不得丢失）。开关只影响 tools/list 的 description，不影响工具行为、测试、docstring、manual；非法取值启动时 stderr 中文告警并回退 full。
 - 客户端建议：不支持/不读 resources 的客户端保持默认 full；管理端可按需切换 slim 降低上下文占用，传参依据缺失时由外层 agent 读对应 manual 补齐。
+
+## 11. 文件输出协议（`__output__`）
+
+1. **产生文件的工具**（自 v1.2.0 `impute_missing` 起）在返回 JSON 顶层附加 `__output__` = 新输出文件的**绝对路径字符串**，与 `__image__`/status/result/summary 平级；禁止内联数据（防上下文爆炸），路径仅供 agent/客户端读取；
+2. **不参与图片双轨**：`__output__` 为纯路径字段，由工具直接返回；`STATLAB_IMAGE_MODE=content` 的内容块改写机制只作用于含 `__image__` 的成功结果，对 `__output__` 结果原样透传（_imaging.py 不扩展）；
+3. **目录约定**：一切工具产物统一入 `reports/` 下按日期归档、**均不进版本库**（.gitignore 收录）——`reports/plots/YYYYmmdd/`（图片，见第 5 节）、`reports/imputed/YYYYmmdd/`（插补结果 CSV）；产物目录执行 30 天自动清理（过期日删除，不影响任何计算结果的可复现性——统计数字永远可由原始输入重新生成）；
+4. **原文件不可变**：产生输出的工具绝不修改/覆写任何输入文件；输出文件名 = `<工具名>_<原文件干名>_<语义后缀>_YYYYmmdd_HHMMSS_fff.csv`（毫秒时间戳防覆盖；干名经 Windows 保留名清洗）；
+5. **CSV 写出防护**：以 utf-8-sig 编码写出；字符串单元格若以 `=` `+` `-` `@` 开头则前置 `'` 转义（防 Excel 公式注入）；剔除字段内控制字符（`\x00-\x08\x0B\x0C\x0E-\x1F`）；上述防护在 SPEC 声明，读回方需知晓首字符转义规则。

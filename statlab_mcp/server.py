@@ -34,6 +34,7 @@ except PackageNotFoundError:                          # 源码直跑（未安装
 from statlab_mcp.tools import data_exploration_correlation_matrix as _t4  # 工具 4
 from statlab_mcp.tools import data_exploration_data_type_check as _t2  # 工具 2
 from statlab_mcp.tools import data_exploration_describe_statistics as _t1  # 工具 1
+from statlab_mcp.tools import data_exploration_impute_missing as _t28  # 工具 28（v1.2.0）
 from statlab_mcp.tools import data_exploration_missing_report as _t3  # 工具 3
 from statlab_mcp.tools import data_exploration_outlier_detect as _t5  # 工具 5
 from statlab_mcp.tools import inference_anova_test as _t7  # 工具 7
@@ -62,9 +63,9 @@ from statlab_mcp.tools import visualization_plot_scatter as _t21  # 工具 21
 # 工具模块注册表：随实现推进逐个加入（每工具一行）
 _TOOL_MODULES: list = [_t1, _t2, _t3, _t4, _t5, _t6, _t9, _t10, _t7, _t8, _t11,
                        _t12, _t13, _t14, _t15, _t16, _t17, _t18, _t19, _t20,
-                       _t21, _t22, _t23, _t24, _t25, _t26, _t27]
+                       _t21, _t22, _t23, _t24, _t25, _t26, _t27, _t28]
 
-# 工具数：27（v1.1.0）
+# 工具数：28（v1.2.0 开发中）
 _PARAM_HINT = "参数校验失败：请检查参数类型与取值范围（拒绝 NaN/Inf 等非法数值）"
 # v1.1.0：错误结构新增机器可读 error_code（E1001=参数校验失败，SPEC 第 9 节）
 _PARAM_HINT_JSON = json.dumps({"status": "error", "error_code": _common.EC.PARAM,

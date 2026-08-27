@@ -77,6 +77,7 @@ _TOOL_DOC: dict[str, str] = {
     "describe_statistics": "01_data_exploration_batch1.md",
     "data_type_check": "01_data_exploration_batch1.md",
     "missing_report": "01_data_exploration_batch1.md",
+    "impute_missing": "01_data_exploration_batch1.md",
     "correlation_matrix": "02_data_exploration_batch2.md",
     "outlier_detect": "02_data_exploration_batch2.md",
     "hypothesis_test": "03_inference_batch1.md",

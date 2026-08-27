@@ -33,7 +33,7 @@ from statlab_mcp.server import _TOOL_MODULES, DESC_MODE, StatlabServer, bootstra
 FIXTURE = ROOT / "tests" / "fixtures" / "tools_list_full_v1_1_0.json"
 # 第④类：v1.1.0 基线之后新增的工具（单向白名单——C1/C2/C11 各加一名；
 # 成员在其所属批次 inline 化完成后，schema/docstring 差异须落入①②③类）
-_ADDED_SINCE_V1_1_0: set[str] = set()
+_ADDED_SINCE_V1_1_0: set[str] = {"impute_missing"}
 
 
 def _serialize(server: MCPServer) -> bytes:

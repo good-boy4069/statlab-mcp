@@ -1,5 +1,5 @@
 # 数据探查组 · 接口设计文档（批 1）
-> **工具索引**（v1.1.0 起 statlab://tools/<名>/manual 取本文件对应小节，锚点=一级标题行“# 工具 N：<函数名>(”）：describe_statistics（工具1）｜data_type_check（工具2）｜missing_report（工具3）
+> **工具索引**（v1.1.0 起 statlab://tools/<名>/manual 取本文件对应小节，锚点=一级标题行“# 工具 N：<函数名>(”）：describe_statistics（工具1）｜data_type_check（工具2）｜missing_report（工具3）｜impute_missing（工具28，v1.2.0）
 
 > 交付物：describe_statistics / data_type_check / missing_report 三个工具的完整接口定义。
 > 批 2（correlation_matrix / outlier_detect）含 p 值校正与图协议，另行交付。
@@ -225,3 +225,39 @@
 - ⑦ 参数风格一致：三个工具均只收 file_path，命名与批 2 对齐（correlation_matrix/outlier_detect 亦只收文件+方法参数），组内一致
 - ⑧ 功能无重叠：describe=分布数字、type_check=类型判定、missing=缺失概况，互不重复；与推断组 hypothesis_test 等无重叠
 - ⑨ 统计方法使用条件：已写明分位数插值、偏度/峰度定义、std 的 ddof、常数列与 n<3 的处理；无假设检验类方法（不涉及正太性前提）
+
+---
+
+# 工具 28：impute_missing(file_path, columns=None, strategy="mean", value=None)【v1.2.0 新增】
+
+与 missing_report 互补的确定性整治工具：只做规则插补，不做任何"智能推断"；绝不修改输入文件，
+插补结果写 `reports/imputed/YYYYmmdd/` 新 CSV 并以顶层 `__output__` 返回绝对路径
+（文件输出协议见 SPEC 第 11 节；目录治理/CSV 公式注入防护/30 天清理同节钉死）。
+
+## 参数表（v1.2.0 钉死）
+| 参数 | 类型 | 默认值 | 校验规则 |
+|---|---|---|---|
+| file_path | str | 必填 | 本地 csv/tsv/xlsx/json；拒绝 UNC/空串 |
+| columns | list[str] \| None | None=全部含缺失的数值列 | 显式传入时逐列校验：不存在→E1008；非数值列（含 object 伪数值）→E1009 |
+| strategy | str | "mean" | ∈ {mean, median, ffill, bfill, constant}；非法/bool→E1001 |
+| value | float \| None | 仅 constant 时必填 | 有限数（拒绝 NaN/Inf/bool）；其它策略携带 value→E1001 |
+
+## 统计口径（钉死）
+- 缺失判定 = `df.isna()`（与 missing_report 严格同口径：±Inf 不计缺失）；
+- mean/median **仅基于有限观测**（math.isfinite 过滤 ±Inf），被排除的非有限值计数进 result；
+- 列全缺失且策略 ∈ {mean,median,ffill,bfill} → 无来源可用，该列跳过原样保留并在
+  result.skipped_columns / summary 如实注明（不报错）；constant 对全缺失列生效；
+- 无任何可插补对象 → **E1012**（v1.2.0 新增码"数据无可处理对象"），三情形 message 独立：
+  全表无缺失 / 指定列均无缺失 / 缺失仅位于非数值列。
+
+## 输出契约（SPEC 第 11 节）
+- 文件名 = `impute_missing_<干名(_safe_name)>_<策略>_YYYYmmdd_HHMMSS_fff.csv`、utf-8-sig、index=False；
+- 写出前对字符串单元格做 Excel 公式注入转义（`=`/`+`/`-`/`@` 前缀加 `'`）与控制字符清洗；
+- 顶层 `__output__` = 输出文件绝对路径；result 含 columns_processed[...] 与 skipped_columns；
+- summary 固定局限声明："插补值为确定性规则估计，会低估方差、可能引入偏差，
+  后续分析请注明使用了插补数据"。
+
+## 测试锚（tests/test_impute_missing.py）
+手算 ≥3：[1,2,∅,4] mean→7/3 精确断言、median→2、常量填充；Inf 排除均值 [1,2,inf]→1.5(excluded=1)；
+文件名正则+干名/策略段精确预测；时间戳归一化后两次调用 JSON 逐字节一致 + 反证路径不同；
+读回回验插补值；错误码路径全覆盖。

@@ -6,7 +6,7 @@
 > 让 AI agent（Claude Code / Cursor / DeepSeek Harness / Codex 等）获得**真实统计学能力**：
 > LLM 直接口算统计会编造数字；本项目所有统计结果都来自真实计算
 > （numpy / scipy / statsmodels / scikit-learn / pmdarima），AI 只负责调用与解释，
-> 第一层 27 个工具内**禁止任何 LLM 参与计算**。
+> 第一层 28 个工具内**禁止任何 LLM 参与计算**。
 >
 > **安装**：`pip install statlab-mcp` 或 `uvx --refresh statlab-mcp`（详见[快速开始](#快速开始)）。
 
@@ -15,7 +15,7 @@
 | 能力 | 说明 |
 |---|---|
 | **机器可读错误码** | 失败返回 `{status:"error", error_code:"E****", message}`，12 个码一经发布永久稳定（SPEC 第 9 节）；agent 按码决策"改参数重试 / 缩数据 / 换方法" |
-| **MCP resources** | `statlab://spec`（协议全文）+ 27 份工具 manual（docstring + 设计文档小节全文），随 PyPI 包分发，不依赖 cwd |
+| **MCP resources** | `statlab://spec`（协议全文）+ 每工具一份 manual（docstring + 设计文档小节全文），随 PyPI 包分发，不依赖 cwd |
 | **description 双轨** | `STATLAB_DESC_MODE=slim` 把 tools/list 描述瘦身为参数摘要（-53.8%），默认 full 零变化；完整说明书经 manual 获取 |
 | **图片双轨** | `STATLAB_IMAGE_MODE=content` 返回标准 ImageContent 内容块；默认 path（`__image__` 路径）零变化；单图 >2MB 自动回退防上下文爆炸 |
 | **功效分析 power_analysis** | 新工具：solve_n / detect_effect / verify 三模式，支持 t 系与两比例（Cohen's h），G*Power 对标数值锚定测试 |
@@ -31,7 +31,7 @@
 
 ## 它有什么用
 
-装上它之后，你对 AI 说"**帮我分析这个销售数据**"，AI 不再凭空断言，而是调用 27 个真实统计工具：算描述统计、查相关、跑假设检验、功效分析、拟合回归、做聚类、预测时序、画中文图表——**每个数字都出自经过验证的统计库，可复现、可追责**。`summary` 字段给出一句中文结论，`result` 给出完整结构化数据，如：
+装上它之后，你对 AI 说"**帮我分析这个销售数据**"，AI 不再凭空断言，而是调用 28 个真实统计工具：算描述统计、查相关、整治缺失、跑假设检验、功效分析、拟合回归、做聚类、预测时序、画中文图表——**每个数字都出自经过验证的统计库，可复现、可追责**。`summary` 字段给出一句中文结论，`result` 给出完整结构化数据，如：
 
 ```json
 {"status": "ok", "result": {"p_value": 0.0241, "mean_diff": 5.5, "effect_size": 0.65},
@@ -43,7 +43,7 @@
 | 人群 | 用法 | 收益 |
 |---|---|---|
 | **用 AI 写代码/做分析的人**（数据分析师、运营、产品） | 让 Claude Code / Cursor 等按需调用 | 分析结论有真实计算背书，不再担心 AI 编数字 |
-| **AI Agent 开发者** | 把它当统计后端接进自己的 agent/workflow | 27 个确定性工具 + 统一协议，好集成好测试 |
+| **AI Agent 开发者** | 把它当统计后端接进自己的 agent/workflow | 28 个确定性工具 + 统一协议，好集成好测试 |
 | **学过统计但不想手撸代码的人** | 自然语言提问，AI 代调工具 | 假设检验/回归/时序全自动选型，附逐步解释 |
 | **需要输出可追责分析报告的人** | 配合 auto_analysis 方案（决策树+模板+提示词） | 报告每个数字都标注来源工具，防幻觉 |
 | 想快速给数据画图的同学 | 一组 plot_* 工具 | 中文标签图表，图上直接标统计量 |
@@ -67,8 +67,8 @@
 ## 特点与突出能力
 
 1. **确定性至上**：全部随机过程固定 seed（42）；同一文件跑两次结果**逐字节一致**（这是可追责的根基，测试里有专门断言）
-2. **防幻觉设计**：第一层 27 工具零 LLM；结论文案由代码模板拼数字生成；p<0.001 统一显示"<0.001"；每个结论固定附局限声明（相关≠因果、是否校正、样本量）
-3. **口径钉死并可复算**：q1/q3=linear 插值（Excel QUARTILE.INC 同口径）、偏度/峰度=scipy Fisher 口径、std=ddof=1（Excel STDEV.S）——**文档写明，测试对手算公式和标准库独立核对**（**314 个 pytest**，覆盖见 statlab_mcp/docs/；CI 自动核对本数字，漂移即红）
+2. **防幻觉设计**：第一层 28 工具零 LLM；结论文案由代码模板拼数字生成；p<0.001 统一显示"<0.001"；每个结论固定附局限声明（相关≠因果、是否校正、样本量）
+3. **口径钉死并可复算**：q1/q3=linear 插值（Excel QUARTILE.INC 同口径）、偏度/峰度=scipy Fisher 口径、std=ddof=1（Excel STDEV.S）——**文档写明，测试对手算公式和标准库独立核对**（**327 个 pytest**，覆盖见 statlab_mcp/docs/；CI 自动核对本数字，漂移即红）
 4. **中文全链路**：中文列名、GBK 编码自动回退、中文字体图表（无字体自动降级英文并注明）、中文错误消息带解决建议
 5. **硬核安全与防护**：仅本地文件、拒绝 UNC/NUL 路径、无网络上传、>50MB/200 万行/500MB 内存三重保护、xlsx zip 炸弹与日期跨度防护、异常输出有上限截断（防止恶意输入卡死）
 6. **统一的调用体验**：所有工具同构（`参数校验 → 中文报错或 result+summary`），agent 和人都能无痛上手；MCP 工具描述 = 完整 docstring（参数表/返回结构/示例），**agent 打开工具列表就是使用说明书**；**参数命名按场景统一**（见 SPEC：column=单值列 / value_col=分组与时序值列 / group_col / x_col·y_col / col_a·col_b / target·features）
@@ -139,11 +139,11 @@ $env:PYTHONUTF8="1"
 
 **数据上的三个铁律**：① 只收 `csv/xlsx/tsv/json`，绝对路径随意给（中文/GBK/空值/非法日期全自动处理）；② 真实数据放项目目录之外；③ 每次统计先看 `summary` 的中文人话结论，再翻 `result` 的结构化数字。
 
-## 27 个工具一览
+## 28 个工具一览
 
 | 组 | 工具 |
 |---|---|
-| 数据探查 | describe_statistics, correlation_matrix, missing_report, outlier_detect, data_type_check |
+| 数据探查 | describe_statistics, correlation_matrix, missing_report, outlier_detect, data_type_check, impute_missing |
 | 统计推断 | hypothesis_test, anova_test, chi_square_test, normality_test, confidence_interval, effect_size, nonparametric_test, power_analysis |
 | 建模 | linear_regression, logistic_regression, cluster_analysis, pca_analysis, feature_importance |
 | 时序 | time_series_forecast, seasonal_decompose, trend_analysis, anomaly_detect |
@@ -201,7 +201,7 @@ MCP 客户端里把 command 配成 docker 的用法（如 `docker run --rm -i st
 ```
 - 测试数据由 `tests/make_fixtures.py` 固定 seed 生成并入库；关键数字用独立第三方计算对照（statistics.mean / 手算期望值表），禁止循环论证
 - 验收流程（2026-08-26 起为 AI 代做模式）：pytest 全绿 + 两套数据实跑核对（真实 stdout 全部留档在验收记录）→ commit + PROGRESS 登记；使用者保留随时抽检权
-- 质量基线：全量 pytest 绿（当前 **314 个 pytest**）、工具模块覆盖率 ≥80%（本地实测 ~90% 区间）、ruff 全量通过、stdio 协议冒烟 ALL-STDIO-OK
+- 质量基线：全量 pytest 绿（当前 **327 个 pytest**）、工具模块覆盖率 ≥80%（本地实测 ~90% 区间）、ruff 全量通过、stdio 协议冒烟 ALL-STDIO-OK
 
 ## 技术注记（mcp 2.x）
 

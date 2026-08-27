@@ -44,6 +44,7 @@ JSON_MAX_BYTES = 20 * 1024 * 1024          # json 解析放大防护（I2 红队
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]  # statlab_mcp/tools/_common.py -> 项目根
 PLOT_DIR = _PROJECT_ROOT / "reports" / "plots"
+IMPUTED_DIR = _PROJECT_ROOT / "reports" / "imputed"   # v1.2.0 T1 插补产物目录（SPEC 第 11 节）
 
 logger = logging.getLogger("statlab_mcp")
 if not logger.handlers:                     # 日志 -> stderr（红队 I3：审计轨迹落地）
@@ -96,6 +97,7 @@ class EC:
     COLUMN_TYPE = "E1009"     # 列非数值（或列类型不符合工具要求）
     INSUFFICIENT = "E1010"    # 样本量/有效值不足
     STRUCTURE = "E1011"       # 分组/配对结构非法（组数不符、配对无变异等）
+    NO_OBJECT = "E1012"       # 数据无可处理对象（无须处理，如无缺失可插补；v1.2.0 起）
     CALC = "E9999"            # 计算失败兜底
 
 
@@ -532,11 +534,14 @@ def _safe_name(name: str) -> str:
     return name[:40]
 
 
-def _cleanup_old_plots(keep_days: int = 30) -> None:
-    """删除超过 keep_days 天的图片归档目录（外部评审：图片按日归档必须有清理策略）。"""
+def _cleanup_old_dirs(base_dir: Path, keep_days: int = 30) -> None:
+    """删除 base_dir 下超过 keep_days 天的按日期归档目录（外部评审裁决：产物目录必须有清理策略）。
+
+    reports/ 下一切产物子目录（plots/imputed/…）共用；仅识别 %Y%m%d 命名的日目录。
+    """
     today = datetime.now().date()
     try:
-        for d in PLOT_DIR.iterdir():
+        for d in Path(base_dir).iterdir():
             if not d.is_dir():
                 continue
             try:
@@ -560,7 +565,7 @@ def save_plot(fig: Any, name: str) -> str:
     ts = now.strftime("%Y%m%d_%H%M%S_%f")[:-3]
     day_dir = PLOT_DIR / now.strftime("%Y%m%d")
     day_dir.mkdir(parents=True, exist_ok=True)
-    _cleanup_old_plots()
+    _cleanup_old_dirs(PLOT_DIR)
     fname = f"{_safe_name(name)}_{ts}.png"
     out = day_dir / fname
     fig.savefig(out, dpi=150, bbox_inches="tight")
