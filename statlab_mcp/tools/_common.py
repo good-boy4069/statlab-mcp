@@ -10,6 +10,7 @@ matplotlib Agg 后端（附录 D 图片协议）；中文字体探测结果暴�
 """
 from __future__ import annotations
 
+import hashlib
 import io
 import logging
 import math
@@ -17,6 +18,8 @@ import os
 import re
 import shutil
 import sys
+import threading
+from collections import OrderedDict
 from collections.abc import Iterable
 from datetime import date, datetime
 from pathlib import Path
@@ -172,12 +175,118 @@ def read_table(file_path: str) -> pd.DataFrame:
     - json：仅 utf-8-sig（GBK 解码几乎不失败但产出乱码，不做回退），失败报"仅支持 UTF-8"；
     - xlsx：只读第一个 sheet（openpyxl 引擎，无编码概念）。
     读取后 df.memory_usage(deep=True) 超 500MB 拒绝（红队裁决 6）。
+    v1.1.0 P1-1：解析结果经两级键进程内 LRU 缓存（廉价键=路径归一化+大小+mtime，
+    命中后以 SHA256 验内容），见 _file_cache_get/_file_cache_put；防护全部先于缓存执行；
+    缓存命中返回共享引用依赖 pandas>=3 CoW 语义（锁定版本即 ≥3，规范 8）。
     """
-    info = check_file(file_path)
+    info = check_file(file_path)                       # 防护 1/2：路径与体积/行数预检
     path = info["path"]
     ext = os.path.splitext(path)[1].lower().lstrip(".")
     if ext not in ALLOWED_EXTS:
         raise DataLabError(f"仅支持 {sorted(ALLOWED_EXTS)} 格式，当前为 {ext or '无扩展名'}，请转换后重试", EC.FORMAT)
+
+    cached = _file_cache_get(path)
+    if cached is not None:
+        return cached
+    df = _parse_table(path, ext)
+    _file_cache_put(path, df)
+    return df
+
+
+# ---- 进程内文件缓存（v1.1.0 P1-1；规则钉死，SPEC 第 4 节）----
+
+NO_CACHE_ENV = "STATLAB_NO_CACHE"
+_CACHE_MAX_ENTRIES = 8                               # 容量上限：条目数
+_CACHE_MAX_MEM = MAX_MEM_BYTES                       # 总内存预算 500MB（同防护口径）
+
+_cache_lock = threading.Lock()
+_cache_cheap: OrderedDict[tuple, dict] = OrderedDict()   # 廉价键 -> 条目（LRU 序）
+
+
+def _cache_disabled_by_env(stream: Any = None) -> bool:
+    """STATLAB_NO_CACHE=1 时禁用缓存（测试对照专用，生产文档不宣传）；非法取值告警并忽略。"""
+    v = os.environ.get(NO_CACHE_ENV)
+    if v is None or v == "":
+        return False
+    if v == "1":
+        return True
+    print(f"[statlab-mcp] 告警：环境变量 {NO_CACHE_ENV}={v!r} 非法（仅支持 '1' 表示禁用），"
+          "已忽略该设置", file=stream or sys.stderr)
+    return False
+
+
+def _sha256_of_file(path: str) -> str:
+    """流式计算文件 SHA256（不整载内存）。"""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _cheap_key(path: str) -> tuple:
+    """一级廉价键：（normcase 归一化绝对路径, 大小, mtime ns）——查询不读全文件。"""
+    p = Path(path)
+    st = p.stat()
+    return (os.path.normcase(str(p.resolve())), st.st_size, st.st_mtime_ns)
+
+
+def _file_cache_get(path: str) -> pd.DataFrame | None:
+    """两级键查询：廉价键命中后再验 SHA256，防 mtime 被伪造/精度丢失；未命中不读全文件。
+
+    锁内只碰字典，SHA256 在锁外流式计算；比对期间条目被替换/淘汰则按未命中处理。
+    """
+    if _cache_disabled_by_env():
+        return None
+    try:
+        key = _cheap_key(path)
+    except OSError:
+        return None                                   # 文件不可 stat：交给后续正常报错
+    with _cache_lock:
+        entry = _cache_cheap.get(key)
+        if entry is None:
+            return None
+        wanted = entry["sha256"]
+    current = _sha256_of_file(path)
+    with _cache_lock:
+        if _cache_cheap.get(key) is not entry:
+            return None                               # 已被覆盖/淘汰：视为未命中
+        if current != wanted:
+            _cache_cheap.pop(key, None)               # 内容已变：淘汰并按未命中处理
+            return None
+        _cache_cheap.move_to_end(key)                 # LRU 提位
+        return entry["df"]
+
+
+def _file_cache_put(path: str, df: pd.DataFrame) -> None:
+    """插入前按预算先淘汰（LRU 顺序）；单条自身超预算则不缓存；不持久化、不加盘。"""
+    if _cache_disabled_by_env():
+        return
+    est = int(df.memory_usage(deep=True).sum())
+    if est > _CACHE_MAX_MEM:
+        logger.info("文件 %s 数据量 %.0fMB 超缓存预算 %dMB，本次结果不进缓存",
+                    os.path.basename(path), est / 1024 / 1024,
+                    _CACHE_MAX_MEM // 1024 // 1024)
+        return
+    key = _cheap_key(path)
+    digest = _sha256_of_file(path)                    # 锁外计算，缩短临界区
+    with _cache_lock:
+        _cache_cheap.pop(key, None)                   # 同键覆盖为最新引用
+        while len(_cache_cheap) >= _CACHE_MAX_ENTRIES or \
+                sum(e["bytes"] for e in _cache_cheap.values()) + est > _CACHE_MAX_MEM:
+            if not _cache_cheap:
+                break
+            _cache_cheap.popitem(last=False)          # 最老优先淘汰
+        _cache_cheap[key] = {"df": df, "bytes": est, "sha256": digest}
+
+
+def _parse_table(path: str, ext: str) -> pd.DataFrame:
+    """按格式三路分派解析（仅供 read_table；路径/规模防护与白名单均在上游执行）。
+
+    - csv/tsv：utf-8-sig 试读 → UnicodeDecodeError 自动换 gbk → 再失败中文报错；
+    - json：仅 utf-8-sig（GBK 静默乱码比报错更危险，不做回退）；
+    - xlsx：openpyxl 引擎只读第一个 sheet（无编码概念）。
+    """
     try:
         if ext in ("csv", "tsv"):
             sep = "\t" if ext == "tsv" else ","

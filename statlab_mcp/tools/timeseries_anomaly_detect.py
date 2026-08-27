@@ -25,7 +25,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from statsmodels.tsa.seasonal import STL
 
 from statlab_mcp.tools._common import (
     CJK_FONT_OK,
@@ -52,6 +51,7 @@ def _detect_stl(yv: pd.Series, threshold: float) -> list[dict[str, Any]]:
         resid = pd.Series(yv.diff().to_numpy(), index=yv.index)
         note = "季节不可估，已使用一阶差分残差近似"
     else:
+        from statsmodels.tsa.seasonal import STL  # 延迟导入（P1-1）
         stl = STL(yv, period=period, robust=True).fit()
         resid = stl.resid
         note = f"STL 残差（周期 {period}）"

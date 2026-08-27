@@ -23,9 +23,6 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import roc_auc_score
-from sklearn.model_selection import train_test_split
-from statsmodels.api import Logit, add_constant
 
 from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
@@ -82,6 +79,9 @@ def logistic_regression(file_path: str, target: str, features: list[str],
 
         # ---- 分层划分 ----
         try:
+            from sklearn.metrics import roc_auc_score  # 延迟导入（P1-1）
+            from sklearn.model_selection import train_test_split
+            from statsmodels.api import Logit, add_constant
             X_tr, X_te, y_tr, y_te = train_test_split(
                 X, y, test_size=test_size, random_state=random_state, stratify=y)
         except ValueError:

@@ -4,6 +4,29 @@
 
 ## [Unreleased] - v1.1.0（开发中）
 
+### P1-1 性能补课（冷启动延迟导入 + read_table 文件缓存）
+- **延迟导入（固定清单，不扩大）**：`pmdarima` / `sklearn` / `statsmodels` 三库改函数内
+  导入；`_common.py` 模块级保留 numpy / pandas / matplotlib(Agg) / scipy（多数工具公共
+  依赖且成本低于前三者）；其余依赖一律未动。
+  **性能留档**（Windows / Python 3.13.14 / 本仓 venv 实测）：
+  ① 进程 import + 注册 → tools/list：v1.0.3 三次均值 ≈ 2.43s（2.37/2.28/2.65）→
+  本版 ≈ 1.79s（1.72/1.84/1.80），**约 -26%（省 ~0.6s）**，且进程内不再预载三重依赖；
+  ② 已知代价单列：首个重依赖工具 `time_series_forecast` 首调 = statsmodels/pmdarima
+  延迟载入 0.70s + auto_arima 拟合 2.26s ≈ 2.96s（仅首次调用发生，此后命中 sys.modules
+  与缓存路径）。自动化断言：冷启动子进程 list_tools 后三库不得出现在 sys.modules。
+- **read_table 两级键 LRU 文件缓存（规则钉死入 SPEC 第 4 节）**：
+  廉价键 `(normcase 路径, size, mtime_ns)` 未命中不读全文件；命中后 SHA256 验内容
+  （防 mtime 伪造/精度丢失），不一致即淘汰重读；容量 8 条目 + 500MB 总内存预算
+  （memory_usage(deep=True) 口径），超限先淘汰后插入，单条超预算不进缓存；
+  读写全程加锁（重复计算允许）、纯内存不持久化、50MB/200 万行防护先于缓存执行；
+  命中返回共享引用依赖 pandas≥3 CoW 语义（锁定范围即 ≥3.0.5）。
+  测试专用环境变量 `STATLAB_NO_CACHE=1` 完全绕过缓存直读（非行为开关、生产文档不宣传，
+  非法取值 stderr 中文告警并忽略，铁律 9）。
+- 新增 tests/test_perf_cache.py（7 用例）：两工具同文件三方输出逐字节一致、mtime/SHA
+  伪造拦截、LRU 容量淘汰、并发首调、NO_CACHE 非法值告警、懒加载子进程断言、SHA 助手
+  对标准库 hashlib 手算对照。
+- README 测试计数 282 → 289。
+
 ### P0-3 图片返回双轨（ImageContent + `__image__`）
 - **STATLAB_IMAGE_MODE 双轨开关**（进程启动解析一次；非法取值 stderr 中文告警回退默认 `path`）：
   `path`（默认）与 v1.0.3 行为逐字段一致（`__image__` 路径，禁 base64）；

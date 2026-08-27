@@ -21,8 +21,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
 
 from statlab_mcp.tools._common import (
     CJK_FONT_OK,
@@ -62,6 +60,8 @@ def pca_analysis(file_path: str, n_components: int) -> dict:
             raise DataLabError(f"n_components 必须在 1 到 min(样本,特征)={k_max} 之间", EC.PARAM)
 
         raw = raw_df.to_numpy(dtype=float)
+        from sklearn.decomposition import PCA  # 延迟导入（P1-1）
+        from sklearn.preprocessing import StandardScaler
         scaler = StandardScaler().fit(raw)
         Xs = scaler.transform(raw)
         pca = PCA(n_components=n_components, random_state=42).fit(Xs)

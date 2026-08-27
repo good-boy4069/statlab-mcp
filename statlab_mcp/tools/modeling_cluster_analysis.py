@@ -19,14 +19,13 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
-from sklearn.preprocessing import StandardScaler
 
 from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
 
 def _run_kmeans(Xs: np.ndarray, k: int):
+    from sklearn.cluster import KMeans  # 延迟导入（P1-1）
+    from sklearn.metrics import silhouette_score
     km = KMeans(n_clusters=k, random_state=42, n_init="auto").fit(Xs)
     sil = float(silhouette_score(Xs, km.labels_))
     return km, sil
@@ -56,6 +55,7 @@ def cluster_analysis(file_path: str, k: int) -> dict:
                 f"k 必须在 2 到有效样本数-1 之间（剔除缺失后有效样本 N={n_used}）", EC.PARAM)
 
         raw = raw_df.to_numpy(dtype=float)
+        from sklearn.preprocessing import StandardScaler  # 延迟导入（P1-1，与 _run_kmeans 内配合覆盖主函数使用点）
         scaler = StandardScaler().fit(raw)
         Xs = scaler.transform(raw)                     # 标准化（z-score）
         km, sil = _run_kmeans(Xs, k)

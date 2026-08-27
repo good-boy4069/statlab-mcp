@@ -23,9 +23,6 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/05_modeling.md �
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.inspection import permutation_importance
-from sklearn.model_selection import train_test_split
 
 from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
@@ -89,6 +86,9 @@ def feature_importance(file_path: str, target: str, method: str = "permutation",
             raise DataLabError(f"目标类别数 {int(y.nunique())} 超过 {MAX_CLASSES}，请先合并类别", EC.STRUCTURE)
 
         # ---- 划分（0.25 测试集）----
+        from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor  # 延迟导入（P1-1）
+        from sklearn.inspection import permutation_importance
+        from sklearn.model_selection import train_test_split
         X_tr, X_te, y_tr, y_te = train_test_split(
             X, y, test_size=0.25, random_state=random_state,
             stratify=y if is_classification else None)

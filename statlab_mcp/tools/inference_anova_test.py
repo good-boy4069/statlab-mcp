@@ -26,9 +26,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from scipy import stats as sps
-from statsmodels.stats.libqsturng import qsturng
-from statsmodels.stats.multicomp import pairwise_tukeyhsd
-from statsmodels.stats.oneway import anova_oneway
 
 from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
@@ -70,6 +67,7 @@ def _games_howell_pairs(groups: dict[str, np.ndarray], keys: list[str],
             diff = ma - mb
             se = float(np.sqrt(sa2 / na + sb2 / nb))
             df = _welch_df(float(np.sqrt(sa2)), float(np.sqrt(sb2)), na, nb)
+            from statsmodels.stats.libqsturng import qsturng  # 延迟导入（P1-1）
             q = float(qsturng(1 - alpha, k, max(df, 1e-9)))
             crit = q * se / np.sqrt(2.0)
             pairs.append({
@@ -85,6 +83,9 @@ def _games_howell_pairs(groups: dict[str, np.ndarray], keys: list[str],
 
 def anova_test(file_path: str, group_col: str, value_col: str, alpha: float = 0.05) -> dict:
     """多组均值比较（ANOVA / Welch ANOVA + Tukey / Games-Howell 事后）。"""
+    # statsmodels 三个子模块延迟导入（P1-1）：主函数唯一入口、各分支共享此作用域
+    from statsmodels.stats.multicomp import pairwise_tukeyhsd
+    from statsmodels.stats.oneway import anova_oneway
     try:
         if not (0 < alpha < 1):
             raise DataLabError("alpha 必须在 (0,1) 之间", EC.PARAM)

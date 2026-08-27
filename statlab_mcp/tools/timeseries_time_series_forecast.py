@@ -22,7 +22,6 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/06_timeseries.md
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from pmdarima import auto_arima
 
 from statlab_mcp.tools._common import (
     CJK_FONT_OK,
@@ -70,6 +69,7 @@ def time_series_forecast(file_path: str, date_col: str, value_col: str,
                           "seasonal": False, "aic": None}
             method = "CONSTANT"
         else:
+            from pmdarima import auto_arima  # 延迟导入（P1-1：冷启动不加载 pmdarima）
             model = auto_arima(
                 yv, seasonal=seasonal, m=int(period) if seasonal else 1,
                 stepwise=True, suppress_warnings=True, error_action="ignore",

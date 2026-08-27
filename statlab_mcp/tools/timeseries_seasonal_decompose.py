@@ -20,7 +20,6 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/06_timeseries.md
 
 import numpy as np
 from matplotlib import pyplot as plt
-from statsmodels.tsa.seasonal import seasonal_decompose as sm_decompose
 
 from statlab_mcp.tools._common import (
     CJK_FONT_OK,
@@ -79,6 +78,7 @@ def seasonal_decompose(file_path: str, date_col: str, value_col: str,
                 raise DataLabError("乘法分解要求全正值，请改用 additive", EC.STRUCTURE)
 
         # ---- 分解 ----
+        from statsmodels.tsa.seasonal import seasonal_decompose as sm_decompose  # 延迟导入（P1-1）
         result_decomp = sm_decompose(yv, model=model_used, period=period,
                                      extrapolate_trend="freq")
         trend = result_decomp.trend

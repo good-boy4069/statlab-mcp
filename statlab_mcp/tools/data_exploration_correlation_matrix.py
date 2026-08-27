@@ -27,7 +27,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from scipy import stats as sps
-from statsmodels.stats.multitest import multipletests
 
 from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
 
@@ -79,6 +78,7 @@ def correlation_matrix(file_path: str, method: str = "pearson", p_adjust: str = 
         computable = [(i, j, p) for (i, j, _, p, _) in pairs if p is not None]
         if p_adjust != "none" and computable:
             raw = np.array([p for _, _, p in computable])
+            from statsmodels.stats.multitest import multipletests  # 延迟导入（P1-1）
             corrected = multipletests(
                 raw, method="fdr_bh" if p_adjust == "fdr_bh" else "bonferroni")[1]
             adj_map = {(i, j): float(min(pc, 1.0)) for (i, j, _), pc in zip(computable, corrected, strict=False)}

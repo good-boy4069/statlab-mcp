@@ -23,10 +23,6 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/05_modeling.md �
 import pandas as pd
 from matplotlib import pyplot as plt
 from scipy import stats as sps
-from statsmodels.api import OLS
-from statsmodels.api import add_constant as sm_add_constant  # 别名防参数名遮蔽
-from statsmodels.stats.outliers_influence import variance_inflation_factor
-from statsmodels.stats.stattools import durbin_watson
 
 from statlab_mcp.tools._common import (
     CJK_FONT_OK,
@@ -93,6 +89,10 @@ def linear_regression(file_path: str, target: str, features: list[str],
             raise DataLabError("特征均为零方差列，无法建模", EC.STRUCTURE)
 
         # ---- 截距与样本量门槛 ----
+        from statsmodels.api import OLS  # 延迟导入（P1-1）
+        from statsmodels.api import add_constant as sm_add_constant  # 别名防参数名遮蔽
+        from statsmodels.stats.outliers_influence import variance_inflation_factor
+        from statsmodels.stats.stattools import durbin_watson
         Xd = sm_add_constant(X, has_constant="add") if add_constant else X
         n_cols = int(Xd.shape[1])
         n_rows = len(y)
