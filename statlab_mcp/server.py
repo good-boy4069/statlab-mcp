@@ -22,6 +22,15 @@ from statlab_mcp import _imaging, _resources
 from statlab_mcp.tools import (
     _common,  # 导入即执行 seed(42)/Agg/字体/日志配置；EC 错误码常量亦经此引用
 )
+
+# 包版本（P2-A 自安装冒烟要求 initialize 上报与发布一致的版本字符串）
+try:
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as _pkg_version
+
+    _PKG_VERSION = _pkg_version("statlab-mcp")
+except PackageNotFoundError:                          # 源码直跑（未安装）时兜底
+    _PKG_VERSION = "0+dev"
 from statlab_mcp.tools import data_exploration_correlation_matrix as _t4  # 工具 4
 from statlab_mcp.tools import data_exploration_data_type_check as _t2  # 工具 2
 from statlab_mcp.tools import data_exploration_describe_statistics as _t1  # 工具 1
@@ -97,7 +106,7 @@ class StatlabServer(MCPServer):
         return super().add_tool(fn, name=name, **kwargs)
 
 
-mcp = StatlabServer("statlab-mcp")
+mcp = StatlabServer("statlab-mcp", version=_PKG_VERSION)
 
 # 进程启动解析一次（stderr 中文告警后回退默认值由 _resources/_imaging 负责）
 DESC_MODE = _resources.resolve_desc_mode()

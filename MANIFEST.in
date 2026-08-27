@@ -1,0 +1,4 @@
+# v1.1.0 P0-1 打包闭环：docs/ 随包分发（SPEC/clients/design 全部 md）
+# python -m build 的 wheel 由 sdist 重建，故必须确保 sdist 收录这些数据文件
+recursive-include statlab_mcp/docs *.md
+include statlab_mcp/docs/design/*.md

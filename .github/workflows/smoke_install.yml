@@ -51,11 +51,13 @@ jobs:
           from mcp.client.stdio import StdioServerParameters, stdio_client
 
           VERSION = os.environ["SMOKE_VERSION"]
+          # 未激活 venv 时 console script 不在 PATH，用绝对路径
+          EXE = os.environ["SMOKE_EXE"]
 
           def params():
               env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
               env["PYTHONUTF8"] = "1"
-              return StdioServerParameters(command="statlab-mcp", args=[], env=env)
+              return StdioServerParameters(command=EXE, args=[], env=env)
 
           async def main():
               async with stdio_client(params()) as (r, w), ClientSession(r, w) as s:
@@ -93,6 +95,7 @@ jobs:
           asyncio.run(main())
           PY
           SMOKE_VERSION="${{ steps.ver.outputs.version }}" \
+          SMOKE_EXE="$PWD/.smoke-venv/bin/statlab-mcp" \
             ./.smoke-venv/bin/python /tmp/smoke_installed.py
 
       - name: Result
