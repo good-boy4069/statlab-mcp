@@ -42,6 +42,8 @@ _KNOWN_PARAM_BLOCKS = {
         '        校正单元 = 实际可计算的上三角对数（常量列对 r/p=null 不参与校正）\n'
         '        （statsmodels.multipletests）'),
 }
+# v1.1.0 登记的新增工具（基线为 v1.0.3，不含它们；其行为由专属测试组覆盖）
+_NEW_TOOLS_IN_V1_1_0 = {"power_analysis"}
 import re as _re
 
 
@@ -67,12 +69,16 @@ def _fresh_server() -> StatlabServer:
 
 
 def test_full_matches_v1_0_3_baseline_after_doc_path_normalization():
-    """默认 tools/list 对 v1.0.3 留档的机械审计：路径词归一化 + 参数段精确快照。"""
+    """默认 tools/list 对 v1.0.3 留档的机械审计：路径词归一化 + 参数段精确快照 +
+    新增工具显式登记；未登记的任何差异一律红。"""
     assert DESC_MODE == "full", "测试进程默认必须为 full 模式"
     current = _serialize(_fresh_server())
     baseline = FIXTURE.read_bytes()
     cur_map = {d["name"]: d for d in json.loads(current.decode("utf-8"))}
     base_map = {d["name"]: d for d in json.loads(baseline.decode("utf-8"))}
+    for name in _NEW_TOOLS_IN_V1_1_0:
+        assert name in cur_map, f"登记的新工具 {name} 未注册"
+        cur_map.pop(name)              # 新工具移出基线比对（专属测试组覆盖）
     assert len(base_map) == 26 and len(cur_map) == 26
 
     def scrub(desc: str, name: str) -> str:

@@ -4,6 +4,32 @@
 
 ## [Unreleased] - v1.1.0（开发中）
 
+### P1-3 新工具 power_analysis（工具 27：功效分析/样本量计算）
+- **三场景 × 三模式**：scenario = one_sample_t / two_sample_t / two_proportions；
+  模式决策表按任务书钉死——只给效应侧 → solve_n；只给 n → detect_effect；
+  都给 → verify（实际功效验算）；都不给 → E1001 中文报错。
+  引擎：statsmodels.stats.power 的 TTestPower / TTestIndPower / NormalIndPower
+  （选型理由入 docs/design/10_power_analysis.md）；
+  两比例以 p1/p2 入参（∈(0,1) 成对），内部换算 Cohen's h = 2·arcsin√p₁ − 2·arcsin√p₂
+  并随 result/summary 报告，不暴露 h 参数；alternative 双侧/单侧映射 statsmodels 枚举。
+- **上游数值缺陷防护（防幻觉）**：statsmodels 单侧求根在符号×方向不匹配时会静默返回
+  垃圾解并伴随 "Failed to converge" 警告——本工具对单侧求解统一做方向归一
+  （less ≡ (−d, larger)），并在求根中捕获未收敛警告/非有限值，一律拒绝返回 E9999，
+  宁可报错也不输出可疑数字（详见 design10「上游限制与方向归一」节）。
+- 手算/G*Power 对照锚全部可独立复核：
+  two_sample_t d=0.5/α=.05/双侧/power=.80 → 64/组（G*Power 3.1.97 官方手册例
+  总 N=128；实现 63.7656→ceil=64）；one_sample_t 同配置 → N=34；
+  反查互逆 n=64 → |d−0.5|≤0.01；verify 往返 power=0.8015（G*Power 0.8007）；
+  h(0.50,0.80)=−0.6435011 精确常数断言；两比例 n 由正态近似封闭公式
+  2(z_α+z_β)²/h²=37.9086 断言（rel≤1e-5）。共 21 用例（决策表四行全覆盖、
+  边界逐项 E1001、确定性 JSON 逐字节一致等）。
+- 文档与口径同步：新增 design/10_power_analysis.md（含工具索引行、参数/边界/
+  引擎选型）；design/08 决策树补「样本量/功效」路由至工具 27 并同步总数口径；
+  SPEC 第 2 节参数命名表补 scenario/effect_size/p1/p2/power_target 行。
+- 工具计数 26 → 27（README 六处、smoke 相对断言、check_readme_claims
+  EXPECTED_TOOLS=27 与旧计数残留检查、pyproject description）；resources 数 28；
+  README 测试计数 293 → 314。
+
 ### P1-2 correlation_matrix 秩相关钉死 + kendall 官方别名
 - **能力盘点（诚实披露）**：spearman / kendalltau 秩相关在 v1.0.x 已实现
   （逐对 scipy.spearmanr / kendalltau、fdr_bh/bonferroni 校正同代码路径），

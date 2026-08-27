@@ -1,10 +1,10 @@
 # auto_analysis 方案设计（附录 A · 方案 A：client 侧工作流，默认）
 > **工具索引**：本文件为 auto_analysis 方案 A（client 侧工作流）文档，不注册 MCP 工具、无 manual 小节。
-> 「需要多少样本量/功效多大」类问题的路由见 P1-3 实现后的 power_analysis（工具27）。
+> 「需要多少样本量/功效多大」类问题 → power_analysis（工具 27，v1.1.0 起；solve_n/detect_effect/verify 三模式，参数见 statlab_mcp/docs/design/10_power_analysis.md）。
 
 > 定位：编排层（第二层）。**不是 MCP 工具**，而是一份交付物：
 > ①《分析方法选择决策树》②《报告模板》③《示例 agent 提示词》。
-> 由外层 agent（Claude Code / Cursor / DSH 等）按决策树调用第一层 26 个工具、
+> 由外层 agent（Claude Code / Cursor / DSH 等）按决策树调用第一层 27 个工具、
 > 套模板生成报告。本方案不向 server 增加任何代码，零风险。
 
 ## 一、与方法选择决策树（外层 agent 的调用地图）

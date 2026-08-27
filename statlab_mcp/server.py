@@ -34,6 +34,7 @@ from statlab_mcp.tools import inference_effect_size as _t11  # 工具 11
 from statlab_mcp.tools import inference_hypothesis_test as _t6  # 工具 6
 from statlab_mcp.tools import inference_nonparametric_test as _t26  # 工具 26
 from statlab_mcp.tools import inference_normality_test as _t9  # 工具 9
+from statlab_mcp.tools import inference_power_analysis as _t27  # 工具 27（v1.1.0）
 from statlab_mcp.tools import modeling_cluster_analysis as _t14  # 工具 14
 from statlab_mcp.tools import modeling_feature_importance as _t16  # 工具 16
 from statlab_mcp.tools import modeling_linear_regression as _t12  # 工具 12
@@ -52,9 +53,9 @@ from statlab_mcp.tools import visualization_plot_scatter as _t21  # 工具 21
 # 工具模块注册表：随实现推进逐个加入（每工具一行）
 _TOOL_MODULES: list = [_t1, _t2, _t3, _t4, _t5, _t6, _t9, _t10, _t7, _t8, _t11,
                        _t12, _t13, _t14, _t15, _t16, _t17, _t18, _t19, _t20,
-                       _t21, _t22, _t23, _t24, _t25, _t26]
+                       _t21, _t22, _t23, _t24, _t25, _t26, _t27]
 
-# 工具数：26（v1.0.3；v1.1.0 将为 27，随 P1-3 同步更新）
+# 工具数：27（v1.1.0）
 _PARAM_HINT = "参数校验失败：请检查参数类型与取值范围（拒绝 NaN/Inf 等非法数值）"
 # v1.1.0：错误结构新增机器可读 error_code（E1001=参数校验失败，SPEC 第 9 节）
 _PARAM_HINT_JSON = json.dumps({"status": "error", "error_code": _common.EC.PARAM,

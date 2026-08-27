@@ -28,6 +28,9 @@
 | `x_col` / `y_col` | 散点坐标列 | plot_scatter |
 | `target` / `features` | 建模目标列 / 特征列清单 | linear_regression / logistic_regression / feature_importance |
 | `date_col` | 时序日期列 | 时序组 5 工具（值列同用 value_col） |
+| `scenario` / `effect_size` | 分析场景选择 / 标准化效应量 Cohen's d | power_analysis |
+| `p1` / `p2` | 两个总体比例（成对提供） | power_analysis(two_proportions) |
+| `power_target` | 目标功效（求 n 模式） | power_analysis |
 
 设计准则：同一语义永不换名；新工具按表选名；docstring 参数表即权威说明。
 

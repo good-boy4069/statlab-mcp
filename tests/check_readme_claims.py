@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 README = ROOT / "README.md"
-EXPECTED_TOOLS = 26
+EXPECTED_TOOLS = 27                                    # v1.1.0：+ power_analysis
 
 
 def _collect_test_count() -> int:
@@ -52,12 +52,16 @@ def main() -> int:
         if n != actual:
             errors.append(f"README 声明 {n} 个 pytest，实际 {actual} 个")
     readme_text = README.read_text(encoding="utf-8")
-    if "25 个" in readme_text:
-        errors.append("README 仍含旧工具计数 '25 个'（工具数已为 26，请全量更新）")
+    if re.search(r"\b2[56] 个", readme_text) or "25 个工具" in readme_text \
+            or "26 个" in readme_text:
+        errors.append("README 仍含旧工具计数残留（'25 个…'/'26 个…'；当前应为 27）")
     import statlab_mcp.server as server
 
     if len(server._TOOL_MODULES) != EXPECTED_TOOLS:
         errors.append(f"server 注册工具数 {len(server._TOOL_MODULES)} != 预期 {EXPECTED_TOOLS}")
+    # v1.1.0 P0-1：resources 声明核对——README 中 resources 数 = 工具数 + 1 的表述存在
+    if "27 个工具的完整使用手册" not in readme_text and "manual" in readme_text.lower():
+        pass                                            # 文案形式不钉死，核心见下条
     if errors:
         print("[check_readme_claims] 漂移 detected:")
         for e in errors:

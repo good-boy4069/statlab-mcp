@@ -86,6 +86,7 @@ _TOOL_DOC: dict[str, str] = {
     "chi_square_test": "04_inference_batch2.md",
     "effect_size": "04_inference_batch2.md",
     "nonparametric_test": "09_inference_batch3.md",
+    "power_analysis": "10_power_analysis.md",
     "linear_regression": "05_modeling.md",
     "logistic_regression": "05_modeling.md",
     "cluster_analysis": "05_modeling.md",
