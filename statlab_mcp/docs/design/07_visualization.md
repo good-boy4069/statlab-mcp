@@ -1,4 +1,5 @@
 # 可视化组 · 接口设计文档（整组交付）
+> **工具索引**（v1.1.0 起 statlab://tools/<名>/manual 取本文件对应小节，锚点=一级标题行“# 工具 N：<函数名>(”）：plot_scatter（21）｜plot_histogram（22）｜plot_heatmap（23）｜plot_forecast（24）｜plot_box（25）
 
 > 交付物：plot_scatter / plot_histogram / plot_heatmap / plot_forecast / plot_box。
 > 本组为纯作图工具（核心实现）：计算部分仅输出"读图必需的最小统计量"，与探查/推断组

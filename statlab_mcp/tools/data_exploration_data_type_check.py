@@ -1,6 +1,6 @@
 """data_type_check —— 数据探查组 · 列类型识别（工具 2，核心实现）。
 
-docstring = agent 使用说明书，与 docs/design/01_data_exploration_batch1.md 同步维护。
+docstring = agent 使用说明书，与 statlab_mcp/docs/design/01_data_exploration_batch1.md 同步维护。
 
 参数:
     file_path (str): 本地数据文件（csv/tsv/xlsx/json），仅接受本地路径（拒绝 UNC）

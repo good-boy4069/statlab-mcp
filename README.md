@@ -10,7 +10,7 @@
 
 | CI | 文档 | PyPI |
 |---|---|---|
-| [![CI](https://github.com/good-boy4069/statlab-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/good-boy4069/statlab-mcp/actions/workflows/ci.yml) | [贡献指南](CONTRIBUTING.md) · [路线图](ROADMAP.md) · [变更日志](CHANGELOG.md) · [SPEC](docs/SPEC.md) | [![PyPI version](https://img.shields.io/pypi/v/statlab-mcp)](https://pypi.org/project/statlab-mcp/) |
+| [![CI](https://github.com/good-boy4069/statlab-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/good-boy4069/statlab-mcp/actions/workflows/ci.yml) | [贡献指南](CONTRIBUTING.md) · [路线图](ROADMAP.md) · [变更日志](CHANGELOG.md) · [SPEC](statlab_mcp/docs/SPEC.md) | [![PyPI version](https://img.shields.io/pypi/v/statlab-mcp)](https://pypi.org/project/statlab-mcp/) |
 
 ---
 
@@ -53,7 +53,7 @@
 
 1. **确定性至上**：全部随机过程固定 seed（42）；同一文件跑两次结果**逐字节一致**（这是可追责的根基，测试里有专门断言）
 2. **防幻觉设计**：第一层 26 工具零 LLM；结论文案由代码模板拼数字生成；p<0.001 统一显示"<0.001"；每个结论固定附局限声明（相关≠因果、是否校正、样本量）
-3. **口径钉死并可复算**：q1/q3=linear 插值（Excel QUARTILE.INC 同口径）、偏度/峰度=scipy Fisher 口径、std=ddof=1（Excel STDEV.S）——**文档写明，测试对手算公式和标准库独立核对**（**266 个 pytest**，覆盖见 docs/；CI 自动核对本数字，漂移即红）
+3. **口径钉死并可复算**：q1/q3=linear 插值（Excel QUARTILE.INC 同口径）、偏度/峰度=scipy Fisher 口径、std=ddof=1（Excel STDEV.S）——**文档写明，测试对手算公式和标准库独立核对**（**275 个 pytest**，覆盖见 statlab_mcp/docs/；CI 自动核对本数字，漂移即红）
 4. **中文全链路**：中文列名、GBK 编码自动回退、中文字体图表（无字体自动降级英文并注明）、中文错误消息带解决建议
 5. **硬核安全与防护**：仅本地文件、拒绝 UNC/NUL 路径、无网络上传、>50MB/200 万行/500MB 内存三重保护、xlsx zip 炸弹与日期跨度防护、异常输出有上限截断（防止恶意输入卡死）
 6. **统一的调用体验**：所有工具同构（`参数校验 → 中文报错或 result+summary`），agent 和人都能无痛上手；MCP 工具描述 = 完整 docstring（参数表/返回结构/示例），**agent 打开工具列表就是使用说明书**；**参数命名按场景统一**（见 SPEC：column=单值列 / value_col=分组与时序值列 / group_col / x_col·y_col / col_a·col_b / target·features）
@@ -115,7 +115,7 @@ $env:PYTHONUTF8="1"
   }
 }
 ```
-> 三个必须：`-m statlab_mcp.server`（不是 server.py 路径）、`cwd` 指向项目根、`PYTHONUTF8=1`。其他客户端（Cursor/VSCode/Codex/Hermes/DSH）见 `docs/clients.md`。
+> 三个必须：`-m statlab_mcp.server`（不是 server.py 路径）、`cwd` 指向项目根、`PYTHONUTF8=1`。其他客户端（Cursor/VSCode/Codex/Hermes/DSH）见 `statlab_mcp/docs/clients.md`。
 
 **第一次调用**（不接客户端也能直接命令行用）：
 ```powershell
@@ -186,7 +186,7 @@ MCP 客户端里把 command 配成 docker 的用法（如 `docker run --rm -i st
 ```
 - 测试数据由 `tests/make_fixtures.py` 固定 seed 生成并入库；关键数字用独立第三方计算对照（statistics.mean / 手算期望值表），禁止循环论证
 - 验收流程（2026-08-26 起为 AI 代做模式）：pytest 全绿 + 两套数据实跑核对（真实 stdout 全部留档在验收记录）→ commit + PROGRESS 登记；使用者保留随时抽检权
-- 质量基线：240 个 pytest、工具模块覆盖率 82–96%、ruff 全量通过、stdio 协议冒烟 ALL-STDIO-OK
+- 质量基线：全量 pytest 绿（当前 **275 个 pytest**）、工具模块覆盖率 ≥80%（本地实测 ~90% 区间）、ruff 全量通过、stdio 协议冒烟 ALL-STDIO-OK
 
 ## 技术注记（mcp 2.x）
 
@@ -195,16 +195,16 @@ MCP 客户端里把 command 配成 docker 的用法（如 `docker run --rm -i st
 
 ## 文档导航
 
-- `docs/clients.md` —— 各客户端接入配置（Claude Code/Cursor/VSCode/Codex/Hermes/DSH）
-- `docs/SPEC.md` —— 协议与统计口径（返回结构/数值协议/图片协议/行为契约）
-- `docs/design/` —— 每工具的接口设计（参数表/边界行为表/JSON Schema/验证方法，agent 与二次开发者的使用说明书）
-- `docs/example_report.md` —— auto_analysis 方案 A 的示例报告（防幻觉铁律示范）
+- `statlab_mcp/docs/clients.md` —— 各客户端接入配置（Claude Code/Cursor/VSCode/Codex/Hermes/DSH）
+- `statlab_mcp/docs/SPEC.md` —— 协议与统计口径（返回结构/数值协议/图片协议/行为契约）
+- `statlab_mcp/docs/design/` —— 每工具的接口设计（参数表/边界行为表/JSON Schema/验证方法，agent 与二次开发者的使用说明书）
+- `statlab_mcp/docs/example_report.md` —— auto_analysis 方案 A 的示例报告（防幻觉铁律示范）
 
 ## 目录结构
 
 ```
 statlab_mcp/          # server.py（只注册工具+to_jsonable）+ tools/<组>_<工具>.py
-docs/                  # SPEC.md（协议与统计口径）、design/（各工具接口设计文档）、clients.md（接入配置）
+statlab_mcp/docs/                  # SPEC.md（协议与统计口径）、design/（各工具接口设计文档）、clients.md（接入配置）
 samples/               # 入库样例数据 + 生成脚本
 tests/                 # pytest + fixtures 生成脚本
 data/                  # 使用者亲手造的测试数据（gitignore，不入库）

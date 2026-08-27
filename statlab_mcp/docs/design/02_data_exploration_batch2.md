@@ -1,4 +1,5 @@
 # 数据探查组 · 接口设计文档（批 2）
+> **工具索引**（v1.1.0 起 statlab://tools/<名>/manual 取本文件对应小节，锚点=一级标题行“# 工具 N：<函数名>(”）：correlation_matrix（工具4）｜outlier_detect（工具5）
 
 > 交付物：correlation_matrix / outlier_detect 两个工具的完整接口定义。
 > 涉及：多重比较校正（p_adjust）、图片输出协议（附录 D）、IQR 规则。

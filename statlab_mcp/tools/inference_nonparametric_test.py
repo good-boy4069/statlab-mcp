@@ -1,6 +1,6 @@
 """nonparametric_test —— 统计推断组 · 非参数检验（工具 26，核心实现）。
 
-docstring = agent 使用说明书，与 docs/design/09_inference_batch3.md 同步维护。
+docstring = agent 使用说明书，与 statlab_mcp/docs/design/09_inference_batch3.md 同步维护。
 
 参数:
     file_path (str): 本地数据文件（csv/tsv/xlsx/json）

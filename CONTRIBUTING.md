@@ -31,13 +31,13 @@ CI 与本地同口径（Windows/Ubuntu × 3.12/3.13：pytest + ruff + 覆盖率 
 - 数值断言用 `pytest.approx` + 显式 `abs=` 容差；确定性断言（两次运行 JSON 逐字节一致）必须覆盖随机过程工具。
 - JSON 安全断言：`json.dumps(r, allow_nan=False)` 必须在每个工具测试中出现。
 - 边界用例至少覆盖：空文件/单行/常量列/中文列名/重复列名/GBK/错误路径；临时文件一律用 `tmp_path` fixture，禁止写仓库目录。
-- 新工具必须同步 4 件套：实现 + 测试 + `docs/design/NN_*.md`（参数表/口径/边界/验证方法）+ README 工具表与计数。
+- 新工具必须同步 4 件套：实现 + 测试 + `statlab_mcp/docs/design/NN_*.md`（参数表/口径/边界/验证方法）+ README 工具表与计数。
 
 ## 代码规范
 
 - 统一协议：成功 `{status:"ok", result, summary}`；失败 `{status:"error", message}`（中文，error 禁带 result）；含图工具顶层 `__image__`（绝对路径，禁 base64）。
 - docstring = agent 使用说明书（参数表/口径/示例），且与 design 文档同步——**两份都改**。
-- 参数命名查 `docs/SPEC.md` 第 2 节约定表；公共逻辑一律复用 `tools/_common.py`，禁止各工具自造轮子。
+- 参数命名查 `statlab_mcp/docs/SPEC.md` 第 2 节约定表；公共逻辑一律复用 `tools/_common.py`，禁止各工具自造轮子。
 - 浮点参数必须拒绝 NaN/Inf（参考 `inference_hypothesis_test.py` 的 mu0 校验）；确定性：全局 seed 42，禁 `n_jobs=-1`。
 - ruff 配置见 pyproject（line-length=120），本地 `ruff check` 必须零告警。
 

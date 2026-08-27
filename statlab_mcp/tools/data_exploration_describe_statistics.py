@@ -1,6 +1,6 @@
 """describe_statistics —— 数据探查组 · 描述性统计（工具 1，核心实现）。
 
-docstring = agent 使用说明书，与 docs/design/01_data_exploration_batch1.md 同步维护。
+docstring = agent 使用说明书，与 statlab_mcp/docs/design/01_data_exploration_batch1.md 同步维护。
 
 参数:
     file_path (str): 本地数据文件（csv/tsv/xlsx/json），仅接受本地路径（拒绝 UNC）

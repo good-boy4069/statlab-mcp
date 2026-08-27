@@ -1,6 +1,6 @@
 """anomaly_detect —— 时序组 · 时序异常检测（工具 20，简化实现）。
 
-docstring = agent 使用说明书，与 docs/design/06_timeseries.md 同步维护。
+docstring = agent 使用说明书，与 statlab_mcp/docs/design/06_timeseries.md 同步维护。
 
 参数:
     file_path (str): 本地数据文件（csv/tsv/xlsx/json）
@@ -8,7 +8,7 @@ docstring = agent 使用说明书，与 docs/design/06_timeseries.md 同步维�
     method (str, "stl"): stl / iqr / rolling_zscore
         stl: statsmodels STL(robust=True) 残差 |resid| > threshold*残差标准差
              （std(ddof=1) 判据；MAD_std=1.4826*median|resid-median| 对"主体集中+
-             稀疏厚尾"残差低估尺度，实现期修订弃用，见 docs/design/06）
+             稀疏厚尾"残差低估尺度，实现期修订弃用，见 statlab_mcp/docs/design/06）
         iqr: 一阶差分上 IQR 规则（Q1-1.5IQR / Q3+1.5IQR，同探查组口径），
              threshold 参数不参与 iqr 判据，索引映射回原行
         rolling_zscore: 窗口 7 滚动 mean/std（min_periods=3），|z| > threshold

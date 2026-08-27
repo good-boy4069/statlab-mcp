@@ -37,6 +37,20 @@ async def main() -> None:
             names = sorted(t.name for t in tools.tools)
             print(f"[SMOKE] tools({len(names)}): {names}")
 
+            # ---- v1.1.0 P0-1：resources 能力冒烟（数量=工具数+1，spec/manual 可读）----
+            # 客户端侧类型：ListResourcesResult.resources / ReadResourceResult.contents[]
+            res_list = (await session.list_resources()).resources
+            assert len(res_list) == len(names) + 1, \
+                f"resources 数 {len(res_list)} != 工具数+1"
+            spec_read = await session.read_resource("statlab://spec")
+            assert spec_read.contents[0].text.strip(), "statlab://spec 内容为空"
+            one_uri = sorted(
+                str(r.uri) for r in res_list if "tools/" in str(r.uri))[0]
+            manual_read = await session.read_resource(one_uri)
+            tool_in_uri = one_uri.split("/")[-2]
+            assert tool_in_uri in manual_read.contents[0].text.strip()
+            print(f"[SMOKE] resources({len(res_list)}): spec ok, {one_uri} ok")
+
             calls = [
                 ("describe_statistics", str(ROOT / "samples" / "clean.csv")),
                 ("data_type_check", str(ROOT / "samples" / "dirty.csv")),

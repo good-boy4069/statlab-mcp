@@ -77,7 +77,7 @@ class DataLabError(ValueError):
 
 
 class EC:
-    """错误码表（与 docs/SPEC.md 第 9 节一致，check_readme_claims 扩展项核对两边一致）。
+    """错误码表（与 statlab_mcp/docs/SPEC.md 第 9 节一致，check_readme_claims 扩展项核对两边一致）。
 
     码格式：E + 四位数字。语义详见 SPEC；此处仅集中定义，杜绝工具层散落字符串。
     """

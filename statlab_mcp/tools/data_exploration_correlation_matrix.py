@@ -1,6 +1,6 @@
 """correlation_matrix —— 数据探查组 · 相关矩阵（工具 4，核心实现）。
 
-docstring = agent 使用说明书，与 docs/design/02_data_exploration_batch2.md 同步维护。
+docstring = agent 使用说明书，与 statlab_mcp/docs/design/02_data_exploration_batch2.md 同步维护。
 
 参数:
     file_path (str): 本地数据文件（csv/tsv/xlsx/json），仅接受本地路径

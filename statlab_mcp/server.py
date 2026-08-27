@@ -18,6 +18,7 @@ from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
 from mcp_types import CallToolResult, TextContent  # mcp 2.x：类型定义在 mcp_types 包
 from pydantic import ValidationError
 
+from statlab_mcp import _resources
 from statlab_mcp.tools import (
     _common,  # 导入即执行 seed(42)/Agg/字体/日志配置；EC 错误码常量亦经此引用
 )
@@ -61,11 +62,12 @@ _PARAM_HINT_JSON = json.dumps({"status": "error", "error_code": _common.EC.PARAM
 
 
 class StatlabServer(MCPServer):
-    """协议一致性子类：pydantic 参数校验失败转统一中文错误 JSON（Qoder 锐评 #1）。
+    """协议一致性子类（v1.1.0 起两职责）：
 
-    SDK 默认把 ToolError(ValidationError) 以英文文本 is_error 返回，绕过本项目
-    "{status:error, message:中文}" 统一协议；此处仅转换参数校验失败场景，
-    其余 ToolError 原样透传（保持 SDK 行为）。
+    1. pydantic 参数校验失败转统一中文错误 JSON（Qoder 锐评 #1）——SDK 默认以英文
+       is_error 文本返回，此处仅转换参数校验失败场景并注入 error_code=E1001；
+    2. STATLAB_DESC_MODE=slim 时 tools/list 的 description 切换为参数摘要
+       （P0-1 双轨开关，进程启动时解析一次；默认 full 与 v1.0.3 逐字节一致）。
     """
 
     async def call_tool(self, name, arguments, context=None):
@@ -82,18 +84,33 @@ class StatlabServer(MCPServer):
                     is_error=True)
             raise
 
+    def add_tool(self, fn, name=None, **kwargs):
+        if DESC_MODE == "slim" and kwargs.get("description"):
+            kwargs["description"] = _resources.make_slim_description(
+                fn, kwargs["description"])
+        return super().add_tool(fn, name=name, **kwargs)
+
 
 mcp = StatlabServer("statlab-mcp")
+
+# 进程启动解析一次（stderr 中文告警后回退 full 由 _resources.resolve_desc_mode 负责）
+DESC_MODE = _resources.resolve_desc_mode()
+
+
+def bootstrap(mcp_server: MCPServer) -> None:
+    """注册全部工具与静态 resources（27 = 工具数 + statlab://spec，随 P1-3 变 28）。"""
+    for mod in _TOOL_MODULES:
+        mod.register(mcp_server)
+    _resources.register_resources(mcp_server, _TOOL_MODULES)
 
 
 def _register_all() -> None:
     """调用各工具模块的 register(mcp) 完成工具注册。"""
-    for mod in _TOOL_MODULES:
-        mod.register(mcp)
+    bootstrap(mcp)
 
 
 # 模块级执行（外部评审 L9）：无论 `python -m statlab_mcp.server` 直跑，还是被 import
-# 的启动方式（第三方托管器 import 本模块后调 run），25 个工具都会注册。
+# 的启动方式（第三方托管器 import 本模块后调 run），全部工具与 resources 都会注册。
 _register_all()
 
 def main() -> None:

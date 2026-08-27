@@ -4,6 +4,28 @@
 
 ## [Unreleased] - v1.1.0（开发中）
 
+### P0-1 MCP resources 能力 + description 双轨模式（默认零变化）
+- **resources 静态枚举**（不用 resource templates）：`statlab://spec` = SPEC.md 全文；
+  每工具 `statlab://tools/<工具名>/manual` = 模块 docstring 全文 + 设计文档对应小节全文
+  （锚点 = 各设计文档顶部新增「工具索引」行，映射表实现于 `statlab_mcp/_resources.py`）。
+  数量恒 = 工具数 + 1（当前 27）；契约入 SPEC 第 10 节。
+- **打包闭环**：docs/ 整体迁入包内 `statlab_mcp/docs/`（git mv 保留历史），setuptools
+  package-data 随 wheel/sdist 分发，运行期经 `importlib.resources` 定位，
+  PyPI 安装 / 源码仓 / 任意 cwd 同一口径。全仓文档引用同步更新；
+  **tools/list 已知差异披露**：各工具 description 中"与 docs/design/…"同步维护字样
+  随迁移变为"statlab_mcp/docs/design/…"，此为默认模式相对 v1.0.3 的唯一字符序列差异
+  （其余逐字节一致，由 tests/fixtures/tools_list_full_v1_0_3.json 留档基线 +
+  归一化对比测试机械证明）。
+- **STATLAB_DESC_MODE 双轨开关**（进程启动解析一次）：`full`（默认）与上述 v1.0.3
+  行为一致；`slim` = 一句话功能摘要 + 每参数名称/类型/必填性/取值约束原文。
+  slim 实测（stdio 子进程 tools/list 全量 JSON 口径）：28645B → 13220B，削减 53.8%
+  （≥50% 达标）；函数级口径 26995B → 12083B（55.2%）。自动化断言：每工具全部参数名
+  必须出现在 slim 描述中（防瘦身过度），取值约束文本抽查原文保留。
+  开关只影响 tools/list 的 description，不影响任何工具行为、测试、docstring 与 manual；
+  非法取值启动时 stderr 中文告警并回退 full（铁律 9）。
+- smoke_stdio.py 增补 resources 冒烟（数量=工具数+1、spec/manual 可读非空含工具名）。
+- 新增 tests/test_resources_desc.py（9 用例）；README 测试计数 266 → 275。
+
 ### P0-2 机器可读错误码（向后兼容扩展）
 - **失败结构新增 `error_code` 字段**：`{status:"error", error_code:"<CODE>", message:"<中文>"}`；
   既有 `message` 中文文案逐字不变。码格式 `E`+四位数字，码表钉入 SPEC 第 9 节

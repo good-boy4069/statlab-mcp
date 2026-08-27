@@ -1,6 +1,6 @@
 """normality_test —— 统计推断组 · 正态性检验（工具 9，核心实现）。
 
-docstring = agent 使用说明书，与 docs/design/03_inference_batch1.md 同步维护。
+docstring = agent 使用说明书，与 statlab_mcp/docs/design/03_inference_batch1.md 同步维护。
 
 参数:
     file_path (str): 本地数据文件（csv/tsv/xlsx/json）

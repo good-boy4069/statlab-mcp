@@ -1,4 +1,5 @@
 # 统计推断组 · 接口设计文档（批 3：非参数检验）
+> **工具索引**（v1.1.0 起 statlab://tools/<名>/manual 取本文件对应小节，锚点=一级标题行“# 工具 N：<函数名>(”）：nonparametric_test（工具26）
 
 > 交付物：nonparametric_test（工具 26）完整接口定义。
 > 背景：hypothesis_test / normality_test 长期以"建议 Wilcoxon/Mann-Whitney（未实现）"

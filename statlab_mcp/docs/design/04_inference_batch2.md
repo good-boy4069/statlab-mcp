@@ -1,4 +1,5 @@
 # 统计推断组 · 接口设计文档（批 2）
+> **工具索引**（v1.1.0 起 statlab://tools/<名>/manual 取本文件对应小节，锚点=一级标题行“# 工具 N：<函数名>(”）：anova_test（工具7）｜chi_square_test（工具8）｜effect_size（工具11）
 
 > 交付物：anova_test / chi_square_test / effect_size 三个工具。
 > effect_size 为【简化】工具（规格 11）：只做"能出真实数字的最小版本"，已注明略过内容。

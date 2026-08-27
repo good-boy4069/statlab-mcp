@@ -1,8 +1,9 @@
 # 数据探查组 · 接口设计文档（批 1）
+> **工具索引**（v1.1.0 起 statlab://tools/<名>/manual 取本文件对应小节，锚点=一级标题行“# 工具 N：<函数名>(”）：describe_statistics（工具1）｜data_type_check（工具2）｜missing_report（工具3）
 
 > 交付物：describe_statistics / data_type_check / missing_report 三个工具的完整接口定义。
 > 批 2（correlation_matrix / outlier_detect）含 p 值校正与图协议，另行交付。
-> 统计定义已由红队裁决钉死（docs/SPEC.md 增补 1-2）：分位数=linear 插值（Excel QUARTILE.INC 等价）；
+> 统计定义已由红队裁决钉死（statlab_mcp/docs/SPEC.md 增补 1-2）：分位数=linear 插值（Excel QUARTILE.INC 等价）；
 > 偏度=scipy.stats.skew(x, bias=False)；峰度=scipy.stats.kurtosis(x, fisher=True, bias=False)；std=ddof=1（Excel STDEV.S）。
 
 ## 全局约定（三工具共用）

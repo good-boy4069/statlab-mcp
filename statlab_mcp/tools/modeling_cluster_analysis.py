@@ -1,6 +1,6 @@
 """cluster_analysis —— 建模组 · KMeans 聚类（工具 14，核心实现）。
 
-docstring = agent 使用说明书，与 docs/design/05_modeling.md 同步维护。
+docstring = agent 使用说明书，与 statlab_mcp/docs/design/05_modeling.md 同步维护。
 
 参数:
     file_path (str): 本地数据文件（csv/tsv/xlsx/json）

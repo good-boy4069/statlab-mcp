@@ -1,4 +1,5 @@
 # 建模组 · 接口设计文档（整组交付）
+> **工具索引**（v1.1.0 起 statlab://tools/<名>/manual 取本文件对应小节，锚点=一级标题行“# 工具 N：<函数名>(”）：linear_regression（12）｜logistic_regression（13）｜cluster_analysis（14）｜pca_analysis（15）｜feature_importance（16）
 
 > 交付物：linear_regression / logistic_regression / cluster_analysis / pca_analysis / feature_importance。
 > 全局约定沿用前两组：error 无 result；数值原生类型；NaN→null；summary 代码模板；确定性可复现

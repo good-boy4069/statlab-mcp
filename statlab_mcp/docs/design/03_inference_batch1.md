@@ -1,4 +1,5 @@
 # 统计推断组 · 接口设计文档（批 1）
+> **工具索引**（v1.1.0 起 statlab://tools/<名>/manual 取本文件对应小节，锚点=一级标题行“# 工具 N：<函数名>(”）：hypothesis_test（工具6）｜normality_test（工具9）｜confidence_interval（工具10）
 
 > 交付物：hypothesis_test / normality_test / confidence_interval 三个工具的完整接口定义。
 > 批 2（anova_test / chi_square_test / effect_size）另行交付。

@@ -17,7 +17,7 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
 ]
 
-# 依赖双轨（v1.0.3 起，见 docs/SPEC.md 第 7 节）：
+# 依赖双轨（v1.0.3 起，见 statlab_mcp/docs/SPEC.md 第 7 节）：
 # - dependencies 为发布用范围约束（下限 = 当前锁定版本，pip 安装时解析范围内最新版）
 # - requirements.txt 为开发/CI 锁定权威（可复现性承诺），两者不冲突
 dependencies = [
@@ -39,6 +39,14 @@ statlab-mcp = "statlab_mcp.server:main"
 
 [tool.setuptools.packages.find]
 include = ["statlab_mcp*"]
+
+# v1.1.0 P0-1 打包闭环：statlab_mcp/docs/（SPEC/clients/design 文档）随包分发，
+# 运行期 statlab_mcp._resources 经 importlib.resources 定位（不依赖 cwd）
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+statlab_mcp = ["statlab_mcp/docs/*.md", "statlab_mcp/docs/design/*.md"]
 
 [tool.ruff]
 line-length = 120

@@ -1,7 +1,7 @@
 # statlab-mcp 协议与统计口径（SPEC）
 
 > 面向使用者与 agent 的唯一协议文档：统一返回结构、统计口径定义、图片协议、运行时行为契约。
-> 使用与接入见 README 与 docs/clients.md；每个工具的完整参数表/边界表/JSON Schema 见 docs/design/。
+> 使用与接入见 README 与 statlab_mcp/docs/clients.md；每个工具的完整参数表/边界表/JSON Schema 见 statlab_mcp/docs/design/。
 > （内部开发记录——验收台账、开发流程增补等——为本地维护，不入库。）
 
 ---
@@ -57,7 +57,7 @@
 ## 6. auto_analysis 协议（编排层）
 
 用户丢 CSV + 自然语言问题，自动产出 Markdown 报告。二选一（默认 A，禁止混用）：
-- 方案 A（client 侧工作流，推荐）：它不是 MCP 工具，而是一份交付物文档《分析方法选择决策树 + 报告模板》+ 示例 agent 提示词；由外层 agent 按决策树调用第一层工具、套模板生成报告（见 docs/design/08_auto_analysis.md）。
+- 方案 A（client 侧工作流，推荐）：它不是 MCP 工具，而是一份交付物文档《分析方法选择决策树 + 报告模板》+ 示例 agent 提示词；由外层 agent 按决策树调用第一层工具、套模板生成报告（见 statlab_mcp/docs/design/08_auto_analysis.md）。
 - 方案 B（server 侧规则工具）：若实现为 MCP 工具，必须是 100% 确定性代码（规则决策树，可测试），输出结构化 {chosen_methods, tool_calls_plan, report_template}，不含任何 LLM 调用；"LLM 解释"只发生在 client 拿结果之后。
 
 无论 A/B：报告固定章节（数据概览/方法选择理由/结果/结论/局限）；防幻觉铁律——报告中每个数字必须来自第一层工具返回的 JSON 并标注来源工具名，任何无来源数字禁止出现；想用的方法未实现时必须如实告知，禁止 LLM 心算替代；结论必须附固定局限声明（样本量、p 值是否经多重比较校正、相关≠因果、未做外部验证）。
@@ -101,3 +101,10 @@ requirements.min）。
 | E9999 | 计算失败兜底 | 拟合不收敛/完全共线等运行期计算异常、未知解析异常兜底 |
 
 实现约定：码常量集中于 `statlab_mcp/tools/_common.py` 的 `EC` 类；业务错误以 `DataLabError(message, code)` 抛出、工具层统一 `err(e.code, str(e))` 返回；pydantic 层由 StatlabServer 转换通路注入 E1001。`tests/check_readme_claims.py` 扩展项静态核对"SPEC 本表 ↔ EC 类常量集"双向一致（见 P2-B）。
+## 10. MCP resources 与 description 双轨（v1.1.0 新增）
+
+- resources 静态枚举（不用 resource templates），数量恒 = 注册工具数 + 1：
+  `statlab://spec` = 本 SPEC 全文；`statlab://tools/<工具名>/manual` = 该工具模块 docstring 全文 + 其设计文档（docs/design/NN_*.md）对应小节全文。manual 内容不受任何开关影响，永远是完整说明书。
+- 文档随包分发：docs/ 位于包内 statlab_mcp/docs/，运行期一律经 importlib.resources 定位，PyPI 安装、源码仓、任意 cwd 口径一致；工具→设计文档映射见 docs/design 各文档顶部「工具索引」行。
+- STATLAB_DESC_MODE 环境开关（进程启动时读取一次）：full（默认）= tools/list 的 description 为 docstring 全文，与 v1.0.3 一致；slim = 仅一句话功能摘要 + 每参数的名称/类型/必填性/取值约束原文（验收：总字节较 full 降 ≥50%，且任何参数名不得丢失）。开关只影响 tools/list 的 description，不影响工具行为、测试、docstring、manual；非法取值启动时 stderr 中文告警并回退 full。
+- 客户端建议：不支持/不读 resources 的客户端保持默认 full；管理端可按需切换 slim 降低上下文占用，传参依据缺失时由外层 agent 读对应 manual 补齐。

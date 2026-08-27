@@ -1,4 +1,5 @@
 # 时序组 · 接口设计文档（整组交付）
+> **工具索引**（v1.1.0 起 statlab://tools/<名>/manual 取本文件对应小节，锚点=一级标题行“# 工具 N：<函数名>(”）：time_series_forecast（17）｜seasonal_decompose（18）｜trend_analysis（19）｜anomaly_detect（20）
 
 > 交付物：time_series_forecast / seasonal_decompose / trend_analysis / anomaly_detect。
 > 规格 17-20 均为【简化】实现：只做"能出真实数字的最小可靠版本"，每个工具注明略过内容。
