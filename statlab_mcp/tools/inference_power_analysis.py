@@ -44,6 +44,7 @@ _TailNote = {"two_sided": "双侧", "less": "单侧（检出较低方向）",
 
 
 def _is_number(v: Any) -> bool:
+    """数值判定：排除 bool（bool 是 int 子类，须显式剔除防语义混淆）。"""
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 

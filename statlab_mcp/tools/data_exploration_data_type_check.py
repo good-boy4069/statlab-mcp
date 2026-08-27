@@ -46,10 +46,12 @@ _NUM_OK_RATIO = 0.95
 
 
 def _fmt_example(v: Any) -> str:
+    """示例值展示：截断到 20 字符，防长值撑爆输出。"""
     return str(v)[:20]
 
 
 def _judge_numeric_col(s: pd.Series) -> dict[str, Any]:
+    """数值列类型裁决：全缺失判 missing，其余按有效值与脏值计数归入 numeric/dirty。"""
     valid = s.dropna()
     n = int(valid.size)
     if n == 0:
@@ -71,6 +73,7 @@ def _judge_numeric_col(s: pd.Series) -> dict[str, Any]:
 
 
 def _judge_object_col(s: pd.Series, n_rows: int) -> dict[str, Any]:
+    """文本列类型裁决：尝试数值化，按可转率区分 numeric/混合/文本并给出 note。"""
     valid = s.dropna()
     n = int(valid.size)
     n_missing = n_rows - n

@@ -38,6 +38,7 @@ LOW_EXPECTED_RATIO = 0.2
 
 
 def _fmt_p(p: float) -> str:
+    """p 值格式化：p<0.001 统一显示 '<0.001'（防幻觉口径），其余保留 4 位小数。"""
     return "<0.001" if p < 0.001 else f"{p:.4f}"
 
 

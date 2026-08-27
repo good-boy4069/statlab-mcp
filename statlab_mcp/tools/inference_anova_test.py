@@ -39,16 +39,19 @@ MAX_GROUPS = 20
 
 
 def _fmt_p(p: float) -> str:
+    """p 值格式化：p<0.001 统一显示 '<0.001'（防幻觉口径），其余保留 4 位小数。"""
     return "<0.001" if p < 0.001 else f"{p:.4f}"
 
 
 def _welch_df(s1: float, s2: float, n1: int, n2: int) -> float:
+    """Welch-Satterthwaite 自由度近似（方差不等时的校正自由度）。"""
     a, b = s1 ** 2 / n1, s2 ** 2 / n2
     denom = a ** 2 / (n1 - 1) + b ** 2 / (n2 - 1)
     return float((a + b) ** 2 / denom) if denom > 0 else float("nan")
 
 
 def _shapiro_one(x: np.ndarray) -> dict[str, Any]:
+    """单列 Shapiro 正态性：n 超出 3~5000 适用范围时跳过并注明（不放大数据）。"""
     n = int(x.size)
     if not (SHAPIRO_MIN_N <= n <= SHAPIRO_MAX_N):
         return {"statistic": None, "p_value": None, "normal": None,

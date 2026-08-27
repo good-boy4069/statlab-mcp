@@ -420,6 +420,7 @@ def normalize_inline(inline_data: Any) -> pd.DataFrame:
 
     实现纪律：单遍扫描在构造 DataFrame **之前**完成全部拒绝判定（防大对象构造后拒）。
     """
+    # ---- 形态识别：split dict（header+rows）或 records list（键并集为列序）----
     header: list[str] | None = None
     rows_raw: list[list[Any]] = []
     records: list[dict[str, Any]] | None = None
@@ -464,6 +465,7 @@ def normalize_inline(inline_data: Any) -> pd.DataFrame:
             "inline_data 仅支持 records 数组或 "
             "{'header': [...], 'rows': [[...], ...]} 对象形态", EC.PARAM)
 
+    # ---- 规模上限：行/列/单元格三查（payload 总量与单格长度在逐格校验中）----
     n_cols = len(header) if header is not None else 0
     n_rows = len(rows_raw) if records is None else len(records)
     if n_rows == 0 or n_cols == 0:
@@ -480,6 +482,7 @@ def normalize_inline(inline_data: Any) -> pd.DataFrame:
             f"inline 数据共 {n_rows * n_cols} 个单元格超过 {_INLINE_MAX_CELLS} 上限；"
             "请落盘为文件后改用 file_path", EC.SCALE)
 
+    # ---- 逐格值域校验 + payload 累计（单遍；不通过即抛，绝不清洗放行）----
     payload_total = 0
     cells_out: list[list[Any]] = []
     if records is None:                      # split 形态
@@ -509,6 +512,7 @@ def normalize_inline(inline_data: Any) -> pd.DataFrame:
             f"inline 数据序列化总量约 {payload_total // 1024 // 1024}MB 超过 16MB 上限；"
             "请落盘为文件后改用 file_path", EC.SCALE)
 
+    # ---- 构造 DataFrame + dtype 归一（int64/float64/object 三态收口）----
     df = pd.DataFrame(cells_out, columns=header or [], dtype=object)
     df = _normalize_dtype(df)
     if df.empty:

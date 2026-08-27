@@ -70,6 +70,7 @@ def _describe_numeric_col(s: pd.Series, n_rows: int) -> dict[str, Any]:
 
 
 def _fmt(v: Any, nd: int = 2) -> str:
+    """数值展示：None 显示「无」，其余按 nd 位小数格式化。"""
     return "无" if v is None else f"{v:.{nd}f}"
 
 

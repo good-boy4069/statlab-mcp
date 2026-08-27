@@ -183,6 +183,7 @@ def analysis_plan(question: str, file_path: str | None = None,
 
         def _add(tool: str, params: dict[str, Any], depends_on: list[int] | None = None,
                  needs: str | None = None) -> None:
+            """追加计划步骤（step 自增；needs 非空时写入占位说明，不编造列名）。"""
             nonlocal step
             step += 1
             entry = {"step": step, "tool": tool, "params": dict(params),

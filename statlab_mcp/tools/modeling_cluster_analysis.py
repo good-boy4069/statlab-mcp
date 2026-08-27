@@ -29,6 +29,7 @@ from statlab_mcp.tools._common import EC, DataLabError, err, ok, require_non_non
 
 
 def _run_kmeans(Xs: np.ndarray, k: int | None = None):
+    """KMeans 单次拟合（seed=42 确定性）+ 轮廓系数，供 k±1 对照复用。"""
     from sklearn.cluster import KMeans  # 延迟导入（P1-1）
     from sklearn.metrics import silhouette_score
     km = KMeans(n_clusters=k, random_state=42, n_init="auto").fit(Xs)

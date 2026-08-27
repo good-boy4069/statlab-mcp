@@ -51,6 +51,7 @@ MAX_ANOMALIES = 100        # 输出条数上限（红队 B B2：防超大 JSON�
 
 
 def _detect_stl(yv: pd.Series, threshold: float) -> list[dict[str, Any]]:
+    """STL 残差法异常检测：季节可估时用 STL 残差，不可估退级一阶差分并注明。"""
     period = _estimate_period(yv)
     if period is None:
         # 无周期：一阶差分残差近似（注明退级）
@@ -82,6 +83,7 @@ def _detect_stl(yv: pd.Series, threshold: float) -> list[dict[str, Any]]:
 
 
 def _detect_iqr(yv: pd.Series, threshold: float) -> list[dict[str, Any]]:
+    """差分 IQR 法异常检测（固定 1.5 倍判据，探查组口径）。"""
     # threshold 参数保留仅为三法统一签名：IQR 判据固定 1.5 倍（探查组口径），不使用 threshold
     diff = yv.diff().dropna()
     q1, q3 = float(diff.quantile(0.25)), float(diff.quantile(0.75))
@@ -100,6 +102,7 @@ def _detect_iqr(yv: pd.Series, threshold: float) -> list[dict[str, Any]]:
 
 
 def _detect_rolling_zscore(yv: pd.Series, threshold: float) -> list[dict[str, Any]]:
+    """滚动 z-score 法异常检测：窗口均值/标准差（ddof=1）对差分序列标准化。"""
     mu = yv.rolling(_WINDOW, min_periods=3).mean()
     sd = yv.rolling(_WINDOW, min_periods=3).std(ddof=1)
     z = (yv - mu) / sd.replace(0, np.nan)

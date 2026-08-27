@@ -67,5 +67,6 @@ def plot_histogram(file_path: str | None = None, column: str | None = None,
 
 
 def register(mcp) -> None:
+    """注册到 MCPServer（mcp 2.x，工具名 = 函数名）。"""
     mcp.add_tool(plot_histogram, description=__import__("sys").modules[__name__].__doc__)
 

@@ -85,6 +85,7 @@ class StatlabServer(MCPServer):
     """
 
     async def call_tool(self, name, arguments, context=None):
+        """工具调用入口：pydantic 校验失败转 E1001 中文 JSON；图片 content 模式改写带图结果。"""
         try:
             result = await super().call_tool(name, arguments, context)
         except ToolError as e:
@@ -104,6 +105,7 @@ class StatlabServer(MCPServer):
         return result
 
     def add_tool(self, fn, name=None, **kwargs):
+        """注册工具：slim 描述模式下把 docstring 瘦身为参数摘要（full 模式逐字节透传）。"""
         if DESC_MODE == "slim" and kwargs.get("description"):
             kwargs["description"] = _resources.make_slim_description(
                 fn, kwargs["description"])

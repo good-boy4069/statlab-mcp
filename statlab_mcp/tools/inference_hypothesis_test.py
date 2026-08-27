@@ -44,6 +44,7 @@ SHAPIRO_MIN_N, SHAPIRO_MAX_N = 3, 5000
 
 
 def _fmt_p(p: float) -> str:
+    """p 值格式化：p<0.001 统一显示 '<0.001'（防幻觉口径），其余保留 4 位小数。"""
     return "<0.001" if p < 0.001 else f"{p:.4f}"
 
 
@@ -66,10 +67,12 @@ def _shapiro_check(x: np.ndarray) -> dict[str, Any]:
 
 
 def _t_critical(alpha: float, df: float) -> float:
+    """双侧 t 临界值 t_{1-α/2, df}（用于 CI 与结论文本）。"""
     return float(sps.t.ppf(1 - alpha / 2, df))
 
 
 def _conclusion_text(p: float, alpha: float, desc: str) -> str:
+    """结论句模板：p<α 拒绝 / p≥α 不能拒绝 H0（文案自 v1.0.3 逐字稳定）。"""
     if p < alpha:
         return f"p<α 拒绝 H0（p={_fmt_p(p)} < α={alpha}）：{desc}"
     return f"p≥α 不能拒绝 H0（p={_fmt_p(p)} ≥ α={alpha}）：{desc}"

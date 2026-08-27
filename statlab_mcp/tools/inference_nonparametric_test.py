@@ -58,11 +58,13 @@ MAX_GROUPS = 20      # kruskal_wallis 组数上限（与 anova_test 一致）
 
 
 def _fmt_p(p: float) -> str:
+    """p 值格式化：p<0.001 统一显示 '<0.001'（防幻觉口径），其余保留 4 位小数。"""
     return "<0.001" if p < 0.001 else f"{p:.4f}"
 
 
 def _wilcoxon(column: str, sample2_col: str, df: pd.DataFrame,
               alternative: str, alpha: float) -> dict[str, Any]:
+    """Wilcoxon 符号秩（配对）：不足 MIN_PAIRS 或差值全零直接结构化报错。"""
     m = df[[column, sample2_col]].dropna()
     if len(m) < MIN_PAIRS:
         raise DataLabError(f"配对有效样本不足（n={len(m)}<{MIN_PAIRS}，剔除缺失后），"
@@ -94,6 +96,7 @@ def _wilcoxon(column: str, sample2_col: str, df: pd.DataFrame,
 
 def _mann_whitney(group_col: str, value_col: str, df: pd.DataFrame,
                   alternative: str, alpha: float) -> dict[str, Any]:
+    """Mann-Whitney U（独立两样本）：恰好 2 组、每组样本量达 MIN_N_PER_GROUP 才可算。"""
     keys = list(dict.fromkeys(df[group_col].dropna().values))
     if len(keys) != 2:
         raise DataLabError(f"mann_whitney 需要恰好 2 组，当前 {len(keys)} 组；多组请用 kruskal_wallis", EC.STRUCTURE)
@@ -121,6 +124,7 @@ def _mann_whitney(group_col: str, value_col: str, df: pd.DataFrame,
 
 def _kruskal_wallis(group_col: str, value_col: str, df: pd.DataFrame,
                     alpha: float) -> dict[str, Any]:
+    """Kruskal-Wallis H（独立多样本，2~MAX_GROUPS 组）：超组数直接结构化报错。"""
     keys = list(dict.fromkeys(df[group_col].dropna().values))
     if len(keys) < 2:
         raise DataLabError("kruskal_wallis 至少需要 2 组", EC.STRUCTURE)

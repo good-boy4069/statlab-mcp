@@ -55,6 +55,7 @@ def _label(v: float, thrs: list[Any]) -> str:
 
 
 def _cliff_delta(x: np.ndarray, y: np.ndarray) -> float:
+    """Cliff's delta 非参数效应量：两组两两比较的优势差（[-1,1]）。"""
     gt = int(np.count_nonzero(x[:, None] > y[None, :]))
     lt = int(np.count_nonzero(x[:, None] < y[None, :]))
     return float((gt - lt) / (x.size * y.size))
