@@ -11,7 +11,21 @@
 >
 > **Install**: `pip install statlab-mcp` or `uvx --refresh statlab-mcp` (see [Quick Start](#quick-start)).
 
-## What's new in v1.1.0 (protocol hardening + performance + power analysis)
+## What's new in v1.2.0 (30 tools + inline channel + analysis plan)
+
+| Capability | Description |
+|---|---|
+| **Missing-value imputation `impute_missing` (tool 28)** | Five deterministic strategies (mean/median/ffill/bfill/constant); results written to `reports/imputed/` (input files never overwritten); CSV formula-injection protection; new error code E1012 |
+| **Backtesting `backtest_forecast` (tool 29)** | Rolling backtest (naive/seasonal_naive/auto_arima) with MAE/RMSE/MAPE; **leakage-proof by construction** — per-window isolated training, validation truths taken from raw observations only (missing points disclosed via counters); detail capped at 10k points |
+| **Analysis planning `analysis_plan` (tool 30)** | Natural-language question → deterministic analysis plan (12-intent rule engine, zero LLM): preferred methods + step-by-step tool_calls_plan with real column names; fallback emits the overview trio only — never guesses methods |
+| **Inline small-data channel** | All 28 file-based tools accept `inline_data` (records array or header/rows object) — no temp files for small data; responses add a `data_source` provenance field; five scale guards |
+| **Dependency lower-bounds matrix CI** | `dep_matrix` workflow verifies weekly that the "direct-dependency lower-bound combination" still installs and passes the full suite (`pip install . -c` constraints) |
+
+All environment variables default to exact prior behavior; `file_path` calling is unchanged at
+runtime (see [SPEC §12](statlab_mcp/docs/SPEC.md), the [upgrade guide](CHANGELOG.md#120---2026-08-28)).
+
+<details>
+<summary><strong>What's new in v1.1.0</strong> (protocol hardening + performance + power analysis — click to expand)</summary>
 
 | Capability | Description |
 |---|---|
@@ -22,8 +36,7 @@
 | **Power analysis tool** | New `power_analysis`: solve_n / detect_effect / verify modes for t-based scenarios and two proportions (Cohen's h), validated against G*Power reference values |
 | **Performance pass** | Lazy imports of the three heavy libs: cold start **≈ -26%**; two-tier-key LRU cache in `read_table` (SHA256 anti-spoofing, 8 entries/500MB budget, thread-safe); hits never change any output |
 
-All environment variables default to exact v1.0.3 behavior (see [SPEC §10 and §5](statlab_mcp/docs/SPEC.md),
-the [upgrade guide](CHANGELOG.md)).
+</details>
 
 | CI | Docs | PyPI |
 |---|---|---|

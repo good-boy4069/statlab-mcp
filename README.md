@@ -10,7 +10,20 @@
 >
 > **安装**：`pip install statlab-mcp` 或 `uvx --refresh statlab-mcp`（详见[快速开始](#快速开始)）。
 
-## v1.1.0 新能力（协议补课 + 性能补课 + 功效分析）
+## v1.2.0 新能力（30 工具 + inline 通道 + 分析计划）
+
+| 能力 | 说明 |
+|---|---|
+| **缺失值插补 impute_missing（工具 28）** | mean/median/ffill/bfill/constant 五策略确定性插补；结果落盘 `reports/imputed/`（绝不覆写输入）；CSV 公式注入防护；新错误码 E1012 |
+| **回测 backtest_forecast（工具 29）** | naive/seasonal_naive/auto_arima 滚动回测，MAE/RMSE/MAPE；**防泄漏钉死**——训练段逐窗隔离，验证窗真值只认原始观测（缺观测点如实计数披露）；明细 10000 点上限 |
+| **分析计划 analysis_plan（工具 30）** | 自然语言问题 → 确定性分析计划（12 意图规则引擎，零 LLM）：首选方法 + 逐步调用计划 + 真实列名引用；fallback 只出概览三件套，不猜方法 |
+| **inline 小数据通道** | 28 个文件型工具新增 `inline_data` 参数（records 数组或 header/rows 对象），免去小数据落盘；返回体新增 `data_source` 来源标注；五项规模上限防护 |
+| **依赖下限矩阵 CI** | dep_matrix 工作流每周自动验证「直接依赖下限组合仍可安装可运行」（`pip install . -c` 下限约束 + 全量测试） |
+
+环境变量均默认零变化；`file_path` 调用方式运行期零变化（详见 [SPEC 第 12 节](statlab_mcp/docs/SPEC.md)、[升级指引](CHANGELOG.md#120---2026-08-28)）。
+
+<details>
+<summary><strong>v1.1.0 新能力</strong>（协议补课 + 性能补课 + 功效分析——点击展开）</summary>
 
 | 能力 | 说明 |
 |---|---|
@@ -21,7 +34,7 @@
 | **功效分析 power_analysis** | 新工具：solve_n / detect_effect / verify 三模式，支持 t 系与两比例（Cohen's h），G*Power 对标数值锚定测试 |
 | **性能补课** | 冷启动延迟导入 -26%（三库不再预载）；read_table 两级键 LRU 文件缓存（SHA256 防伪造、8 条/500MB、线程安全），命中不改任何输出 |
 
-环境变量均默认零变化（详见 [SPEC 第 10 节与第 5 节](statlab_mcp/docs/SPEC.md)、[升级指引](CHANGELOG.md#110---2026-08-27)）。
+</details>
 
 | CI | 文档 | PyPI |
 |---|---|---|
