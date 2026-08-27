@@ -20,6 +20,11 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/04_inference_bat
 
 示例:
     anova_test("samples/clean.csv", group_col="category", value_col="score")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 from typing import Any
 
@@ -27,7 +32,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, require_non_none, resolve_data
 
 SHAPIRO_MIN_N, SHAPIRO_MAX_N = 3, 5000
 MAX_GROUPS = 20
@@ -81,15 +86,19 @@ def _games_howell_pairs(groups: dict[str, np.ndarray], keys: list[str],
     return pairs
 
 
-def anova_test(file_path: str, group_col: str, value_col: str, alpha: float = 0.05) -> dict:
+def anova_test(file_path: str | None = None, group_col: str | None = None,
+               value_col: str | None = None, alpha: float = 0.05,
+                   inline_data: list | dict | None = None) -> dict:
     """多组均值比较（ANOVA / Welch ANOVA + Tukey / Games-Howell 事后）。"""
     # statsmodels 三个子模块延迟导入（P1-1）：主函数唯一入口、各分支共享此作用域
     from statsmodels.stats.multicomp import pairwise_tukeyhsd
     from statsmodels.stats.oneway import anova_oneway
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(group_col=group_col, value_col=value_col)
     try:
         if not (0 < alpha < 1):
             raise DataLabError("alpha 必须在 (0,1) 之间", EC.PARAM)
-        df_all = read_table(file_path)
+        df_all, data_source = resolve_data(file_path, inline_data)
         if value_col not in df_all.columns:
             raise DataLabError(f"缺少必需列: {value_col}；实际列: {list(df_all.columns)}", EC.COLUMN_MISSING)
         if group_col not in df_all.columns:
@@ -196,7 +205,9 @@ def anova_test(file_path: str, group_col: str, value_col: str, alpha: float = 0.
             "posthoc": posthoc,
             "conclusion": conclusion,
         }
-        return ok(result, summary)
+        _payload = ok(result, summary)
+        _payload["data_source"] = data_source
+        return _payload
     except DataLabError as e:
         return err(e.code, str(e))
     except Exception:

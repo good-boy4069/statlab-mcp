@@ -19,22 +19,30 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/05_modeling.md �
 
 示例:
     feature_importance("samples/clean.csv", target="income")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 
 import numpy as np
 import pandas as pd
 
-from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, require_non_none, resolve_data
 
 MIN_N = 50
 MAX_CLASSES = 50
 MIN_ESTIMATORS = 10
 
 
-def feature_importance(file_path: str, target: str, method: str = "permutation",
+def feature_importance(file_path: str | None = None, target: str | None = None, method: str = "permutation",
                        n_estimators: int = 200, random_state: int = 42,
-                       n_repeats: int = 10) -> dict:
+                       n_repeats: int = 10,
+                   inline_data: list | dict | None = None) -> dict:
     """随机森林特征重要性（permutation / impurity 二选一）。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(target=target)
     try:
         if method not in ("permutation", "impurity"):
             raise DataLabError("method 仅支持 permutation/impurity", EC.PARAM)
@@ -44,7 +52,7 @@ def feature_importance(file_path: str, target: str, method: str = "permutation",
         if isinstance(n_repeats, bool) or not isinstance(n_repeats, (int, np.integer)) \
                 or n_repeats < 1:
             raise DataLabError("n_repeats 必须 >=1", EC.PARAM)
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         if target not in df.columns:
             raise DataLabError(f"缺少必需列: {target}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
         y_all = df[target].dropna()
@@ -133,7 +141,9 @@ def feature_importance(file_path: str, target: str, method: str = "permutation",
             "dummy_mapping": dummy_mapping or None,
             "conclusion": conclusion,
         }
-        return ok(result, summary)
+        _payload = ok(result, summary)
+        _payload["data_source"] = data_source
+        return _payload
     except DataLabError as e:
         return err(e.code, str(e))
     except Exception:

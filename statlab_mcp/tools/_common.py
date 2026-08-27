@@ -516,6 +516,18 @@ def normalize_inline(inline_data: Any) -> pd.DataFrame:
     return df
 
 
+def require_non_none(**named: Any) -> None:
+    """运行期必填参数强校验（T3 连锁 optional 化的契约补偿，SPEC §12.6）。
+
+    背景：file_path 转可选后，Python 语法强制其后的既有必填参数同样带默认值，
+    JSON Schema 的 required 全集随之消失；本函数在函数体入口以精确中文逐名校验，
+    保证"漏传即报错"的 agent 体验与 schema required 时代完全等价。
+    """
+    missing = [k for k, v in named.items() if v is None]
+    if missing:
+        raise DataLabError(f"缺少必需参数: {', '.join(missing)}", EC.PARAM)
+
+
 def to_jsonable(obj: Any) -> Any:
     """递归转换为 JSON 安全类型（规范 7.2，红队裁决 2）。
 

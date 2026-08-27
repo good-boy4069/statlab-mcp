@@ -24,6 +24,11 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/03_inference_bat
 示例:
     hypothesis_test("samples/clean.csv", column="score", test="one_sample", mu0=70.0)
     hypothesis_test("samples/clean.csv", column="score", test="independent", group_col="category")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 from typing import Any
 
@@ -31,7 +36,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, require_non_none, resolve_data
 
 _TESTS = {"one_sample", "independent", "paired"}
 _ALTERNATIVES = {"two_sided", "less", "greater"}
@@ -70,11 +75,14 @@ def _conclusion_text(p: float, alpha: float, desc: str) -> str:
     return f"p≥α 不能拒绝 H0（p={_fmt_p(p)} ≥ α={alpha}）：{desc}"
 
 
-def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
+def hypothesis_test(file_path: str | None = None, column: str | None = None, test: str = "one_sample",
                     group_col: str | None = None, sample2_col: str | None = None,
                     mu0: float = 0.0, alternative: str = "two_sided",
-                    alpha: float = 0.05) -> dict:
+                    alpha: float = 0.05,
+                   inline_data: list | dict | None = None) -> dict:
     """单样本/独立/配对 t 检验：统计量、p、均值差、CI、效应量 d、固定结论文案。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(column=column)
     try:
         if test not in _TESTS:
             raise DataLabError(f"test 仅支持 {'/'.join(sorted(_TESTS))}", EC.PARAM)
@@ -85,7 +93,7 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
         if isinstance(mu0, bool) or not isinstance(mu0, (int, float, np.integer, np.floating)) \
                 or not np.isfinite(mu0):
             raise DataLabError("mu0 必须是有限数值（拒绝 NaN/Inf）", EC.PARAM)   # Qoder 锐评 #1 防御补全
-        df_all = read_table(file_path)
+        df_all, data_source = resolve_data(file_path, inline_data)
         scipy_alt = "two-sided" if alternative == "two_sided" else alternative  # scipy 枚举用连字符
         if column not in df_all.columns:
             raise DataLabError(f"缺少必需列: {column}；实际列: {list(df_all.columns)}", EC.COLUMN_MISSING)
@@ -208,7 +216,9 @@ def hypothesis_test(file_path: str, column: str, test: str = "one_sample",
         summary = (f"{method}：{ci_txt}，{conclusion}{norm_txt}{note_txt}；"
                    f"效应量 d={d:.2f}（{'小' if d < 0.2 else '中' if d < 0.5 else '大' if d < 0.8 else '很大'}）；"
                    f"相关≠因果")
-        return ok(result, summary)
+        _payload = ok(result, summary)
+        _payload["data_source"] = data_source
+        return _payload
     except DataLabError as e:
         return err(e.code, str(e))
     except Exception:

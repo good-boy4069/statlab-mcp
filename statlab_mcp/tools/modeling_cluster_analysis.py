@@ -14,16 +14,21 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/05_modeling.md �
 
 示例:
     cluster_analysis("samples/clean.csv", k=3)
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
-from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, require_non_none, resolve_data
 
 
-def _run_kmeans(Xs: np.ndarray, k: int):
+def _run_kmeans(Xs: np.ndarray, k: int | None = None):
     from sklearn.cluster import KMeans  # 延迟导入（P1-1）
     from sklearn.metrics import silhouette_score
     km = KMeans(n_clusters=k, random_state=42, n_init="auto").fit(Xs)
@@ -31,13 +36,16 @@ def _run_kmeans(Xs: np.ndarray, k: int):
     return km, sil
 
 
-def cluster_analysis(file_path: str, k: int) -> dict:
+def cluster_analysis(file_path: str | None = None, k: int | None = None,
+                   inline_data: list | dict | None = None) -> dict:
     """KMeans 聚类：反标准化质心 + 簇样本量 + 轮廓系数（含 k±1 对照）。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(k=k)
     try:
         if isinstance(k, bool) or not isinstance(k, (int, np.integer)):
             raise DataLabError("k 必须是整数", EC.PARAM)
         k = int(k)
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         excluded = [c for c in df.columns if c not in numeric_cols]
         if not numeric_cols:
@@ -110,7 +118,9 @@ def cluster_analysis(file_path: str, k: int) -> dict:
             "conclusion": (f"k={k}，轮廓系数 {sil:.2f}（{sil_label}）；"
                            f"k 的选择需结合业务判断（轮廓系数仅参考）"),
         }
-        return ok(result, summary)
+        _payload = ok(result, summary)
+        _payload["data_source"] = data_source
+        return _payload
     except DataLabError as e:
         return err(e.code, str(e))
     except Exception:

@@ -18,6 +18,11 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/03_inference_bat
     confidence_interval("samples/clean.csv", column="income")
     confidence_interval("samples/clean.csv", column="income", confidence=0.90,
                         method="bootstrap_median")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 from typing import Any
 
@@ -25,22 +30,25 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, require_non_none, resolve_data
 
 _METHODS = {"mean_t", "bootstrap_median"}
 N_BOOTSTRAP = 1000
 BOOT_SEED = 42
 
 
-def confidence_interval(file_path: str, column: str, confidence: float = 0.95,
-                        method: str = "mean_t") -> dict:
+def confidence_interval(file_path: str | None = None, column: str | None = None, confidence: float = 0.95,
+                        method: str = "mean_t",
+                   inline_data: list | dict | None = None) -> dict:
     """均值（t 分布）或中位数（bootstrap）的置信区间。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(column=column)
     try:
         if method not in _METHODS:
             raise DataLabError("method 仅支持 mean_t/bootstrap_median", EC.PARAM)
         if not (0 < confidence < 1):
             raise DataLabError("confidence 必须在 (0,1) 之间", EC.PARAM)
-        df_all = read_table(file_path)
+        df_all, data_source = resolve_data(file_path, inline_data)
         if column not in df_all.columns:
             raise DataLabError(f"缺少必需列: {column}；实际列: {list(df_all.columns)}", EC.COLUMN_MISSING)
         if not pd.api.types.is_numeric_dtype(df_all[column]):
@@ -92,7 +100,9 @@ def confidence_interval(file_path: str, column: str, confidence: float = 0.95,
                    f"[{ci_lower:.2f}, {ci_upper:.2f}]"
                    f"（{'t 分布' if method == 'mean_t' else f'bootstrap {N_BOOTSTRAP} 次, seed={BOOT_SEED}'}，"
                    f"n={n}）{note}")
-        return ok(result, summary)
+        _payload = ok(result, summary)
+        _payload["data_source"] = data_source
+        return _payload
     except DataLabError as e:
         return err(e.code, str(e))
     except Exception:

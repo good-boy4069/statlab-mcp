@@ -35,6 +35,11 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/09_inference_bat
 示例:
     nonparametric_test("samples/clean.csv", test="mann_whitney",
                        group_col="category", value_col="score")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 import math
 from typing import Any
@@ -43,7 +48,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, resolve_data
 
 _TESTS = {"wilcoxon", "mann_whitney", "kruskal_wallis"}
 _ALTERNATIVES = {"two_sided", "less", "greater"}
@@ -145,10 +150,11 @@ def _kruskal_wallis(group_col: str, value_col: str, df: pd.DataFrame,
     }
 
 
-def nonparametric_test(file_path: str, test: str = "wilcoxon",
+def nonparametric_test(file_path: str | None = None, test: str = "wilcoxon",
                        column: str | None = None, sample2_col: str | None = None,
                        group_col: str | None = None, value_col: str | None = None,
-                       alpha: float = 0.05, alternative: str = "two_sided") -> dict:
+                       alpha: float = 0.05, alternative: str = "two_sided",
+                   inline_data: list | dict | None = None) -> dict:
     """非参数检验（Wilcoxon 配对 / Mann-Whitney 两组 / Kruskal-Wallis 多组）。"""
     try:
         if test not in _TESTS:
@@ -160,7 +166,7 @@ def nonparametric_test(file_path: str, test: str = "wilcoxon",
             raise DataLabError("alpha 必须在 (0,1) 之间且为有限数", EC.PARAM)
         alpha = float(alpha)
 
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         if test == "wilcoxon":
             for c in (column, sample2_col):
                 if c is None or c not in df.columns:
@@ -190,7 +196,9 @@ def nonparametric_test(file_path: str, test: str = "wilcoxon",
                    f"{out['effsize']:.3f}{limitation}")
         result = {"test": test, "alpha": alpha, **out,
                   "note": "scipy 实现；参数化设置见设计文档 09"}
-        return ok(result, summary)
+        _payload = ok(result, summary)
+        _payload["data_source"] = data_source
+        return _payload
     except DataLabError as e:
         return err(e.code, str(e))
     except Exception:

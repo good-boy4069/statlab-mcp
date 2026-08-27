@@ -70,10 +70,36 @@ def _is_file_path_became_optional(base_f: dict, cur_f: dict) -> bool:
         set(cur_f.keys()) - {"anyOf", "default", "title"} == set()
 
 
+def _prop_became_optional(base_f: dict, cur_f: dict) -> bool:
+    """白名单③细化（D17）：原 required 属性变为可选的合法形态——
+    anyOf[原type, null] + default:null + title/其余键不变。
+    适用于 file_path 及 T3 连锁 optional 化的全部既有必填字段。"""
+    if cur_f.get("title") != base_f.get("title"):
+        return False
+    base_type = base_f.get("type")
+    if not base_type:
+        return False
+    any_of = cur_f.get("anyOf")
+    if not isinstance(any_of, list):
+        return False
+    types = sorted(t.get("type", "?") for t in any_of)
+    if types != sorted(["null", base_type]):          # 与排序后比较（string/integer 均适配）
+        return False
+    return cur_f.get("default", "__missing__") is None and \
+        set(cur_f.keys()) - {"anyOf", "default", "title"} == set()
+
+
 def _allowed_schema_diff(base_schema: dict, cur_schema: dict) -> bool:
-    """第②③类机判：properties 只允许新增 inline_data 且既有定义逐字不变；
-    required 只允许移除 file_path（其类型泛化为可 null 属③的机械组成，特判放行）。
-    其余任何 schema 变化非法。"""
+    """第②③类机判（v1.2.0 D17 连锁修订版）：
+
+    - properties 只允许新增 inline_data；既有属性中：
+      * 原 required 属性 → 允许变为可选（anyOf[原type,null]+default:null，
+        Python 参数语法连锁的机械结果，D17）；
+      * 原 optional 属性 → 定义逐字不变；
+    - required 数组必须**清空**（T3 连锁 optional 化；运行期由 require_non_none
+      等价强校验，SPEC §12.6）。
+    其余任何 schema 变化非法。
+    """
     bp = base_schema.get("properties", {})
     cp = cur_schema.get("properties", {})
     if not set(cp) >= set(bp):
@@ -82,15 +108,12 @@ def _allowed_schema_diff(base_schema: dict, cur_schema: dict) -> bool:
         return False                                  # 只允许新增 inline_data
     for k in bp:
         if cp.get(k) == bp[k]:
-            continue
-        if k == "file_path" and bp[k].get("type") == "string" and \
-                _is_file_path_became_optional(bp[k], cp.get(k, {})):
-            continue                                  # ③ 的机械组成部分
-        return False                                  # 既有属性定义禁止漂移
-    br = set(base_schema.get("required", []))
+            continue                                  # 原 optional 属性零漂移
+        if _prop_became_optional(bp[k], cp.get(k, {})):
+            continue                                  # 原 required 属性的可选化
+        return False                                  # 其它一切漂移非法
     cr_raw = cur_schema.get("required", [])
-    cr = set(cr_raw) if cr_raw else set()
-    return (br - cr) <= {"file_path"} and not (cr - br)
+    return not (set(cr_raw) if cr_raw else set())     # required 全集清空
 
 
 def test_full_matches_v1_1_0_baseline_four_category_whitelist():

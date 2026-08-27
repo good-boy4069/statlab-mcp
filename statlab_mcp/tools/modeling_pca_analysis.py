@@ -15,6 +15,11 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/05_modeling.md �
 
 示例:
     pca_analysis("samples/clean.csv", n_components=2)
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 from typing import Any
 
@@ -28,18 +33,22 @@ from statlab_mcp.tools._common import (
     DataLabError,
     err,
     ok,
-    read_table,
+    require_non_none,
+    resolve_data,
     save_plot,
 )
 
 
-def pca_analysis(file_path: str, n_components: int) -> dict:
+def pca_analysis(file_path: str | None = None, n_components: int | None = None,
+                   inline_data: list | dict | None = None) -> dict:
     """PCA 降维：方差解释率、反标准化载荷矩阵与载荷图。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(n_components=n_components)
     try:
         if isinstance(n_components, bool) or not isinstance(n_components, (int, np.integer)):
             raise DataLabError("n_components 必须是整数", EC.PARAM)
         n_components = int(n_components)
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         excluded = [c for c in df.columns if c not in numeric_cols]
         if not numeric_cols:
@@ -133,6 +142,7 @@ def pca_analysis(file_path: str, n_components: int) -> dict:
             "conclusion": conclusion,
         }
         res = ok(result, summary)
+        res["data_source"] = data_source
         res["__image__"] = img
         return res
     except DataLabError as e:

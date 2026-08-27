@@ -18,12 +18,17 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/03_inference_bat
 
 示例:
     normality_test("samples/clean.csv", column="score")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 
 import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, require_non_none, resolve_data
 
 _METHODS = {"auto", "shapiro", "dagostino"}
 SHAPIRO_MIN_N, SHAPIRO_MAX_N = 3, 5000
@@ -35,12 +40,15 @@ def _fmt_p(p: float) -> str:
     return "<0.001" if p < 0.001 else f"{p:.4f}"
 
 
-def normality_test(file_path: str, column: str, method: str = "auto") -> dict:
+def normality_test(file_path: str | None = None, column: str | None = None, method: str = "auto",
+                   inline_data: list | dict | None = None) -> dict:
     """正态性检验（Shapiro-Wilk / D'Agostino-Pearson），输出统计量、p、偏度、峰度。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(column=column)
     try:
         if method not in _METHODS:
             raise DataLabError("method 仅支持 auto/shapiro/dagostino", EC.PARAM)
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         if column not in df.columns:
             raise DataLabError(f"缺少必需列: {column}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
         if not pd.api.types.is_numeric_dtype(df[column]):
@@ -84,7 +92,9 @@ def normality_test(file_path: str, column: str, method: str = "auto") -> dict:
         else:
             summary = (f"{name} 检验：p={_fmt_p(p)} <α=0.05，拒绝正态假设（数据明显非正态）；"
                        f"偏度 {skew:.2f}、峰度 {kurtosis:.2f}，建议改用 nonparametric_test")
-        return ok(result, summary)
+        _payload = ok(result, summary)
+        _payload["data_source"] = data_source
+        return _payload
     except DataLabError as e:
         return err(e.code, str(e))
     except Exception:

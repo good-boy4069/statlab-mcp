@@ -18,6 +18,11 @@ docstring = agent 使用说明书，与 statlab_mcp/docs/design/04_inference_bat
 
 示例:
     chi_square_test("samples/clean.csv", col_a="category", col_b="category")
+inline 数据:
+    本工具支持可选 inline_data 参数（v1.2.0 起）：与 file_path 二选一，
+    支持 records 数组或 {"header": [...], "rows": [[...], ...]} 对象两种形态；
+    规模上限/类型域/data_source 来源标注见 statlab_mcp/docs/SPEC.md 第 12 节。
+
 """
 from typing import Any
 
@@ -25,7 +30,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-from statlab_mcp.tools._common import EC, DataLabError, err, ok, read_table
+from statlab_mcp.tools._common import EC, DataLabError, err, ok, require_non_none, resolve_data
 
 MAX_CATEGORIES = 50
 MAX_BINS = 8
@@ -51,10 +56,13 @@ def _to_categories(s: pd.Series, name: str) -> Any:
     return s.astype(str), None
 
 
-def chi_square_test(file_path: str, col_a: str, col_b: str) -> dict:
+def chi_square_test(file_path: str | None = None, col_a: str | None = None, col_b: str | None = None,
+                   inline_data: list | dict | None = None) -> dict:
     """两列类别关联检验（卡方 / Fisher 精确 + Cramér's V）。"""
+    # D17 连锁 optional 化的运行期强校验（SPEC §12.6）
+    require_non_none(col_a=col_a, col_b=col_b)
     try:
-        df = read_table(file_path)
+        df, data_source = resolve_data(file_path, inline_data)
         for c in (col_a, col_b):
             if c not in df.columns:
                 raise DataLabError(f"缺少必需列: {c}；实际列: {list(df.columns)}", EC.COLUMN_MISSING)
@@ -135,7 +143,9 @@ def chi_square_test(file_path: str, col_a: str, col_b: str) -> dict:
             "binning_note": binning_note,
             "conclusion": conclusion,
         }
-        return ok(result, summary)
+        _payload = ok(result, summary)
+        _payload["data_source"] = data_source
+        return _payload
     except DataLabError as e:
         return err(e.code, str(e))
     except Exception:
