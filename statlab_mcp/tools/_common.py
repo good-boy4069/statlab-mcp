@@ -348,6 +348,174 @@ def _parse_table(path: str, ext: str) -> pd.DataFrame:
     return df
 
 
+# ---- inline 小数据通道（v1.2.0 T3；协议契约见 SPEC 第 12 节）----
+
+_INLINE_MAX_ROWS = 10_000
+_INLINE_MAX_COLS = 200
+_INLINE_MAX_CELLS = 50_000
+_INLINE_MAX_PAYLOAD = 16 * 1024 * 1024          # 序列化总字节（文件通道 50MB 的对称防线）
+_INLINE_MAX_CELL_CHARS = 65_536
+_CTRL_CHARS_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F]")   # 控制字符清洗
+
+
+def resolve_data(file_path: str | None, inline_data: Any,
+                 *, require_input: bool = True) -> tuple[pd.DataFrame, str]:
+    """file_path / inline_data 二选一单点分派（T3；禁止各工具自行解析）。
+
+    返回 (DataFrame, data_source)，data_source ∈ {"file", "inline"}；
+    analysis_plan 等可选源工具传 require_input=False：双缺返回 (空 DataFrame, "none")。
+    """
+    has_file = file_path is not None and str(file_path).strip() != ""
+    has_inline = inline_data is not None
+    if has_file and has_inline:
+        raise DataLabError("file_path 与 inline_data 只能提供其一，请选择一种数据来源",
+                           EC.PARAM)
+    if not has_file and not has_inline:
+        if require_input:
+            raise DataLabError(
+                "缺少数据来源：请提供 file_path（数据文件路径）或 "
+                "inline_data（内联小数据）之一", EC.PARAM)
+        return pd.DataFrame(), "none"
+    if has_file:
+        return read_table(str(file_path)), "file"
+    return normalize_inline(inline_data), "inline"
+
+
+def _normalize_dtype(df: pd.DataFrame) -> pd.DataFrame:
+    """inline 构造后的 dtype 归一（SPEC §12.4）：全 null 列→float64、数值混合→float64。"""
+    for col in df.columns:
+        non_null = df[col].dropna()
+        if non_null.empty:
+            df[col] = df[col].astype("float64")
+            continue
+        if all(isinstance(v, (int, float)) and not isinstance(v, bool)
+               for v in non_null):
+            df[col] = df[col].astype("float64")
+        # 纯 bool / 含 str 的列保持 object，由各工具按自身口径处理
+    return df
+
+
+def _validate_cell(v: Any) -> Any:
+    """单元格校验：值域标量 + 单 cell 长度上限（E1001/E1005），返回规范化值。
+
+    bool 判序先于 int；NaN/Inf 作为数据值放行（与文件读取口径一致，
+    输出侧统一 to_jsonable 转 null——铁律 6 约束输出而非输入）。
+    """
+    if v is None or isinstance(v, (bool, int, float, str)):
+        if isinstance(v, str):
+            if len(v) > _INLINE_MAX_CELL_CHARS:
+                raise DataLabError(
+                    f"inline 单元格字符串长度 {len(v)} 超过 {_INLINE_MAX_CELL_CHARS} 上限；"
+                    "请落盘后改用 file_path", EC.SCALE)
+            cleaned = _CTRL_CHARS_RE.sub("", v)
+            return cleaned if cleaned != v else v
+        return v
+    raise DataLabError(
+        f"inline 单元格不允许 {type(v).__name__} 类型（嵌套结构/对象均不支持）；"
+        "仅支持字符串/数值/布尔/null 标量", EC.PARAM)
+
+
+def normalize_inline(inline_data: Any) -> pd.DataFrame:
+    """inline 数据归一化入口：形态识别 → 五项规模上限 → 值域校验 → dtype 归一。
+
+    实现纪律：单遍扫描在构造 DataFrame **之前**完成全部拒绝判定（防大对象构造后拒）。
+    """
+    header: list[str] | None = None
+    rows_raw: list[list[Any]] = []
+    records: list[dict[str, Any]] | None = None
+
+    if isinstance(inline_data, dict):
+        if "header" not in inline_data or "rows" not in inline_data:
+            raise DataLabError(
+                "inline dict 形态必须同时包含 header 与 rows 字段", EC.PARAM)
+        header_raw = inline_data["header"]
+        raw_rows = inline_data["rows"]
+        if not isinstance(header_raw, list) or \
+                not all(isinstance(h, str) for h in header_raw):
+            raise DataLabError("inline split 形态的 header 必须为字符串数组", EC.PARAM)
+        if not isinstance(raw_rows, list):
+            raise DataLabError("inline split 形态的 rows 必须为数组", EC.PARAM)
+        for row in raw_rows:
+            if not isinstance(row, list) or len(row) != len(header_raw):
+                raise DataLabError(
+                    "split 形态每行长度必须等于 header 长度"
+                    f"（期望 {len(header_raw)} 个值）", EC.PARAM)
+        header = list(header_raw)
+        rows_raw = [list(r) for r in raw_rows]
+    elif isinstance(inline_data, list):
+        keys: list[str] = []
+        seen: set[str] = set()
+        for rec in inline_data:
+            if not isinstance(rec, dict):
+                raise DataLabError(
+                    "records 形态元素必须为 {'列名': 值} 字典（数组第 "
+                    f"{len(keys)} 行之后发现非对象）", EC.PARAM)
+            for k in rec:
+                if not isinstance(k, str):
+                    raise DataLabError("records 形态的列名必须为字符串", EC.PARAM)
+                if k not in seen:
+                    seen.add(k)
+                    keys.append(k)
+        header = keys                        # 列集取各行键的并集（保持首现顺序）
+        records = inline_data
+        # 行值延后按最终并集逐列取值（rec.get 自动补 null），无需中间对齐
+    else:
+        raise DataLabError(
+            "inline_data 仅支持 records 数组或 "
+            "{'header': [...], 'rows': [[...], ...]} 对象形态", EC.PARAM)
+
+    n_cols = len(header) if header is not None else 0
+    n_rows = len(rows_raw) if records is None else len(records)
+    if n_rows == 0 or n_cols == 0:
+        raise DataLabError("inline 数据为空（无行或无列），无可分析内容", EC.FILE_EMPTY)
+    if n_cols > _INLINE_MAX_COLS:
+        raise DataLabError(f"inline 数据 {n_cols} 列超过 {_INLINE_MAX_COLS} 列上限；"
+                           "请精简列后重试", EC.SCALE)
+    if n_rows > _INLINE_MAX_ROWS:
+        raise DataLabError(
+            f"inline 数据 {n_rows} 行超过 {_INLINE_MAX_ROWS} 行上限；"
+            "请落盘后改用 file_path", EC.SCALE)
+    if n_rows * n_cols > _INLINE_MAX_CELLS:
+        raise DataLabError(
+            f"inline 数据共 {n_rows * n_cols} 个单元格超过 {_INLINE_MAX_CELLS} 上限；"
+            "请落盘为文件后改用 file_path", EC.SCALE)
+
+    payload_total = 0
+    cells_out: list[list[Any]] = []
+    if records is None:                      # split 形态
+        for row in rows_raw:
+            validated_row = []
+            for v in row:
+                v2 = _validate_cell(v)
+                if isinstance(v2, str):
+                    payload_total += len(v2.encode("utf-8", errors="replace"))
+                elif isinstance(v2, (int, float)) and not isinstance(v2, bool):
+                    payload_total += 8
+                validated_row.append(v2)
+            cells_out.append(validated_row)
+    else:                                     # records 形态：按最终并集逐格取值
+        for rec in records:
+            validated_row = []
+            for k in header or []:
+                v2 = _validate_cell(rec.get(k))
+                if isinstance(v2, str):
+                    payload_total += len(v2.encode("utf-8", errors="replace"))
+                elif isinstance(v2, (int, float)) and not isinstance(v2, bool):
+                    payload_total += 8
+                validated_row.append(v2)
+            cells_out.append(validated_row)
+    if payload_total > _INLINE_MAX_PAYLOAD:
+        raise DataLabError(
+            f"inline 数据序列化总量约 {payload_total // 1024 // 1024}MB 超过 16MB 上限；"
+            "请落盘为文件后改用 file_path", EC.SCALE)
+
+    df = pd.DataFrame(cells_out, columns=header or [], dtype=object)
+    df = _normalize_dtype(df)
+    if df.empty:
+        raise DataLabError("inline 数据为空（无行或无列），无可分析内容", EC.FILE_EMPTY)
+    return df
+
+
 def to_jsonable(obj: Any) -> Any:
     """递归转换为 JSON 安全类型（规范 7.2，红队裁决 2）。
 

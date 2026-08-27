@@ -138,3 +138,44 @@ requirements.min）。
 3. **目录约定**：一切工具产物统一入 `reports/` 下按日期归档、**均不进版本库**（.gitignore 收录）——`reports/plots/YYYYmmdd/`（图片，见第 5 节）、`reports/imputed/YYYYmmdd/`（插补结果 CSV）；产物目录执行 30 天自动清理（过期日删除，不影响任何计算结果的可复现性——统计数字永远可由原始输入重新生成）；
 4. **原文件不可变**：产生输出的工具绝不修改/覆写任何输入文件；输出文件名 = `<工具名>_<原文件干名>_<语义后缀>_YYYYmmdd_HHMMSS_fff.csv`（毫秒时间戳防覆盖；干名经 Windows 保留名清洗）；
 5. **CSV 写出防护**：以 utf-8-sig 编码写出；字符串单元格若以 `=` `+` `-` `@` 开头则前置 `'` 转义（防 Excel 公式注入）；剔除字段内控制字符（`\x00-\x08\x0B\x0C\x0E-\x1F`）；上述防护在 SPEC 声明，读回方需知晓首字符转义规则。
+
+## 12. inline 数据通道与来源标注（v1.2.0）
+
+> 信任声明（与第 4 节"路径信任声明"同构）：工具不校验 inline 数据的出处与内容授权，
+> 调用方对所传数据负责。工具亦不校验文件来源——两条边界由调用方/外层 agent 把守。
+
+### 12.1 参数协议
+- 所有**接受 `file_path` 的文件型/混合工具**（28 个 require_input 型 + analysis_plan 可选源）
+  获得可选 `inline_data` 参数，与 `file_path` 二选一：
+  file_path 与 inline_data 同时提供或同时缺失 → `E1001`；
+- JSON Schema 策略：`inline_data` 注解统一为 `list | dict | None`
+  （property 级 anyOf:[array,object,null] 展开；**禁止嵌套 $ref/pydantic 子模型**
+  防 MCP 客户端兼容性问题）；细粒度结构校验由运行期 `normalize_inline` 承担。
+
+### 12.2 数据形态（运行期归一化规则）
+- **records**：`[{"列名": 值, ...}, ...]` 行字典数组；列集取各行键的并集（保持首现顺序），缺失键视为缺失（null）；
+- **split**：`{"header": ["列名", ...], "rows": [[值, ...], ...]}`；每行长度必须等于 header 长度；
+- 形态自动识别：list → records；dict 且含 header+rows → split；其余 → E1001。
+- 缺失唯一权威表示 = `null`；字符串 "NA"/""/"null" 等**不做缺失词归一**（是有内容的字符串，
+  注意与 pandas.read_csv 默认 na_values 行为存在差异）；NaN/Infinity 为非法 JSON 字面量，
+  仅宽容解析器（Python json）可发出，规范客户端以 null 表达缺失。
+
+### 12.3 规模与类型上限（全部 E1005/E1001/E1004，见第 9 节）
+- 行数 ≤ 10000、列数 ≤ 200、单元格总数 ≤ 50000、序列化总字节 ≤ 16MB、单个字符串单元格 ≤ 65536 字符
+  （超限 E1005，提示"请落盘后改用 file_path"；单遍扫描在构造 DataFrame 前拒绝）；
+- 单元格值域：str / bool / int / float / None（bool 判序先于 int）；嵌套 list/dict → E1001（参数结构非法）；
+- 空数据（无行或无列）→ E1004；NaN/Inf 作为**数据值**允许进入（与文件读取口径一致，
+  输出侧统一 to_jsonable 转 null，铁律 6 约束的是输出 JSON）。
+
+### 12.4 dtype 归一规则（normalize_inline 出口契约）
+- 全 null 列 → float64；int/float/(null) 混合列 → float64；含 str 的混合列 → object 保持
+  （由各工具按自身口径报 E1009）；
+- 等价性验收规约："inline 构造 vs 等价文件读取"的对比必须在上述 dtype 归一后进行
+  （NaN-aware equals，禁止朴素 check_dtype=True 或裸 ==）。
+
+### 12.5 来源标注 `data_source`
+- 上述全部工具的 result 顶层新增 `data_source` 字段：`"file"` 或 `"inline"`
+  （analysis_plan 未提供数据源时为 `null`，其 `data_aware=false` 同步表达）；纯增量字段，向后兼容；
+- inline 数据不进 read_table 文件缓存（无路径可键控），每次调用重新构造，确定性不受影响；
+- 实现：`_common.resolve_data(file_path, inline_data, *, require_input=True)` 单点分派
+  （返回 `(df, data_source)`），禁止各工具自行解析。
