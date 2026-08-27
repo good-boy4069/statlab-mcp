@@ -1,0 +1,100 @@
+name: smoke-install
+# v1.1.0 P2-A：PyPI 自安装冒烟（独立于四 job 测试矩阵，不阻塞它）
+# 触发：release 发布事件（tag 自动去 v 前缀）；或手动 dispatch 传 version 必填参数
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "要冒烟的 PyPI 版本号（如 1.1.0，不带 v 前缀）"
+        required: true
+
+jobs:
+  pip-install-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            V="${{ inputs.version }}"
+          else
+            V="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "smoke target = statlab-mcp==$V"
+
+      - name: Setup Python (最低支持线 3.12)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Clean install from PyPI
+        run: |
+          python -m venv .smoke-venv
+          ./.smoke-venv/bin/pip install --upgrade pip
+          ./.smoke-venv/bin/pip install "statlab-mcp==${{ steps.ver.outputs.version }}"
+          ./.smoke-venv/bin/pip show statlab-mcp
+          test -x ./.smoke-venv/bin/statlab-mcp || { echo "console script 'statlab-mcp' 缺失"; exit 1; }
+
+      - name: Protocol smoke on installed package (console script)
+        run: |
+          # 真实数据文件，供完整计算链路冒烟
+          printf 'score,group\n88,A\n92,A\n79,B\n95,B\n83,A\n' > /tmp/smoke.csv
+          cat > /tmp/smoke_installed.py <<'PY'
+          import asyncio
+          import json
+          import os
+          from mcp import ClientSession
+          from mcp.client.stdio import StdioServerParameters, stdio_client
+
+          VERSION = os.environ["SMOKE_VERSION"]
+
+          def params():
+              env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+              env["PYTHONUTF8"] = "1"
+              return StdioServerParameters(command="statlab-mcp", args=[], env=env)
+
+          async def main():
+              async with stdio_client(params()) as (r, w), ClientSession(r, w) as s:
+                  init = await s.initialize()
+                  # ① initialize 成功且版本字符串匹配发布版本
+                  got = init.server_info.version
+                  assert got == VERSION, f"version mismatch: got={got!r} want={VERSION}"
+                  tools = await s.list_tools()
+                  names = sorted(t.name for t in tools.tools)
+                  # ② 工具数 = 27
+                  assert len(names) == 27, f"tool count {len(names)} != 27"
+                  # ③ statlab://spec 与 ≥2 个 manual 可读非空（P0-1 打包闭环）
+                  res_list = await s.list_resources()
+                  uris = [str(x.uri) for x in res_list.resources] \
+                      if hasattr(res_list, "resources") else [str(x.uri) for x in res_list]
+                  assert len(uris) == len(names) + 1, f"resources {len(uris)} != tools+1"
+                  spec = await s.read_resource("statlab://spec")
+                  content = spec.contents[0].text
+                  assert content.strip() and "错误码" in content
+                  manuals = sorted(u for u in uris if u.startswith("statlab://tools/"))
+                  for u in manuals[:2]:
+                      mr = await s.read_resource(u)
+                      text = mr.contents[0].text
+                      tool_name = u.split("/")[-2]
+                      assert text.strip() and tool_name in text, f"{u} 内容异常"
+                  # ④ 真实计算链路：纯统计工具完整协议往返且结果可解析
+                  r0 = await s.call_tool("describe_statistics",
+                                         {"file_path": "/tmp/smoke.csv"})
+                  obj = json.loads(r0.content[0].text)
+                  assert obj.get("status") == "ok", obj
+                  assert obj["result"]["n_columns"] >= 2
+                  print(f"[SMOKE-INSTALL] OK: v={got}, tools={len(names)}, "
+                        f"resources={len(uris)}, spec+2 manuals readable, compute=ok")
+
+          asyncio.run(main())
+          PY
+          SMOKE_VERSION="${{ steps.ver.outputs.version }}" \
+            ./.smoke-venv/bin/python /tmp/smoke_installed.py
+
+      - name: Result
+        if: always()
+        run: echo "smoke-install finished"
