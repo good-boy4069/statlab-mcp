@@ -1,5 +1,7 @@
 # statlab-mcp —— 统计分析 MCP Server
 
+[English](README.en.md) | 简体中文
+
 > **独立项目，与任何厂商的官方插件无关**（README 历史声明：与 DeepSeek Harness 无关）。
 > 让 AI agent（Claude Code / Cursor / DeepSeek Harness / Codex 等）获得**真实统计学能力**：
 > LLM 直接口算统计会编造数字；本项目所有统计结果都来自真实计算
